@@ -1,6 +1,6 @@
 const config = {
     // Domain restriction
-    allowedDomains: ['www.yesyoudeserve.tours', 'https://dev-skyhighdmbd.pantheonsite.io/'],
+    allowedDomains: [],
   
     
     // NEW: URL filtering configuration
@@ -9,7 +9,7 @@ const config = {
         showOnAllUrls: false, // Set to true to show on all URLs (ignore the list below)
         specificUrls: [
             'https://dev-skyhighdmbd.pantheonsite.io/',
-            'https://www.yesyoudeserve.tours/another-page',
+            
             // Add more URLs here as needed
         ]
     },
