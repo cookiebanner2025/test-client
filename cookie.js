@@ -8,9 +8,9 @@ const config = {
         enabled: true, // Set to true to enable URL filtering
         showOnUrls: [
             // Add your specific URLs here
-            '/contact-us/', // Exact path
-            '/about-us', // Exact path
-            '/contact', // Exact path
+            '/chat/', // Exact path
+            '/example', // Exact path
+            '/example', // Exact path
             '/blog/*', // Wildcard - any URL starting with /blog/
             '*special-page*', // Contains - any URL with 'special-page' in it
             'https://www.yesyoudeserve.tours/exact-full-url' // Full URL
