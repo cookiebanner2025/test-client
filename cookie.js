@@ -93,15 +93,16 @@ const config = {
 
 
      // Microsoft Clarity Configuration
-    clarityConfig: {
-        enabled: true,
-        projectId: 'test-clarity-demo-12345', // Replace with your actual Clarity ID
-        requireConsent: true, // Set to true to require consent before loading
-        autoDetectRegion: true, // Automatically detect EEA/UK/CH visitors
-        defaultConsent: 'denied', // Default to denied until consent is given
-        sendConsentSignal: true // NEW: Enable sending consent signals to Clarity
-    },
-
+  // Microsoft Clarity Configuration
+clarityConfig: {
+    enabled: true,
+    projectId: 'test-clarity-demo-12345', // Replace with your actual Clarity ID
+    requireConsent: true, // Set to true to require consent before loading
+    autoDetectRegion: true, // Automatically detect EEA/UK/CH visitors
+    defaultConsent: 'denied', // Default to denied until consent is given
+    sendConsentSignal: true, // NEW: Enable sending consent signals to Clarity
+    loadBeforeConsent: false // NEW: Prevent loading before consent in regulated regions
+},
 
     
   
@@ -200,7 +201,7 @@ geoConfig: {
     
     // Banner styling
     bannerStyle: {
-        background: '#a02020',
+        background: '#ffffff',
         borderRadius: '12px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
         width: '465px',
