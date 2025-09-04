@@ -3695,23 +3695,32 @@ function initializeCookieConsent(detectedCookies, language) {
 
 
     // Microsoft Clarity initialization
+// Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
 function initializeClarity(consentGranted) {
     if (!config.clarityConfig.enabled) return;
     
-    // Check if visitor is from EEA/UK/CH and requires consent
-    const clarityConsentRequired = isEEAVisitor();
+    const consentRequired = isEEAVisitor();
     
-    if (consentGranted || !clarityConsentRequired) {
-        // Load Clarity only if consent is given or not required
-        (function(c,l,a,r,i,t,y){
-            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-        })(window, document, "clarity", "script", config.clarityConfig.projectId);
+    // If we don't need consent or it's granted, load Clarity
+    if (consentGranted || !consentRequired) {
+        // Only load if not already loaded
+        if (typeof window.clarity === 'undefined') {
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", config.clarityConfig.projectId);
+        }
         
-        console.log('Microsoft Clarity loaded with consent');
-    } else {
-        console.log('Microsoft Clarity not loaded - consent required but not given');
+        // Send consent signal
+        ensureClarityConsentSignal(consentGranted);
+    } else if (config.clarityConfig.loadBeforeConsent === false) {
+        // Ensure Clarity doesn't load if consent not given and not allowed to load before consent
+        window.clarity = window.clarity || function() {
+            // Store calls in queue but don't execute them
+            (window.clarity.q = window.clarity.q || []).push(arguments);
+        };
+        window.clarity('consent', false);
     }
 }
 
@@ -4485,6 +4494,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     } catch (e) {
         console.error('Failed to load location data:', e);
     }
+
+      // Check existing consent for Clarity compliance
+    checkExistingClarityConsent();
+
+  
     // Store query parameters on page load
     storeQueryParams();
    
@@ -4573,6 +4587,24 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 });
+
+
+
+// Add this function to check consent on each page load
+function checkExistingClarityConsent() {
+    const consentCookie = getCookie('cookie_consent');
+    if (!consentCookie) return null;
+    
+    try {
+        const consentData = JSON.parse(consentCookie);
+        // Update Clarity with existing consent state
+        ensureClarityConsentSignal(consentData.categories.analytics);
+        return consentData.categories.analytics;
+    } catch (e) {
+        return null;
+    }
+}
+
 
 // Export functions for global access if needed
 if (typeof window !== 'undefined') {
