@@ -59,6 +59,21 @@ const EU_COUNTRIES = [
   "VA", // Vatican City
 ];
 
+
+// Function to check if visitor is from EEA/UK/CH
+function isEEAVisitor() {
+    if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
+    
+    const EEA_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE',
+                          'GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT',
+                          'RO','SK','SI','ES','SE','GB','CH'];
+    return EEA_COUNTRIES.includes(locationData.country);
+}
+
+
+
+
+
 const config = {
     // Domain restriction
     allowedDomains: [],
@@ -3665,7 +3680,6 @@ function initializeCookieConsent(detectedCookies, language) {
 
 
     // Microsoft Clarity initialization
-// Microsoft Clarity initialization with proper consent handling
 function initializeClarity(consentGranted) {
     if (!config.clarityConfig.enabled) return;
     
@@ -3988,6 +4002,7 @@ function acceptAllCookies() {
 
      // Add this line to initialize Clarity
     initializeClarity(true);
+  sendClarityConsentSignal(true); // Add this line
     
     const consentData = {
         status: 'accepted',
@@ -4037,6 +4052,7 @@ function rejectAllCookies() {
 
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
+    sendClarityConsentSignal(false); // Add this line
     
     const consentData = {
         status: 'rejected',
@@ -4083,6 +4099,7 @@ function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
      // Initialize or stop Clarity based on consent
     initializeClarity(analyticsChecked);
+    sendClarityConsentSignal(analyticsChecked); // Add this line
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
     
     // Restore stored query parameters when saving custom settings
@@ -4269,6 +4286,32 @@ function initializeClarity(consentGranted) {
 
 
 
+// Function to send consent signal to Microsoft Clarity
+function sendClarityConsentSignal(consentGranted) {
+    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
+    
+    try {
+        if (typeof window.clarity !== 'undefined') {
+            // Send consent signal to Clarity
+            window.clarity('consent', consentGranted);
+            console.log('Microsoft Clarity consent signal sent:', consentGranted);
+            
+            // Push to dataLayer for tracking
+            window.dataLayer.push({
+                'event': 'clarity_consent_signal',
+                'clarity_consent': consentGranted,
+                'timestamp': new Date().toISOString(),
+                'location_data': locationData
+            });
+        }
+    } catch (error) {
+        console.error('Failed to send Clarity consent signal:', error);
+    }
+}
+
+
+
+
 
 
 // Update consent mode for both Google and Microsoft UET
@@ -4332,6 +4375,7 @@ function updateConsentMode(consentData) {
         const clarityConsent = consentData.categories.analytics;
         if (typeof window.clarity === 'function') {
             window.clarity('consent', clarityConsent);
+            sendClarityConsentSignal(clarityConsent); // Add this line
         }
     }
     
