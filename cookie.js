@@ -86,7 +86,8 @@ const config = {
         projectId: 'YOUR_CLARITY_PROJECT_ID', // Replace with your actual Clarity ID
         requireConsent: true, // Set to true to require consent before loading
         autoDetectRegion: true, // Automatically detect EEA/UK/CH visitors
-        defaultConsent: 'denied' // Default to denied until consent is given
+        defaultConsent: 'denied', // Default to denied until consent is given
+        sendConsentSignal: true // NEW: Enable sending consent signals to Clarity
     },
 
 
@@ -3696,7 +3697,28 @@ function isEEAVisitor() {
 }
 
 
-
+// Function to send consent signal to Microsoft Clarity
+function sendClarityConsentSignal(consentGranted) {
+    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
+    
+    try {
+        if (typeof window.clarity !== 'undefined') {
+            // Send consent signal to Clarity
+            window.clarity('consent', consentGranted);
+            console.log('Microsoft Clarity consent signal sent:', consentGranted);
+            
+            // Push to dataLayer for tracking
+            window.dataLayer.push({
+                'event': 'clarity_consent_signal',
+                'clarity_consent': consentGranted,
+                'timestamp': new Date().toISOString(),
+                'location_data': locationData
+            });
+        }
+    } catch (error) {
+        console.error('Failed to send Clarity consent signal:', error);
+    }
+}
     
     // Explicitly apply the default language from config
     changeLanguage(config.languageConfig.defaultLanguage);
