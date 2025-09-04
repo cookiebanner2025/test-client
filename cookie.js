@@ -63,13 +63,10 @@ const EU_COUNTRIES = [
 
 
 // Function to check if visitor is from EEA/UK/CH
+// Single consolidated function to check if visitor is from EEA/UK/CH
 function isEEAVisitor() {
     if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
-    
-    const EEA_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE',
-                          'GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT',
-                          'RO','SK','SI','ES','SE','GB','CH'];
-    return EEA_COUNTRIES.includes(locationData.country);
+    return EU_COUNTRIES.includes(locationData.country);
 }
 
 
