@@ -1,8 +1,3 @@
-do you think my cookie banner script is capable for this new update?
-From Oct 31, 2025, Microsoft Clarity requires consent signals in the EEA, UK & CH.
-
-
-
 /**
 you can change the cookie category description text by this class. like you can change the essential cookies description text size.
   .broadcookiedes {
