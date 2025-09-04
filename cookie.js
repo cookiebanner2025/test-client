@@ -4335,7 +4335,7 @@ function sendClarityConsentSignal(consentGranted) {
         window.dataLayer.push({
             'event': 'clarity_consent_signal',
             'clarity_consent': consentGranted,
-            'clarity_region': geo_data?.country || 'unknown',
+            'clarity_region': location_data?.country || 'unknown',
             'timestamp': new Date().toISOString(),
             'location_data': locationData
         });
