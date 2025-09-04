@@ -4198,17 +4198,17 @@ function isClarityConsentRequired() {
     
     // Use your existing locationData
     if (locationData && locationData.country) {
-        const requiredRegions = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE',
-                                'GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT',
-                                'RO','SK','SI','ES','SE','GB','CH'];
-        return requiredRegions.includes(locationData.country);
+        // EEA + UK + Switzerland - regions that require consent for Clarity
+        const clarityRegions = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE',
+                              'GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT',
+                              'RO','SK','SI','ES','SE','GB','CH'];
+        return clarityRegions.includes(locationData.country);
     }
     
     // If we can't determine location, require consent to be safe
     return true;
 }
 
-// Modify your initializeClarity function
 function initializeClarity(consentGranted) {
     if (!config.clarityConfig.enabled) return;
     
@@ -4221,13 +4221,28 @@ function initializeClarity(consentGranted) {
             c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
             t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
             y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            
+            // Send consent signal to Clarity after loading
+            setTimeout(function() {
+                if (typeof c[a] === 'function') {
+                    c[a]('consent', consentGranted);
+                }
+            }, 1000);
         })(window, document, "clarity", "script", config.clarityConfig.projectId);
     } else {
         console.log('Microsoft Clarity not loaded - consent required but not given');
+        
+        // Send deny consent signal if Clarity is already loaded
+        if (typeof window.clarity === 'function') {
+            window.clarity('consent', false);
+        }
+    }
+    
+    // Send consent signal if Clarity is already loaded
+    if (typeof window.clarity === 'function') {
+        window.clarity('consent', consentGranted);
     }
 }
-
-
 
 
 
@@ -4288,6 +4303,14 @@ function updateConsentMode(consentData) {
             },
             'location_data': locationData
         });
+    }
+    
+    // Update Microsoft Clarity consent
+    if (config.clarityConfig.enabled) {
+        const clarityConsent = consentData.categories.analytics;
+        if (typeof window.clarity === 'function') {
+            window.clarity('consent', clarityConsent);
+        }
     }
     
     // Push general consent update to dataLayer with GCS signal
