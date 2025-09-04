@@ -1,3 +1,5 @@
+
+
 /**
 you can change the cookie category description text by this class. like you can change the essential cookies description text size.
   .broadcookiedes {
@@ -60,9 +62,13 @@ const EU_COUNTRIES = [
 ];
 
 
-// Update your isEEAVisitor function
+// Function to check if visitor is from EEA/UK/CH
 function isEEAVisitor() {
     if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
+    
+    const EEA_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE',
+                          'GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT',
+                          'RO','SK','SI','ES','SE','GB','CH'];
     return EEA_COUNTRIES.includes(locationData.country);
 }
 
@@ -3679,24 +3685,18 @@ function initializeCookieConsent(detectedCookies, language) {
 function initializeClarity(consentGranted) {
     if (!config.clarityConfig.enabled) return;
     
-    // Only require consent for EEA/UK/CH visitors
-    const consentRequired = isEEAVisitor(); // This now uses the proper function
+    // Check if visitor is from EEA/UK/CH and requires consent
+    const clarityConsentRequired = isEEAVisitor();
     
-    if (consentGranted || !consentRequired) {
-        // Load Clarity with consent signal
+    if (consentGranted || !clarityConsentRequired) {
+        // Load Clarity only if consent is given or not required
         (function(c,l,a,r,i,t,y){
             c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
             t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
             y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            
-            // Send consent signal to Clarity after loading
-            setTimeout(function() {
-                if (typeof c[a] === 'function') {
-                    c[a]('consent', consentGranted);
-                    console.log('Microsoft Clarity loaded with consent:', consentGranted);
-                }
-            }, 1000);
         })(window, document, "clarity", "script", config.clarityConfig.projectId);
+        
+        console.log('Microsoft Clarity loaded with consent');
     } else {
         console.log('Microsoft Clarity not loaded - consent required but not given');
     }
@@ -4435,11 +4435,13 @@ function loadPerformanceCookies() {
     // This would typically load performance optimization scripts
 }
 
+// Main execution flow
+document.addEventListener('DOMContentLoaded', async function() {
     // Ensure location data is loaded first
     try {
         if (!sessionStorage.getItem('locationData')) {
             console.log('Fetching fresh location data...');
-            locationData = await fetchLocationData();
+            locationData = await fetchLocationData(); // This will now push to dataLayer
         } else {
             console.log('Using cached location data');
             locationData = JSON.parse(sessionStorage.getItem('locationData'));
@@ -4448,82 +4450,8 @@ function loadPerformanceCookies() {
         }
         
         console.log('Current location data:', locationData);
-        
-        // Now that we have location data, continue with the rest
-        // Check if domain is allowed
-        if (!isDomainAllowed()) {
-            console.log('Cookie consent banner not shown - domain not allowed');
-            return;
-        }
-
-        // Load analytics data from storage
-        if (config.analytics.enabled) {
-            loadAnalyticsData();
-        }
-
-        // Set default UET consent
-        setDefaultUetConsent();
-        
-        // Check geo-targeting before proceeding
-        const geoAllowed = checkGeoTargeting(locationData);
-        if (!geoAllowed) {
-            console.log('Cookie consent banner not shown - geo-targeting restriction');
-            return;
-        }
-
-        // Scan and categorize existing cookies
-        const detectedCookies = scanAndCategorizeCookies();
-
-        // Detect user language
-        const userLanguage = detectUserLanguage(locationData);
-
-        // Inject HTML elements
-        injectConsentHTML(detectedCookies, userLanguage);
-
-        // Initialize cookie consent
-        initializeCookieConsent(detectedCookies, userLanguage);
-
-        // Handle scroll acceptance if enabled
-        if (config.behavior.acceptOnScroll) {
-            let scrollTimeout;
-            window.addEventListener('scroll', function() {
-                if (!getCookie('cookie_consent') && bannerShown) {
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(function() {
-                        const scrollPercentage = (window.scrollY + window.innerHeight) / document.body.scrollHeight * 100;
-                        if (scrollPercentage > 30) {
-                            acceptAllCookies();
-                            hideCookieBanner();
-                            if (config.behavior.showFloatingButton) {
-                                showFloatingButton();
-                            }
-                        }
-                    }, 200);
-                }
-            });
-        }
-
-        // Handle continue button acceptance if enabled
-        if (config.behavior.acceptOnContinue) {
-            document.addEventListener('click', function(e) {
-                if (!getCookie('cookie_consent') && bannerShown && 
-                    !e.target.closest('#cookieConsentBanner') && 
-                    !e.target.closest('#cookieSettingsModal')) {
-                    acceptAllCookies();
-                    hideCookieBanner();
-                    if (config.behavior.showFloatingButton) {
-                        showFloatingButton();
-                    }
-                }
-            });
-        }
-        
-    } catch (error) {
-        console.error('Failed to load location data:', error);
-        // Fallback: assume EEA visitor to be safe
-        locationData = { country: 'Unknown' };
-        // You might want to continue with the rest of initialization here
-        // or handle the error differently based on your needs
+    } catch (e) {
+        console.error('Failed to load location data:', e);
     }
     // Store query parameters on page load
     storeQueryParams();
@@ -4615,5 +4543,3 @@ if (typeof window !== 'undefined') {
         config: config
     };
 }
-
-
