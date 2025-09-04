@@ -3664,11 +3664,15 @@ function initializeCookieConsent(detectedCookies, language) {
 
 
     // Microsoft Clarity initialization
+// Microsoft Clarity initialization with proper consent handling
 function initializeClarity(consentGranted) {
     if (!config.clarityConfig.enabled) return;
     
-    if (consentGranted) {
-        // Load Clarity only if consent is given
+    // Check if visitor is from EEA/UK/CH and requires consent
+    const clarityConsentRequired = isEEAVisitor();
+    
+    if (consentGranted || !clarityConsentRequired) {
+        // Load Clarity only if consent is given or not required
         (function(c,l,a,r,i,t,y){
             c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
             t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
@@ -3677,12 +3681,19 @@ function initializeClarity(consentGranted) {
         
         console.log('Microsoft Clarity loaded with consent');
     } else {
-        console.log('Microsoft Clarity not loaded - consent denied');
+        console.log('Microsoft Clarity not loaded - consent required but not given');
     }
 }
 
-// Call this function when consent is given
-// You'll need to add this to your acceptAllCookies() and saveCustomSettings() functions
+// Add this helper function to check if visitor is from EEA/UK/CH
+function isEEAVisitor() {
+    if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
+    
+    const EEA_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE',
+                          'GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT',
+                          'RO','SK','SI','ES','SE','GB','CH'];
+    return EEA_COUNTRIES.includes(locationData.country);
+}
 
 
 
