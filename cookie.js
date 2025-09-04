@@ -83,7 +83,7 @@ const config = {
      // Microsoft Clarity Configuration
     clarityConfig: {
         enabled: true,
-        projectId: 'YOUR_CLARITY_PROJECT_ID', // Replace with your actual Clarity ID
+        projectId: 'test-clarity-demo-12345', // Replace with your actual Clarity ID
         requireConsent: true, // Set to true to require consent before loading
         autoDetectRegion: true, // Automatically detect EEA/UK/CH visitors
         defaultConsent: 'denied', // Default to denied until consent is given
