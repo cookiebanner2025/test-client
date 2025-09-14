@@ -6,17 +6,7 @@
  */
 
 
-/**
-you can change the cookie category description text by this class. like you can change the essential cookies description text size.
-  .broadcookiedes {
-      font-size: 15px;
-    } 
- */
 
-
-// ========== CROSS-DOMAIN CONSENT RECEIVER ========== //
-// Listen for consent messages from other trusted domains
-// ========== CROSS-DOMAIN CONSENT RECEIVER (ROBUST) ========== //
 // ========== CROSS-DOMAIN CONSENT RECEIVER (ROBUST) ========== //
 // Listen for consent messages from other trusted domains
 window.addEventListener('message', function(event) {
@@ -80,6 +70,13 @@ window.addEventListener('message', function(event) {
 
 
 
+
+/**
+you can change the cookie category description text by this class. like you can change the essential cookies description text size.
+  .broadcookiedes {
+      font-size: 15px;
+    } 
+ */
 
 
 
