@@ -7,68 +7,6 @@
 
 
 
-// ========== CROSS-DOMAIN CONSENT RECEIVER (ROBUST) ========== //
-// Listen for consent messages from other trusted domains
-window.addEventListener('message', function(event) {
-    // 1. Basic validation: Check if the feature is enabled and message is from a trusted domain
-    if (!config?.crossDomain?.enabled) return;
-    const allowedSenders = config.crossDomain.allowedSenders || [];
-    
-    // Verify the origin of the message is in our allowed list
-    if (!allowedSenders.includes(event.origin)) {
-        console.log('Message ignored: Untrusted origin:', event.origin);
-        return;
-    }
-
-    try {
-        const data = JSON.parse(event.data);
-        
-        // 2. Validate the message structure and secret key
-        if (data.type === "cookie_consent_xd" && data.payload && data.key === config.crossDomain.secretKey) {
-            
-            console.log('Valid cross-domain consent received from:', event.origin);
-            
-            // 3. Save the received consent data to this domain's storage
-            const consentToSave = {
-                consent: data.payload,
-                source: event.origin,
-                timestamp: new Date().getTime()
-            };
-            
-            // Check if localStorage is available
-            try {
-                localStorage.setItem('cookie_consent_data', JSON.stringify(consentToSave));
-            } catch (e) {
-                console.error('Failed to save consent to localStorage:', e);
-                // Fallback to sessionStorage or cookies if needed
-                setCookie('cookie_consent_xd', JSON.stringify(consentToSave), 30);
-            }
-
-            // 4. IMPORTANT: Update the consent mode on THIS domain based on the received data
-            updateConsentMode(data.payload);
-            
-            // 5. Set the local cookie_consent cookie to persist the choice on this domain
-            setCookie('cookie_consent', JSON.stringify(data.payload), 365);
-            
-            console.log('Cross-domain consent applied successfully.');
-
-            // 6. Optional: Send a confirmation message back (for debugging)
-            event.source.postMessage(JSON.stringify({ 
-                type: "acknowledge", 
-                status: "success",
-                domain: window.location.origin,
-                timestamp: new Date().getTime()
-            }), event.origin);
-            
-        } else {
-            console.warn('Received message had invalid structure or key.');
-        }
-    } catch (e) {
-        console.error("Error processing cross-domain message:", e);
-    }
-});
-
-
 
 
 /**
@@ -518,6 +456,78 @@ geoConfig: {
         }
     }
 };
+
+// ========== CROSS-DOMAIN CONSENT RECEIVER (ROBUST) ========== //
+// Listen for consent messages from other trusted domains
+window.addEventListener('message', function(event) {
+    // 1. Basic validation: Check if the feature is enabled and message is from a trusted domain
+    if (!config?.crossDomain?.enabled) return;
+    const allowedSenders = config.crossDomain.allowedSenders || [];
+    
+    // Verify the origin of the message is in our allowed list
+    if (!allowedSenders.includes(event.origin)) {
+        console.log('Message ignored: Untrusted origin:', event.origin);
+        return;
+    }
+
+    try {
+        const data = JSON.parse(event.data);
+        
+        // 2. Validate the message structure and secret key
+        if (data.type === "cookie_consent_xd" && data.payload && data.key === config.crossDomain.secretKey) {
+            
+            console.log('Valid cross-domain consent received from:', event.origin);
+            
+            // 3. Save the received consent data to this domain's storage
+            const consentToSave = {
+                consent: data.payload,
+                source: event.origin,
+                timestamp: new Date().getTime()
+            };
+            
+            // Check if localStorage is available
+            try {
+                localStorage.setItem('cookie_consent_data', JSON.stringify(consentToSave));
+            } catch (e) {
+                console.error('Failed to save consent to localStorage:', e);
+                // Fallback to sessionStorage or cookies if needed
+                setCookie('cookie_consent_xd', JSON.stringify(consentToSave), 30);
+            }
+
+            // 4. IMPORTANT: Update the consent mode on THIS domain based on the received data
+            updateConsentMode(data.payload);
+            
+            // 5. Set the local cookie_consent cookie to persist the choice on this domain
+            setCookie('cookie_consent', JSON.stringify(data.payload), 365);
+            
+            console.log('Cross-domain consent applied successfully.');
+
+            // 6. Optional: Send a confirmation message back (for debugging)
+            event.source.postMessage(JSON.stringify({ 
+                type: "acknowledge", 
+                status: "success",
+                domain: window.location.origin,
+                timestamp: new Date().getTime()
+            }), event.origin);
+            
+        } else {
+            console.warn('Received message had invalid structure or key.');
+        }
+    } catch (e) {
+        console.error("Error processing cross-domain message:", e);
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
 
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
