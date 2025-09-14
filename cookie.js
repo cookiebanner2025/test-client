@@ -617,6 +617,20 @@ function setDefaultUetConsent() {
 
 
 // ========== UPDATE CONSENT MODE FUNCTION ========== //
+// ========== MISSING FUNCTIONS NEEDED FOR CROSS-DOMAIN ========== //
+
+// setCookie function (missing from your code)
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax; Secure";
+}
+
+// updateConsentMode function (missing from your code)
 function updateConsentMode(consentData) {
     // Your implementation to update consent mode based on the received data
     // This should update Google Tag Manager, Microsoft Clarity, etc.
@@ -662,6 +676,7 @@ function updateConsentMode(consentData) {
         window.clarity('consent', clarityConsent);
     }
 }
+
 
 
 
