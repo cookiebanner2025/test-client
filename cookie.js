@@ -1,6 +1,10 @@
 
 
 
+
+
+
+
 /**
  * Microsoft Clarity Configuration
  * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
@@ -4440,19 +4444,6 @@ function sendConsentToOtherDomains(consentData) {
                 // Send message to iframe
                 targetFrame.contentWindow.postMessage(message, targetOrigin);
                 console.log('Consent sent to iframe:', targetOrigin);
-            } else {
-                // Open a hidden window to send the message
-                const hiddenWindow = window.open(`${targetOrigin}/xd-consent-handler.html`, '_blank', 'width=1,height=1,left=-1000,top=-1000');
-                
-                if (hiddenWindow) {
-                    setTimeout(() => {
-                        hiddenWindow.postMessage(message, targetOrigin);
-                        console.log('Consent sent via hidden window:', targetOrigin);
-                        setTimeout(() => hiddenWindow.close(), 1000);
-                    }, 1000);
-                } else {
-                    console.log('Could not open window for:', targetOrigin);
-                }
             }
         } catch (e) {
             console.error('Error sending consent to', targetOrigin, ':', e);
@@ -4464,55 +4455,36 @@ function sendConsentToOtherDomains(consentData) {
 
 // Check for cross-domain consent on page load
 // Function to handle incoming cross-domain consent messages
-function handleIncomingConsentMessage(event) {
+// Check for cross-domain consent on page load
+function checkForCrossDomainConsent() {
     if (!config.crossDomain?.enabled) return;
     
-    // Check if the message is from a trusted domain
-    const allowedSenders = config.crossDomain.allowedSenders || [];
-    if (!allowedSenders.includes(event.origin)) return;
-    
-    try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === "cookie_consent_xd" && data.payload && data.key === config.crossDomain.secretKey) {
-            console.log('Received cross-domain consent from:', event.origin);
+    // Check if we have consent data in localStorage from another domain
+    const receivedConsent = localStorage.getItem('cookie_consent_data');
+    if (receivedConsent) {
+        try {
+            const consentData = JSON.parse(receivedConsent);
+            console.log('Applying previously received cross-domain consent');
             
-            // Apply the consent
-            updateConsentMode(data.payload);
-            setCookie('cookie_consent', JSON.stringify(data.payload), 365);
+            // Update the consent mode based on the stored data
+            updateConsentMode(consentData.consent);
             
-            // Show banner if not already shown
-            if (!getCookie('cookie_consent') && !bannerShown) {
-                showCookieBanner();
-            }
+            // Set the local cookie_consent cookie to match
+            setCookie('cookie_consent', JSON.stringify(consentData.consent), 365);
+            
+            // Clear the stored data
+            localStorage.removeItem('cookie_consent_data');
+        } catch (e) {
+            console.error('Error applying received consent data:', e);
         }
-    } catch (e) {
-        console.error('Error processing cross-domain message:', e);
     }
 }
 
 // Add event listener for incoming messages
 window.addEventListener('message', handleIncomingConsentMessage);
 
-// Add this function right after updateConsentMode function
-function checkForCrossDomainConsent() {
-    if (!config.crossDomain?.enabled) return;
-    
-    // Check if we have consent data from another domain
-    const storedConsent = localStorage.getItem('cross_domain_consent');
-    if (storedConsent) {
-        try {
-            const consentData = JSON.parse(storedConsent);
-            if (consentData.timestamp > Date.now() - (24 * 60 * 60 * 1000)) { // 24 hours
-                updateConsentMode(consentData);
-                setCookie('cookie_consent', JSON.stringify(consentData), 365);
-            }
-        } catch (e) {
-            console.error('Error processing cross-domain consent:', e);
-        }
-    }
-}
-checkForCrossDomainConsent(); // Add this line
+
+
 
 
 // Helper functions
