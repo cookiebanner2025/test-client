@@ -17,6 +17,7 @@ you can change the cookie category description text by this class. like you can 
 // ========== CROSS-DOMAIN CONSENT RECEIVER ========== //
 // Listen for consent messages from other trusted domains
 // ========== CROSS-DOMAIN CONSENT RECEIVER (ROBUST) ========== //
+// ========== CROSS-DOMAIN CONSENT RECEIVER (ROBUST) ========== //
 // Listen for consent messages from other trusted domains
 window.addEventListener('message', function(event) {
     // 1. Basic validation: Check if the feature is enabled and message is from a trusted domain
@@ -25,7 +26,7 @@ window.addEventListener('message', function(event) {
     
     // Verify the origin of the message is in our allowed list
     if (!allowedSenders.includes(event.origin)) {
-        // console.log('Message ignored: Untrusted origin:', event.origin);
+        console.log('Message ignored: Untrusted origin:', event.origin);
         return;
     }
 
@@ -43,10 +44,17 @@ window.addEventListener('message', function(event) {
                 source: event.origin,
                 timestamp: new Date().getTime()
             };
-            localStorage.setItem('cookie_consent_data', JSON.stringify(consentToSave));
+            
+            // Check if localStorage is available
+            try {
+                localStorage.setItem('cookie_consent_data', JSON.stringify(consentToSave));
+            } catch (e) {
+                console.error('Failed to save consent to localStorage:', e);
+                // Fallback to sessionStorage or cookies if needed
+                setCookie('cookie_consent_xd', JSON.stringify(consentToSave), 30);
+            }
 
             // 4. IMPORTANT: Update the consent mode on THIS domain based on the received data
-            // This immediately applies the user's tracking preferences (e.g., denies Clarity/UET if rejected)
             updateConsentMode(data.payload);
             
             // 5. Set the local cookie_consent cookie to persist the choice on this domain
@@ -55,7 +63,12 @@ window.addEventListener('message', function(event) {
             console.log('Cross-domain consent applied successfully.');
 
             // 6. Optional: Send a confirmation message back (for debugging)
-            // event.source.postMessage(JSON.stringify({ type: "acknowledge", status: "success" }), event.origin);
+            event.source.postMessage(JSON.stringify({ 
+                type: "acknowledge", 
+                status: "success",
+                domain: window.location.origin,
+                timestamp: new Date().getTime()
+            }), event.origin);
             
         } else {
             console.warn('Received message had invalid structure or key.');
@@ -4346,6 +4359,7 @@ function saveCustomSettings() {
 // ========== CROSS-DOMAIN CONSENT SHARING ========== //
 // Function to send consent data to other specified domains
 // ========== CROSS-DOMAIN CONSENT SHARING (ROBUST) ========== //
+// ========== CROSS-DOMAIN CONSENT SENDER (ROBUST) ========== //
 // Function to send consent data to other specified domains
 function sendConsentToOtherDomains(consentData) {
     // Check if the feature is enabled and has target domains
@@ -4357,37 +4371,36 @@ function sendConsentToOtherDomains(consentData) {
     console.log('Sharing consent with target domains:', config.crossDomain.targetDomains);
 
     const message = JSON.stringify({
-        type: "cookie_consent_xd", // Unique type to avoid conflicts
+        type: "cookie_consent_xd",
         payload: consentData,
         timestamp: new Date().getTime(),
-        // Include a secret key for verification on the receiving end
         key: config.crossDomain.secretKey
     });
 
     config.crossDomain.targetDomains.forEach(targetOrigin => {
         try {
-            // Try to send the message directly to the target window.
-            // This works if the target domain is already open in the user's browser.
-            // window.opener and window.parent are also potential targets, but less common.
-            const targetWindow = window.open('', '_blank', 'width=100,height=100,left=-9999,top=-9999'); // Open a tiny, off-screen window
-
+            // Try to send the message directly to the target window
+            const targetWindow = window.open('', '_blank', 'noopener,noreferrer');
+            
             if (targetWindow && targetWindow.location.origin === targetOrigin) {
-                // If the window is already on the target origin, send the message directly.
                 targetWindow.postMessage(message, targetOrigin);
                 console.log(`Consent sent successfully to: ${targetOrigin}`);
-                // Immediately close the helper window
-                setTimeout(() => { if(targetWindow && !targetWindow.closed) targetWindow.close(); }, 500);
+                setTimeout(() => { 
+                    if(targetWindow && !targetWindow.closed) targetWindow.close(); 
+                }, 500);
             } else {
-                // If the window isn't on the target origin, navigate it there first.
-                // This is the most reliable method.
-                const relayWindow = window.open(targetOrigin, 'xdConsentRelay', 'width=100,height=100,left=-9999,top=-9999');
+                // Use a relay window approach
+                const relayWindow = window.open(
+                    targetOrigin, 
+                    'xdConsentRelay', 
+                    'width=100,height=100,left=-9999,top=-9999,noopener,noreferrer'
+                );
 
                 if (relayWindow) {
-                    // Wait for the window to load, then send the message
                     const timeoutId = setTimeout(() => {
-                        console.warn(`Timeout: Could not send consent to ${targetOrigin}. The domain may not be responding or was blocked by a popup blocker.`);
+                        console.warn(`Timeout: Could not send consent to ${targetOrigin}`);
                         if (!relayWindow.closed) relayWindow.close();
-                    }, config.crossDomain.connectionTimeout);
+                    }, config.crossDomain.connectionTimeout || 2000);
 
                     relayWindow.addEventListener('load', () => {
                         clearTimeout(timeoutId);
@@ -4397,11 +4410,12 @@ function sendConsentToOtherDomains(consentData) {
                         } catch (e) {
                             console.error(`Error posting message to ${targetOrigin}:`, e);
                         }
-                        // Close the window after sending
-                        setTimeout(() => { if(!relayWindow.closed) relayWindow.close(); }, 1000);
-                    }, { once: true }); // Ensure the listener only runs once
+                        setTimeout(() => { 
+                            if(!relayWindow.closed) relayWindow.close(); 
+                        }, 1000);
+                    }, { once: true });
                 } else {
-                    console.warn(`Popup blocked? Could not open relay window for: ${targetOrigin}. Please ensure popups are allowed for this site.`);
+                    console.warn(`Popup blocked? Could not open relay window for: ${targetOrigin}`);
                 }
             }
         } catch (error) {
