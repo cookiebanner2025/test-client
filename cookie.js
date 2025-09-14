@@ -107,7 +107,7 @@ const config = {
         // List of domains YOU want to send consent TO
         targetDomains: [
             "https://booking.roomraccoon.com",
-            "https://your-other-domain.com"
+            "https://dev-rpractice.pantheonsite.io/"
         ],
         // List of domains you are willing to RECEIVE consent FROM
         allowedSenders: [
