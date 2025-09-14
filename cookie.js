@@ -1,18 +1,9 @@
 
-
-
-
-
-
-
 /**
  * Microsoft Clarity Configuration
  * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
  * for visitors from EEA, UK, and Switzerland. This configuration ensures compliance.
  */
-
-
-
 
 
 /**
@@ -21,10 +12,6 @@ you can change the cookie category description text by this class. like you can 
       font-size: 15px;
     } 
  */
-
-
-
-
 
 const EU_COUNTRIES = [
   "AL", // Albania
@@ -80,18 +67,6 @@ const EU_COUNTRIES = [
   "VA", // Vatican City
 ];
 
-
-// Function to check if visitor is from EEA/UK/CH
-// Single consolidated function to check if visitor is from EEA/UK/CH
-function isEEAVisitor() {
-    if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
-    return EU_COUNTRIES.includes(locationData.country);
-}
-
-
-
-
-
 const config = {
     // Domain restriction
     allowedDomains: [],
@@ -100,31 +75,8 @@ const config = {
     privacyPolicyUrl: 'https://yourdomain.com/privacy-policy', // Add your full privacy policy URL here
 
 
-      // Cross-Domain Consent Sharing Configuration
-    // Cross-Domain Consent Sharing Configuration (ROBUST VERSION)
-    crossDomain: {
-        enabled: true, // Master switch for the feature
-        // List of domains YOU want to send consent TO
-        targetDomains: [
-            "https://booking.roomraccoon.com",
-            "https://dev-rpractice.pantheonsite.io/"
-        ],
-        // List of domains you are willing to RECEIVE consent FROM
-        allowedSenders: [
-            "https://burrennaturesanctuary.ie",
-            "https://your-trusted-partner.com"
-        ],
-        // Optional: Add a shared secret key for extra security (highly recommended for production)
-        secretKey: "your_shared_secret_phrase_here", // Change this to a unique, strong phrase
-        // Timeout for the connection attempt to each target domain (milliseconds)
-        connectionTimeout: 2000 
-    },
 
-
-
-  
-
-   // NEW: URL Filter Configuration
+ // NEW: URL Filter Configuration
     urlFilter: {
         enabled: true, // Set to true to enable URL filtering
         showOnUrls: [
@@ -156,22 +108,6 @@ const config = {
         autoRestore: true, // Automatically restore params to new URLs
         manualClear: true // Enable manual clearing function
     },
-
-
-
-     // Microsoft Clarity Configuration
-  // Microsoft Clarity Configuration
-clarityConfig: {
-    enabled: true,
-    projectId: 'test-clarity-demo-12345', // Replace with your actual Clarity ID
-    requireConsent: true, // Set to true to require consent before loading
-    autoDetectRegion: true, // Automatically detect EEA/UK/CH visitors
-    defaultConsent: 'denied', // Default to denied until consent is given
-    sendConsentSignal: true, // NEW: Enable sending consent signals to Clarity
-    loadBeforeConsent: false // NEW: Prevent loading before consent in regulated regions
-},
-
-    
   
     // Microsoft UET Configuration
     // Microsoft UET Configuration
@@ -463,19 +399,6 @@ geoConfig: {
     }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
 // Initialize dataLayer for Google Tag Manager
@@ -571,76 +494,6 @@ function setDefaultUetConsent() {
         'location_data': locationData
     });
 }
-
-
-// ========== UPDATE CONSENT MODE FUNCTION ========== //
-// ========== MISSING FUNCTIONS NEEDED FOR CROSS-DOMAIN ========== //
-
-// setCookie function (missing from your code)
-function setCookie(name, value, days) {
-    let expires = "";
-    if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax; Secure";
-}
-
-// updateConsentMode function (missing from your code)
-function updateConsentMode(consentData) {
-    // Your implementation to update consent mode based on the received data
-    // This should update Google Tag Manager, Microsoft Clarity, etc.
-    console.log('Updating consent mode with:', consentData);
-    
-    // Example implementation:
-    const consentStates = {
-        'ad_storage': consentData.categories?.advertising ? 'granted' : 'denied',
-        'analytics_storage': consentData.categories?.analytics ? 'granted' : 'denied',
-        'ad_user_data': consentData.categories?.advertising ? 'granted' : 'denied',
-        'ad_personalization': consentData.categories?.advertising ? 'granted' : 'denied',
-        'personalization_storage': consentData.categories?.performance ? 'granted' : 'denied',
-        'functionality_storage': consentData.categories?.functional ? 'granted' : 'denied',
-        'security_storage': 'granted'
-    };
-
-    // Update Google consent
-    if (typeof gtag === 'function') {
-        gtag('consent', 'update', consentStates);
-    }
-    
-    // Update dataLayer
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-        'event': 'cookie_consent_update',
-        'consent_mode': consentStates,
-        'consent_status': consentData.status,
-        'consent_source': 'cross-domain',
-        'timestamp': new Date().toISOString()
-    });
-    
-    // Update Microsoft UET consent if enabled
-    if (config.uetConfig.enabled && typeof window.uetq !== 'undefined') {
-        const uetConsentState = consentData.categories?.advertising ? 'granted' : 'denied';
-        window.uetq.push('consent', 'update', {
-            'ad_storage': uetConsentState
-        });
-    }
-    
-    // Update Microsoft Clarity consent
-    if (config.clarityConfig.enabled && typeof window.clarity === 'function') {
-        const clarityConsent = consentData.categories?.analytics;
-        window.clarity('consent', clarityConsent);
-    }
-}
-
-
-
-
-
-
-
-
 
 
 // Enhanced cookie database with detailed descriptions
@@ -2439,24 +2292,6 @@ function scanAndCategorizeCookies() {
     return result;
 }
 
-function getClarityConsentState() {
-    const consentCookie = getCookie('cookie_consent');
-    if (!consentCookie) return null;
-    
-    try {
-        const consentData = JSON.parse(consentCookie);
-        return consentData.categories.analytics;
-    } catch (e) {
-        return null;
-    }
-}
-
-
-
-
-
-
-
 // Enhanced getCookieDuration function
 function getCookieDuration(name) {
     const cookieMatch = document.cookie.match(new RegExp(`${name}=[^;]+(;|$)`));
@@ -3787,8 +3622,6 @@ function shouldShowBanner() {
         const endTime = sessionStartTime + (config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
         
         return now.getTime() <= endTime;
-
-  
     }
 
     // Check date range
@@ -3851,64 +3684,6 @@ function initializeCookieConsent(detectedCookies, language) {
             showFloatingButton();
         }
     }
-
-
-
-    // Microsoft Clarity initialization
-// Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
-function initializeClarity(consentGranted) {
-    if (!config.clarityConfig.enabled) return;
-    
-    const consentRequired = isEEAVisitor();
-    
-    // If we don't need consent or it's granted, load Clarity
-    if (consentGranted || !consentRequired) {
-        // Only load if not already loaded
-        if (typeof window.clarity === 'undefined') {
-            (function(c,l,a,r,i,t,y){
-                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", config.clarityConfig.projectId);
-        }
-        
-        // Send consent signal
-        ensureClarityConsentSignal(consentGranted);
-    } else if (config.clarityConfig.loadBeforeConsent === false) {
-        // Ensure Clarity doesn't load if consent not given and not allowed to load before consent
-        window.clarity = window.clarity || function() {
-            // Store calls in queue but don't execute them
-            (window.clarity.q = window.clarity.q || []).push(arguments);
-        };
-        window.clarity('consent', false);
-    }
-}
-
-
-
-// Function to send consent signal to Microsoft Clarity
-function sendClarityConsentSignal(consentGranted) {
-    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
-    
-    try {
-        if (typeof window.clarity !== 'undefined') {
-            // Send consent signal to Clarity
-            window.clarity('consent', consentGranted);
-            console.log('Microsoft Clarity consent signal sent:', consentGranted);
-            
-            // Push to dataLayer for tracking
-            window.dataLayer.push({
-                'event': 'clarity_consent_signal',
-                'clarity_consent': consentGranted,
-                'timestamp': new Date().toISOString(),
-                'location_data': locationData
-            });
-        }
-    } catch (error) {
-        console.error('Failed to send Clarity consent signal:', error);
-    }
-}
-    
     // Explicitly apply the default language from config
     changeLanguage(config.languageConfig.defaultLanguage);
     
@@ -4001,27 +3776,6 @@ function sendClarityConsentSignal(consentGranted) {
         }, config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Setup password prompt events
 function setupPasswordPromptEvents() {
@@ -4195,11 +3949,6 @@ function hideFloatingButton() {
 
 // Cookie consent functions
 function acceptAllCookies() {
-
-     // Add this line to initialize Clarity
-    initializeClarity(true);
-  sendClarityConsentSignal(true); // Add this line
-    
     const consentData = {
         status: 'accepted',
         gcs: 'G111', // Explicit GCS signal for all granted
@@ -4242,17 +3991,9 @@ function acceptAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
-
-   sendConsentToOtherDomains(consentData); // ADD THIS LINE
-  
 }
 
 function rejectAllCookies() {
-
-    // Add this line to ensure Clarity isn't loaded
-    initializeClarity(false);
-    sendClarityConsentSignal(false); // Add this line
-    
     const consentData = {
         status: 'rejected',
         gcs: 'G100', // Explicit GCS signal for all denied
@@ -4292,19 +4033,10 @@ function rejectAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
-
-
-  sendConsentToOtherDomains(consentData); // ADD THIS LINE
-
-
-  
 }
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
-     // Initialize or stop Clarity based on consent
-    initializeClarity(analyticsChecked);
-    sendClarityConsentSignal(analyticsChecked); // Add this line
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
     
     // Restore stored query parameters when saving custom settings
@@ -4397,97 +4129,7 @@ function saveCustomSettings() {
             'location_data': locationData
         });
     }
-
-
-  sendConsentToOtherDomains(consentData); // ADD THIS LINE
-
-
-  
 }
-
-
-// ========== CROSS-DOMAIN CONSENT SHARING ========== //
-function sendConsentToOtherDomains(consentData) {
-    // Check if the feature is enabled and has target domains
-    if (!config.crossDomain?.enabled || !config.crossDomain.targetDomains?.length) {
-        console.log('Cross-domain sharing disabled or no targets configured.');
-        return;
-    }
-
-    console.log('Sharing consent with target domains:', config.crossDomain.targetDomains);
-
-    const message = JSON.stringify({
-        type: "cookie_consent_xd",
-        payload: consentData,
-        timestamp: new Date().getTime(),
-        key: config.crossDomain.secretKey
-    });
-
-    // Send to each target domain using postMessage
-    config.crossDomain.targetDomains.forEach(targetOrigin => {
-        try {
-            // Try to find an iframe from this domain
-            const iframes = document.querySelectorAll('iframe');
-            let targetFrame = null;
-            
-            for (let iframe of iframes) {
-                try {
-                    if (iframe.src && iframe.src.startsWith(targetOrigin)) {
-                        targetFrame = iframe;
-                        break;
-                    }
-                } catch (e) {
-                    // Cross-origin iframe, skip
-                    continue;
-                }
-            }
-            
-            if (targetFrame && targetFrame.contentWindow) {
-                // Send message to iframe
-                targetFrame.contentWindow.postMessage(message, targetOrigin);
-                console.log('Consent sent to iframe:', targetOrigin);
-            }
-        } catch (e) {
-            console.error('Error sending consent to', targetOrigin, ':', e);
-        }
-    });
-}
-
-
-
-
-
-// Check for cross-domain consent on page load
-// Function to handle incoming cross-domain consent messages
-// Check for cross-domain consent on page load
-function checkForCrossDomainConsent() {
-    if (!config.crossDomain?.enabled) return;
-    
-    // Check if we have consent data in localStorage from another domain
-    const receivedConsent = localStorage.getItem('cookie_consent_data');
-    if (receivedConsent) {
-        try {
-            const consentData = JSON.parse(receivedConsent);
-            console.log('Applying previously received cross-domain consent');
-            
-            // Update the consent mode based on the stored data
-            updateConsentMode(consentData.consent);
-            
-            // Set the local cookie_consent cookie to match
-            setCookie('cookie_consent', JSON.stringify(consentData.consent), 365);
-            
-            // Clear the stored data
-            localStorage.removeItem('cookie_consent_data');
-        } catch (e) {
-            console.error('Error applying received consent data:', e);
-        }
-    }
-}
-
-
-
-
-
 // Helper functions
 function clearNonEssentialCookies() {
     const cookies = document.cookie.split(';');
@@ -4508,7 +4150,6 @@ function clearNonEssentialCookies() {
         }
     });
 }
-
 
 
 
@@ -4581,26 +4222,6 @@ function matchesUrlPattern(url, path, pattern) {
 
 
 
-function ensureClarityConsentSignal(consentGranted) {
-    if (typeof window.clarity === 'function') {
-        window.clarity('consent', consentGranted);
-    } else {
-        // Initialize the queue if it doesn't exist
-        window.clarity = window.clarity || function() {
-            (window.clarity.q = window.clarity.q || []).push(arguments);
-        };
-        window.clarity('consent', consentGranted);
-    }
-    
-    // Log for debugging
-    console.log('Microsoft Clarity consent signal sent:', consentGranted);
-}
-
-
-
-
-
-
 
 
 function clearCategoryCookies(category) {
@@ -4619,84 +4240,6 @@ function loadCookiesAccordingToConsent(consentData) {
         loadPerformanceCookies();
     }
 }
-
-// Add this function to check if visitor is from EEA/UK/CH
-function isClarityConsentRequired() {
-    if (!config.clarityConfig.autoDetectRegion) return true;
-    
-    // Use your existing locationData
-    if (locationData && locationData.country) {
-        // EEA + UK + Switzerland - regions that require consent for Clarity
-        const clarityRegions = EU_COUNTRIES; // Use the same list as everywhere else
-        return clarityRegions.includes(locationData.country);
-    }
-    
-    // If we can't determine location, require consent to be safe
-    return true;
-}
-
-function initializeClarity(consentGranted) {
-    if (!config.clarityConfig.enabled) return;
-    
-    const consentRequired = isClarityConsentRequired();
-    
-    // If we don't need consent or it's granted, load Clarity
-    if (consentGranted || !consentRequired) {
-        // Only load if not already loaded
-        if (typeof window.clarity === 'undefined') {
-            (function(c,l,a,r,i,t,y){
-                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", config.clarityConfig.projectId);
-        }
-        
-        // Send consent signal after a brief delay to ensure Clarity is loaded
-        setTimeout(() => {
-            if (typeof window.clarity === 'function') {
-                window.clarity('consent', consentGranted);
-            }
-        }, 500);
-    } else {
-        // Ensure Clarity doesn't load if consent not given
-        window.clarity = window.clarity || function() {
-            // Store calls in queue but don't execute them
-            (window.clarity.q = window.clarity.q || []).push(arguments);
-        };
-        window.clarity('consent', false);
-    }
-}
-
-
-
-
-// Function to send consent signal to Microsoft Clarity
-function sendClarityConsentSignal(consentGranted) {
-    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
-    
-    try {
-        ensureClarityConsentSignal(consentGranted);
-        
-        // Enhanced logging
-        console.log('Microsoft Clarity consent signal sent:', consentGranted, 
-                   'for region:', locationData?.country || 'unknown');
-        
-        window.dataLayer.push({
-            'event': 'clarity_consent_signal',
-            'clarity_consent': consentGranted,
-            'clarity_region': locationData?.country || 'unknown',
-            'timestamp': new Date().toISOString(),
-            'location_data': locationData
-        });
-    } catch (error) {
-        console.error('Failed to send Clarity consent signal:', error);
-    }
-}
-
-
-
-
-
 
 // Update consent mode for both Google and Microsoft UET
 function updateConsentMode(consentData) {
@@ -4752,15 +4295,6 @@ function updateConsentMode(consentData) {
             },
             'location_data': locationData
         });
-    }
-    
-    // Update Microsoft Clarity consent
-    if (config.clarityConfig.enabled) {
-        const clarityConsent = consentData.categories.analytics;
-        if (typeof window.clarity === 'function') {
-            window.clarity('consent', clarityConsent);
-            sendClarityConsentSignal(clarityConsent); // Add this line
-        }
     }
     
     // Push general consent update to dataLayer with GCS signal
@@ -4835,28 +4369,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     } catch (e) {
         console.error('Failed to load location data:', e);
     }
-
-      // Check existing consent for Clarity compliance
-    checkExistingClarityConsent();
-
-  
     // Store query parameters on page load
     storeQueryParams();
    
 
-    // Check existing consent on page load and apply to Clarity
-    const existingConsent = getClarityConsentState();
-    if (existingConsent !== null) {
-        ensureClarityConsentSignal(existingConsent);
-    }
-
-
-
-
-
-
-
-  
  // Check if domain is allowed
     if (!isDomainAllowed()) {
         console.log('Cookie consent banner not shown - domain not allowed');
@@ -4868,30 +4384,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadAnalyticsData();
     }
 
-
-
-  // NEW: Check for cross-domain consent data on page load
-    const receivedConsent = localStorage.getItem('cookie_consent_data');
-    if (receivedConsent) {
-        try {
-            const consentData = JSON.parse(receivedConsent);
-            console.log('Applying previously received cross-domain consent from:', consentData.source);
-            // Update the consent mode based on the stored data
-            updateConsentMode(consentData.consent);
-            // Optional: You can also set the local cookie_consent cookie to match
-            setCookie('cookie_consent', JSON.stringify(consentData.consent), 365);
-        } catch (e) {
-            console.error('Error applying received consent data:', e);
-        }
-    }
-
-
-
-
-
-
-
-  
     // Set default UET consent
     setDefaultUetConsent();
 
@@ -4952,24 +4444,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 });
-
-
-
-// Add this function to check consent on each page load
-function checkExistingClarityConsent() {
-    const consentCookie = getCookie('cookie_consent');
-    if (!consentCookie) return null;
-    
-    try {
-        const consentData = JSON.parse(consentCookie);
-        // Update Clarity with existing consent state
-        ensureClarityConsentSignal(consentData.categories.analytics);
-        return consentData.categories.analytics;
-    } catch (e) {
-        return null;
-    }
-}
-
 
 // Export functions for global access if needed
 if (typeof window !== 'undefined') {
