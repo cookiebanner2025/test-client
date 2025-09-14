@@ -3788,7 +3788,7 @@ function shouldShowBanner() {
         
         return now.getTime() <= endTime;
 
-      checkForCrossDomainConsent();
+  
     }
 
     // Check date range
@@ -4455,6 +4455,8 @@ function sendConsentToOtherDomains(consentData) {
 
 
 
+
+
 // Check for cross-domain consent on page load
 // Function to handle incoming cross-domain consent messages
 // Check for cross-domain consent on page load
@@ -4481,8 +4483,6 @@ function checkForCrossDomainConsent() {
         }
     }
 }
-
-
 
 
 
