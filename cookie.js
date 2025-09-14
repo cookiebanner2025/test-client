@@ -13,6 +13,51 @@ you can change the cookie category description text by this class. like you can 
     } 
  */
 
+
+// ========== CROSS-DOMAIN CONSENT RECEIVER ========== //
+// Listen for consent messages from other trusted domains
+window.addEventListener('message', function(event) {
+    // Check if the feature is enabled and if the message is from a trusted domain
+    if (!config?.crossDomain?.enabled) return;
+    const allowedSenders = config.crossDomain.allowedSenderDomains || [];
+    
+    if (!allowedSenders.includes(event.origin)) return; // Block messages from untrusted domains
+    
+    try {
+        const data = JSON.parse(event.data);
+        // Check if it's a consent message
+        if (data.type === "cookie_consent" && data.payload) {
+            
+            // Save the received consent data to this domain's localStorage
+            localStorage.setItem('cookie_consent_data', JSON.stringify({
+                consent: data.payload,
+                source: event.origin,
+                timestamp: new Date().getTime()
+            }));
+            
+            console.log('Consent received and saved from:', event.origin);
+            
+            // IMPORTANT: Update the consent mode on THIS domain based on the received data
+            updateConsentMode(data.payload);
+            
+            // Optional: Send a confirmation message back (for debugging)
+            event.source.postMessage(JSON.stringify({
+                type: "acknowledge",
+                payload: "consent_received"
+            }), event.origin);
+        }
+    } catch (e) {
+        console.error("Error processing cross-domain message:", e);
+    }
+});
+
+
+
+
+
+
+
+
 const EU_COUNTRIES = [
   "AL", // Albania
   "AD", // Andorra
@@ -87,23 +132,42 @@ const config = {
     privacyPolicyUrl: 'https://yourdomain.com/privacy-policy', // Add your full privacy policy URL here
 
 
+      // Cross-Domain Consent Sharing Configuration
+    crossDomain: {
+        enabled: true, // Set to true to enable sharing consent across different domains
+        // List ALL domains that should receive the consent data (including the current one if needed)
+        targetDomains: [
+            "https://booking.roomraccoon.com",
+            "https://your-second-domain.com",
+            "https://your-third-domain.com"
+        ],
+        // You can also set a list of domains that are allowed to SEND data to this site
+        allowedSenderDomains: [
+            "https://burrennaturesanctuary.ie",
+            "https://your-trusted-partner.com"
+        ]
+    },
+
+
+
+  
 
    // NEW: URL Filter Configuration
     urlFilter: {
         enabled: true, // Set to true to enable URL filtering
         showOnUrls: [
             // Add your specific URLs here
-            '/privacy-policy', // Exact path
-            '/about-us', // Exact path
-            '/contact', // Exact path
-            '/blog/*', // Wildcard - any URL starting with /blog/
+            '/example-privacy-policy', // Exact path
+            '/example-about-us', // Exact path
+            '/example-contact', // Exact path
+            '/example-blog/*', // Wildcard - any URL starting with /blog/
             '*special-page*', // Contains - any URL with 'special-page' in it
-            'https://www.yesyoudeserve.tours/exact-full-url' // Full URL
+            'https://example.com/exact-full-url' // Full URL
         ],
         // OR use this alternative approach if you prefer to hide on specific URLs
         hideOnUrls: [
             // '/home',
-             '/shop/*'
+           // '/shop/*'
         ]
     },
 
@@ -3765,7 +3829,6 @@ function initializeClarity(consentGranted) {
 
 
 
-
 // Function to send consent signal to Microsoft Clarity
 function sendClarityConsentSignal(consentGranted) {
     if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
@@ -4101,6 +4164,8 @@ function acceptAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+
+   sendConsentToOtherDomains(consentData); // ADD THIS LINE
 }
 
 function rejectAllCookies() {
@@ -4148,6 +4213,11 @@ function rejectAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+
+
+  sendConsentToOtherDomains(consentData); // ADD THIS LINE
+
+  
 }
 
 function saveCustomSettings() {
@@ -4247,7 +4317,53 @@ function saveCustomSettings() {
             'location_data': locationData
         });
     }
+
+
+  sendConsentToOtherDomains(consentData); // ADD THIS LINE
+
+  
 }
+
+
+// ========== CROSS-DOMAIN CONSENT SHARING ========== //
+// Function to send consent data to other specified domains
+function sendConsentToOtherDomains(consentData) {
+    if (!config.crossDomain.enabled || !config.crossDomain.targetDomains.length) return;
+
+    console.log('Attempting to share consent with other domains...');
+    
+    const message = JSON.stringify({
+        type: "cookie_consent",
+        payload: consentData,
+        timestamp: new Date().getTime()
+    });
+
+    config.crossDomain.targetDomains.forEach(targetOrigin => {
+        try {
+            // Create an invisible iframe to open a line of communication
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = targetOrigin; // This points the iframe to the target domain
+            document.body.appendChild(iframe);
+
+            // Wait for the iframe to load, then send the message
+            iframe.onload = function() {
+                iframe.contentWindow.postMessage(message, targetOrigin);
+                // Remove the iframe after sending to avoid clutter
+                setTimeout(() => document.body.removeChild(iframe), 1000);
+            };
+        } catch (error) {
+            console.error(`Error sending consent to ${targetOrigin}:`, error);
+        }
+    });
+}
+
+
+
+
+
+
+
 // Helper functions
 function clearNonEssentialCookies() {
     const cookies = document.cookie.split(';');
@@ -4628,6 +4744,30 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadAnalyticsData();
     }
 
+
+
+  // NEW: Check for cross-domain consent data on page load
+    const receivedConsent = localStorage.getItem('cookie_consent_data');
+    if (receivedConsent) {
+        try {
+            const consentData = JSON.parse(receivedConsent);
+            console.log('Applying previously received cross-domain consent from:', consentData.source);
+            // Update the consent mode based on the stored data
+            updateConsentMode(consentData.consent);
+            // Optional: You can also set the local cookie_consent cookie to match
+            setCookie('cookie_consent', JSON.stringify(consentData.consent), 365);
+        } catch (e) {
+            console.error('Error applying received consent data:', e);
+        }
+    }
+
+
+
+
+
+
+
+  
     // Set default UET consent
     setDefaultUetConsent();
 
