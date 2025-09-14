@@ -106,12 +106,12 @@ const config = {
         // List of domains YOU want to send consent TO
         targetDomains: [
             "https://booking.roomraccoon.com",
-            "https://dev-rpractice.pantheonsite.io/"
+            "https://practicebdhere.myshopify.com/"
         ],
         // List of domains you are willing to RECEIVE consent FROM
         allowedSenders: [
             "https://burrennaturesanctuary.ie",
-            "https://your-trusted-partner.com"
+            "https://dev-rpractice.pantheonsite.io/"
         ],
         // Optional: Add a shared secret key for extra security (highly recommended for production)
         secretKey: "your_shared_secret_phrase_here", // Change this to a unique, strong phrase
