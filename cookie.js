@@ -4411,13 +4411,13 @@ function sendConsentToOtherDomains(consentData) {
 
     console.log('Sharing consent with target domains:', config.crossDomain.targetDomains);
 
-    const message = JSON.stringify({
+    const message = {
         type: "cookie_consent_xd",
         payload: consentData,
         timestamp: new Date().getTime(),
         key: config.crossDomain.secretKey,
         source: window.location.origin
-    });
+    };
 
     // Send to each target domain using postMessage
     config.crossDomain.targetDomains.forEach(targetOrigin => {
@@ -4439,26 +4439,25 @@ function sendConsentToOtherDomains(consentData) {
             }
             
             if (targetFrame && targetFrame.contentWindow) {
-                // Send message to iframe
-                targetFrame.contentWindow.postMessage(message, targetOrigin);
+                // Send message to iframe - STRINGIFY the message
+                targetFrame.contentWindow.postMessage(JSON.stringify(message), targetOrigin);
                 console.log('Consent sent to iframe:', targetOrigin);
             } else {
-                // No iframe found, try to open a communication channel
-                console.log('No iframe found for', targetOrigin, '- trying alternative methods');
+                // No iframe found, try localStorage method
+                console.log('No iframe found for', targetOrigin, '- using localStorage method');
                 
-                // Store consent in localStorage for the other domain to retrieve
-                // This requires coordination with the target domain
-                const storageKey = `xd_consent_${btoa(window.location.origin)}`;
-                localStorage.setItem(storageKey, message);
+                // Store consent in localStorage with a unique key
+                const storageKey = `xd_consent_${btoa(window.location.origin)}_${targetOrigin}`;
+                localStorage.setItem(storageKey, JSON.stringify(message));
                 
-                // You might need to set up a polling mechanism or other
-                // communication method depending on your setup
+                console.log('Consent stored in localStorage for', targetOrigin);
             }
         } catch (e) {
             console.error('Error sending consent to', targetOrigin, ':', e);
         }
     });
 }
+
 
 
 
@@ -4506,27 +4505,28 @@ function setupCrossDomainListener() {
         }
         
         try {
+            // PARSE the incoming message
             const message = JSON.parse(event.data);
             
             // Validate message type and security key
             if (message.type === "cookie_consent_xd" && 
                 message.key === config.crossDomain.secretKey) {
                 
-                console.log('Received cross-domain consent:', message.payload);
-                
-                // Store the consent data temporarily
-                localStorage.setItem('cookie_consent_data', JSON.stringify({
-                    consent: message.payload,
-                    source: event.origin,
-                    received: new Date().getTime()
-                }));
+                console.log('Received cross-domain consent from:', message.source);
                 
                 // Apply the consent if user hasn't made a choice yet
                 if (!getCookie('cookie_consent')) {
                     updateConsentMode(message.payload);
                     setCookie('cookie_consent', JSON.stringify(message.payload), 365);
-                    console.log('Applied cross-domain consent settings');
+                    console.log('Applied cross-domain consent settings from', message.source);
                 }
+                
+                // Send acknowledgment back
+                event.source.postMessage(JSON.stringify({
+                    type: "cookie_consent_ack",
+                    received: true,
+                    timestamp: new Date().getTime()
+                }), event.origin);
             }
         } catch (e) {
             console.error('Error processing cross-domain message:', e);
@@ -4538,34 +4538,40 @@ function setupCrossDomainListener() {
 
 
 
-
 // Check for cross-domain consent on page load
-// Function to handle incoming cross-domain consent messages
-// Check for cross-domain consent on page load
-function checkForCrossDomainConsent() {
+function checkStoredCrossDomainConsent() {
     if (!config.crossDomain?.enabled) return;
     
-    // Check if we have consent data in localStorage from another domain
-    const receivedConsent = localStorage.getItem('cookie_consent_data');
-    if (receivedConsent) {
-        try {
-            const consentData = JSON.parse(receivedConsent);
-            console.log('Applying previously received cross-domain consent');
-            
-            // Update the consent mode based on the stored data
-            updateConsentMode(consentData.consent);
-            
-            // Set the local cookie_consent cookie to match
-            setCookie('cookie_consent', JSON.stringify(consentData.consent), 365);
-            
-            // Clear the stored data
-            localStorage.removeItem('cookie_consent_data');
-        } catch (e) {
-            console.error('Error applying received consent data:', e);
+    // Check for consent stored by other domains
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('xd_consent_')) {
+            try {
+                const message = JSON.parse(localStorage.getItem(key));
+                
+                // Validate the message
+                if (message.type === "cookie_consent_xd" && 
+                    message.key === config.crossDomain.secretKey) {
+                    
+                    console.log('Found stored consent from:', message.source);
+                    
+                    // Apply the consent if user hasn't made a choice yet
+                    if (!getCookie('cookie_consent')) {
+                        updateConsentMode(message.payload);
+                        setCookie('cookie_consent', JSON.stringify(message.payload), 365);
+                        console.log('Applied stored cross-domain consent from', message.source);
+                    }
+                    
+                    // Clean up
+                    localStorage.removeItem(key);
+                }
+            } catch (e) {
+                console.error('Error processing stored consent:', e);
+                localStorage.removeItem(key); // Clean up invalid data
+            }
         }
     }
 }
-
 
 
 
@@ -4903,6 +4909,10 @@ function loadPerformanceCookies() {
 
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
+
+
+
+  
     // Ensure location data is loaded first
     try {
         if (!sessionStorage.getItem('locationData')) {
@@ -4936,7 +4946,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 
 
-
+  // Set up cross-domain message listener
+    if (config.crossDomain.enabled) {
+        setupCrossDomainListener();
+        checkStoredCrossDomainConsent();
+    }
 
 
 
