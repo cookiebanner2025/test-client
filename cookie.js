@@ -4494,8 +4494,25 @@ function handleIncomingConsentMessage(event) {
 // Add event listener for incoming messages
 window.addEventListener('message', handleIncomingConsentMessage);
 
-
-
+// Add this function right after updateConsentMode function
+function checkForCrossDomainConsent() {
+    if (!config.crossDomain?.enabled) return;
+    
+    // Check if we have consent data from another domain
+    const storedConsent = localStorage.getItem('cross_domain_consent');
+    if (storedConsent) {
+        try {
+            const consentData = JSON.parse(storedConsent);
+            if (consentData.timestamp > Date.now() - (24 * 60 * 60 * 1000)) { // 24 hours
+                updateConsentMode(consentData);
+                setCookie('cookie_consent', JSON.stringify(consentData), 365);
+            }
+        } catch (e) {
+            console.error('Error processing cross-domain consent:', e);
+        }
+    }
+}
+checkForCrossDomainConsent(); // Add this line
 
 
 // Helper functions
