@@ -4468,7 +4468,7 @@ function saveCustomSettings() {
 // Function to send consent data to other specified domains
 function sendConsentToOtherDomains(consentData) {
     // Check if the feature is enabled and has target domains
-    if (!config.crossDomain?.enabled || !config.crossDomain.targetDomains?.length) {
+   if (!config.crossDomain || !config.crossDomain.enabled || !config.crossDomain.targetDomains || !config.crossDomain.targetDomains.length) {
         console.log('Cross-domain sharing disabled or no targets configured.');
         return;
     }
@@ -4482,7 +4482,8 @@ function sendConsentToOtherDomains(consentData) {
         key: config.crossDomain.secretKey
     });
 
-    config.crossDomain.targetDomains.forEach(targetOrigin => {
+  if (!config.crossDomain.targetDomains) return;  
+  config.crossDomain.targetDomains.forEach(targetOrigin => {
         try {
             // Try to send the message directly to the target window
             const targetWindow = window.open('', '_blank', 'noopener,noreferrer');
