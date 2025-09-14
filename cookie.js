@@ -1,3 +1,11 @@
+
+/**
+ * Microsoft Clarity Configuration
+ * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
+ * for visitors from EEA, UK, and Switzerland. This configuration ensures compliance.
+ */
+
+
 /**
 you can change the cookie category description text by this class. like you can change the essential cookies description text size.
   .broadcookiedes {
@@ -59,14 +67,49 @@ const EU_COUNTRIES = [
   "VA", // Vatican City
 ];
 
+
+// Function to check if visitor is from EEA/UK/CH
+// Single consolidated function to check if visitor is from EEA/UK/CH
+function isEEAVisitor() {
+    if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
+    return EU_COUNTRIES.includes(locationData.country);
+}
+
+
+
+
+
 const config = {
     // Domain restriction
     allowedDomains: [],
     
     // Privacy policy URL (configurable)
-    privacyPolicyUrl: 'https://worldeye.de/datenschutzrichtlinien/', // Add your full privacy policy URL here
+    privacyPolicyUrl: 'https://yourdomain.com/privacy-policy', // Add your full privacy policy URL here
 
 
+
+   // NEW: URL Filter Configuration
+    urlFilter: {
+        enabled: true, // Set to true to enable URL filtering
+        showOnUrls: [
+            // Add your specific URLs here
+            '/example-privacy-policy', // Exact path
+            '/example-about-us', // Exact path
+            '/example-contact', // Exact path
+            '/example-blog/*', // Wildcard - any URL starting with /blog/
+            '*special-page*', // Contains - any URL with 'special-page' in it
+            'https://example.com/exact-full-url' // Full URL
+        ],
+        // OR use this alternative approach if you prefer to hide on specific URLs
+        hideOnUrls: [
+            // '/home',
+           // '/shop/*'
+        ]
+    },
+
+
+
+  
    
     // Query Parameter Storage Configuration
     queryParamsConfig: {
@@ -77,6 +120,22 @@ const config = {
         autoRestore: true, // Automatically restore params to new URLs
         manualClear: true // Enable manual clearing function
     },
+
+
+
+     // Microsoft Clarity Configuration
+  // Microsoft Clarity Configuration
+clarityConfig: {
+    enabled: true,
+    projectId: 'test-clarity-demo-12345', // Replace with your actual Clarity ID
+    requireConsent: true, // Set to true to require consent before loading
+    autoDetectRegion: true, // Automatically detect EEA/UK/CH visitors
+    defaultConsent: 'denied', // Default to denied until consent is given
+    sendConsentSignal: true, // NEW: Enable sending consent signals to Clarity
+    loadBeforeConsent: false // NEW: Prevent loading before consent in regulated regions
+},
+
+    
   
     // Microsoft UET Configuration
     // Microsoft UET Configuration
@@ -136,9 +195,9 @@ const config = {
     
     // Language configuration
     languageConfig: {
-        defaultLanguage: 'de',
+        defaultLanguage: 'en',
         availableLanguages: [], // Only en and fr as requested
-        showLanguageSelector: false,
+        showLanguageSelector: true,
         autoDetectLanguage: true
     },
     
@@ -208,11 +267,11 @@ geoConfig: {
     transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important',
         
        accept: {
-    background: '#719430 !important',
+    background: '#1177d0 !important',
     color: '#ffffff !important',
-    border: '1px solid #719430 !important',
+    border: '1px solid #1177d0 !important',
     hover: {
-        background: '#719430 !important',
+        background: '#1177d0 !important',
         color: '#ffffff !important',
         transform: 'translateY(-1px) !important'
     }
@@ -234,7 +293,7 @@ geoConfig: {
         color: '#333333 !important',
         border: '1px solid #e0e0e0 !important',
         hover: {
-            background: '#f8f9fa !important',
+            background: '#f0f2f5 !important',
             color: '#333333 !important',
             transform: 'translateY(-1px) !important'
         }
@@ -849,8 +908,8 @@ const translations = {
         description: "Wir verwenden Cookies, um Ihr Surferlebnis zu verbessern, personalisierte Anzeigen oder Inhalte bereitzustellen und unseren Datenverkehr zu analysieren. Wenn Sie auf \"Alle akzeptieren\" klicken, erklären Sie sich mit der Verwendung von Cookies einverstanden.",
         privacy: "Datenschutzrichtlinie",
         customize: "Anpassen",
-        reject: "Ablehnen",
-        accept: "Akzeptieren",
+        reject: "Alle ablehnen",
+        accept: "Alle akzeptieren",
         essential: "Essenzielle Cookies",
         essentialDesc: "Für Website-Funktionalität",
         analytics: "Analytics-Cookies",
@@ -2261,6 +2320,24 @@ function scanAndCategorizeCookies() {
     return result;
 }
 
+function getClarityConsentState() {
+    const consentCookie = getCookie('cookie_consent');
+    if (!consentCookie) return null;
+    
+    try {
+        const consentData = JSON.parse(consentCookie);
+        return consentData.categories.analytics;
+    } catch (e) {
+        return null;
+    }
+}
+
+
+
+
+
+
+
 // Enhanced getCookieDuration function
 function getCookieDuration(name) {
     const cookieMatch = document.cookie.match(new RegExp(`${name}=[^;]+(;|$)`));
@@ -3622,6 +3699,13 @@ function shouldShowBanner() {
 
 // Main initialization function
 function initializeCookieConsent(detectedCookies, language) {
+
+   // NEW: Check if we should show on this URL
+    if (!shouldShowOnCurrentUrl()) {
+        console.log('Cookie consent banner disabled for this URL');
+        return; // Don't show the banner on this URL
+    }
+  
     const consentGiven = getCookie('cookie_consent');
     
     // Check if banner should be shown based on geo-targeting and schedule
@@ -3646,6 +3730,64 @@ function initializeCookieConsent(detectedCookies, language) {
             showFloatingButton();
         }
     }
+
+
+
+    // Microsoft Clarity initialization
+// Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
+function initializeClarity(consentGranted) {
+    if (!config.clarityConfig.enabled) return;
+    
+    const consentRequired = isEEAVisitor();
+    
+    // If we don't need consent or it's granted, load Clarity
+    if (consentGranted || !consentRequired) {
+        // Only load if not already loaded
+        if (typeof window.clarity === 'undefined') {
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", config.clarityConfig.projectId);
+        }
+        
+        // Send consent signal
+        ensureClarityConsentSignal(consentGranted);
+    } else if (config.clarityConfig.loadBeforeConsent === false) {
+        // Ensure Clarity doesn't load if consent not given and not allowed to load before consent
+        window.clarity = window.clarity || function() {
+            // Store calls in queue but don't execute them
+            (window.clarity.q = window.clarity.q || []).push(arguments);
+        };
+        window.clarity('consent', false);
+    }
+}
+
+
+
+// Function to send consent signal to Microsoft Clarity
+function sendClarityConsentSignal(consentGranted) {
+    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
+    
+    try {
+        if (typeof window.clarity !== 'undefined') {
+            // Send consent signal to Clarity
+            window.clarity('consent', consentGranted);
+            console.log('Microsoft Clarity consent signal sent:', consentGranted);
+            
+            // Push to dataLayer for tracking
+            window.dataLayer.push({
+                'event': 'clarity_consent_signal',
+                'clarity_consent': consentGranted,
+                'timestamp': new Date().toISOString(),
+                'location_data': locationData
+            });
+        }
+    } catch (error) {
+        console.error('Failed to send Clarity consent signal:', error);
+    }
+}
+    
     // Explicitly apply the default language from config
     changeLanguage(config.languageConfig.defaultLanguage);
     
@@ -3911,6 +4053,11 @@ function hideFloatingButton() {
 
 // Cookie consent functions
 function acceptAllCookies() {
+
+     // Add this line to initialize Clarity
+    initializeClarity(true);
+  sendClarityConsentSignal(true); // Add this line
+    
     const consentData = {
         status: 'accepted',
         gcs: 'G111', // Explicit GCS signal for all granted
@@ -3956,6 +4103,11 @@ function acceptAllCookies() {
 }
 
 function rejectAllCookies() {
+
+    // Add this line to ensure Clarity isn't loaded
+    initializeClarity(false);
+    sendClarityConsentSignal(false); // Add this line
+    
     const consentData = {
         status: 'rejected',
         gcs: 'G100', // Explicit GCS signal for all denied
@@ -3999,6 +4151,9 @@ function rejectAllCookies() {
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
+     // Initialize or stop Clarity based on consent
+    initializeClarity(analyticsChecked);
+    sendClarityConsentSignal(analyticsChecked); // Add this line
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
     
     // Restore stored query parameters when saving custom settings
@@ -4113,6 +4268,100 @@ function clearNonEssentialCookies() {
     });
 }
 
+
+
+
+// Check if current URL matches any of the specified patterns
+function shouldShowOnCurrentUrl() {
+    if (!config.urlFilter.enabled) {
+        return true; // Show on all URLs if filtering is disabled
+    }
+    
+    const currentUrl = window.location.href;
+    const currentPath = window.location.pathname;
+    
+    // Check hide list first (if any entries exist)
+    if (config.urlFilter.hideOnUrls && config.urlFilter.hideOnUrls.length > 0) {
+        for (const pattern of config.urlFilter.hideOnUrls) {
+            if (matchesUrlPattern(currentUrl, currentPath, pattern)) {
+                return false; // Hide on this URL
+            }
+        }
+        return true; // Show if not in hide list
+    }
+    
+    // Check show list (if any entries exist)
+    if (config.urlFilter.showOnUrls && config.urlFilter.showOnUrls.length > 0) {
+        for (const pattern of config.urlFilter.showOnUrls) {
+            if (matchesUrlPattern(currentUrl, currentPath, pattern)) {
+                return true; // Show on this URL
+            }
+        }
+        return false; // Don't show if not in show list
+    }
+    
+    return true; // Default to showing if no filters are defined
+}
+
+// Helper function to match URL patterns
+function matchesUrlPattern(url, path, pattern) {
+    // Exact match for full URL
+    if (pattern.startsWith('http') && url === pattern) {
+        return true;
+    }
+    
+    // Exact path match
+    if (pattern.startsWith('/') && !pattern.includes('*') && path === pattern) {
+        return true;
+    }
+    
+    // Wildcard path match (starts with)
+    if (pattern.endsWith('/*') && path.startsWith(pattern.slice(0, -2))) {
+        return true;
+    }
+    
+    // Contains match (anywhere in URL)
+    if (pattern.startsWith('*') && pattern.endsWith('*') && 
+        url.includes(pattern.slice(1, -1))) {
+        return true;
+    }
+    
+    // Contains match (anywhere in path)
+    if (pattern.startsWith('*') && pattern.endsWith('*') && 
+        path.includes(pattern.slice(1, -1))) {
+        return true;
+    }
+    
+    return false;
+}
+
+
+
+
+
+
+function ensureClarityConsentSignal(consentGranted) {
+    if (typeof window.clarity === 'function') {
+        window.clarity('consent', consentGranted);
+    } else {
+        // Initialize the queue if it doesn't exist
+        window.clarity = window.clarity || function() {
+            (window.clarity.q = window.clarity.q || []).push(arguments);
+        };
+        window.clarity('consent', consentGranted);
+    }
+    
+    // Log for debugging
+    console.log('Microsoft Clarity consent signal sent:', consentGranted);
+}
+
+
+
+
+
+
+
+
 function clearCategoryCookies(category) {
     const cookies = scanAndCategorizeCookies()[category];
     cookies.forEach(cookie => {
@@ -4129,6 +4378,84 @@ function loadCookiesAccordingToConsent(consentData) {
         loadPerformanceCookies();
     }
 }
+
+// Add this function to check if visitor is from EEA/UK/CH
+function isClarityConsentRequired() {
+    if (!config.clarityConfig.autoDetectRegion) return true;
+    
+    // Use your existing locationData
+    if (locationData && locationData.country) {
+        // EEA + UK + Switzerland - regions that require consent for Clarity
+        const clarityRegions = EU_COUNTRIES; // Use the same list as everywhere else
+        return clarityRegions.includes(locationData.country);
+    }
+    
+    // If we can't determine location, require consent to be safe
+    return true;
+}
+
+function initializeClarity(consentGranted) {
+    if (!config.clarityConfig.enabled) return;
+    
+    const consentRequired = isClarityConsentRequired();
+    
+    // If we don't need consent or it's granted, load Clarity
+    if (consentGranted || !consentRequired) {
+        // Only load if not already loaded
+        if (typeof window.clarity === 'undefined') {
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", config.clarityConfig.projectId);
+        }
+        
+        // Send consent signal after a brief delay to ensure Clarity is loaded
+        setTimeout(() => {
+            if (typeof window.clarity === 'function') {
+                window.clarity('consent', consentGranted);
+            }
+        }, 500);
+    } else {
+        // Ensure Clarity doesn't load if consent not given
+        window.clarity = window.clarity || function() {
+            // Store calls in queue but don't execute them
+            (window.clarity.q = window.clarity.q || []).push(arguments);
+        };
+        window.clarity('consent', false);
+    }
+}
+
+
+
+
+// Function to send consent signal to Microsoft Clarity
+function sendClarityConsentSignal(consentGranted) {
+    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
+    
+    try {
+        ensureClarityConsentSignal(consentGranted);
+        
+        // Enhanced logging
+        console.log('Microsoft Clarity consent signal sent:', consentGranted, 
+                   'for region:', locationData?.country || 'unknown');
+        
+        window.dataLayer.push({
+            'event': 'clarity_consent_signal',
+            'clarity_consent': consentGranted,
+            'clarity_region': locationData?.country || 'unknown',
+            'timestamp': new Date().toISOString(),
+            'location_data': locationData
+        });
+    } catch (error) {
+        console.error('Failed to send Clarity consent signal:', error);
+    }
+}
+
+
+
+
+
 
 // Update consent mode for both Google and Microsoft UET
 function updateConsentMode(consentData) {
@@ -4184,6 +4511,15 @@ function updateConsentMode(consentData) {
             },
             'location_data': locationData
         });
+    }
+    
+    // Update Microsoft Clarity consent
+    if (config.clarityConfig.enabled) {
+        const clarityConsent = consentData.categories.analytics;
+        if (typeof window.clarity === 'function') {
+            window.clarity('consent', clarityConsent);
+            sendClarityConsentSignal(clarityConsent); // Add this line
+        }
     }
     
     // Push general consent update to dataLayer with GCS signal
@@ -4258,10 +4594,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     } catch (e) {
         console.error('Failed to load location data:', e);
     }
+
+      // Check existing consent for Clarity compliance
+    checkExistingClarityConsent();
+
+  
     // Store query parameters on page load
     storeQueryParams();
    
 
+    // Check existing consent on page load and apply to Clarity
+    const existingConsent = getClarityConsentState();
+    if (existingConsent !== null) {
+        ensureClarityConsentSignal(existingConsent);
+    }
+
+
+
+
+
+
+
+  
  // Check if domain is allowed
     if (!isDomainAllowed()) {
         console.log('Cookie consent banner not shown - domain not allowed');
@@ -4334,6 +4688,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
+
+
+// Add this function to check consent on each page load
+function checkExistingClarityConsent() {
+    const consentCookie = getCookie('cookie_consent');
+    if (!consentCookie) return null;
+    
+    try {
+        const consentData = JSON.parse(consentCookie);
+        // Update Clarity with existing consent state
+        ensureClarityConsentSignal(consentData.categories.analytics);
+        return consentData.categories.analytics;
+    } catch (e) {
+        return null;
+    }
+}
+
+
 // Export functions for global access if needed
 if (typeof window !== 'undefined') {
     window.cookieConsent = {
@@ -4348,3 +4720,4 @@ if (typeof window !== 'undefined') {
         config: config
     };
 }
+
