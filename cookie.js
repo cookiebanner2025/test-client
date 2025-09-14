@@ -1,9 +1,17 @@
 
+
+
+
+
+
 /**
  * Microsoft Clarity Configuration
  * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
  * for visitors from EEA, UK, and Switzerland. This configuration ensures compliance.
  */
+
+
+
 
 
 /**
@@ -12,6 +20,10 @@ you can change the cookie category description text by this class. like you can 
       font-size: 15px;
     } 
  */
+
+
+
+
 
 const EU_COUNTRIES = [
   "AL", // Albania
@@ -69,11 +81,9 @@ const EU_COUNTRIES = [
 
 
 // Function to check if visitor is from EEA/UK/CH
+// Single consolidated function to check if visitor is from EEA/UK/CH
 function isEEAVisitor() {
-    // Default to requiring consent if unknown or still loading
-    if (!locationData || !locationData.country || locationData.country === 'Unknown') {
-        return true;
-    }
+    if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
     return EU_COUNTRIES.includes(locationData.country);
 }
 
@@ -89,6 +99,29 @@ const config = {
     privacyPolicyUrl: 'https://yourdomain.com/privacy-policy', // Add your full privacy policy URL here
 
 
+      // Cross-Domain Consent Sharing Configuration
+    // Cross-Domain Consent Sharing Configuration (ROBUST VERSION)
+    crossDomain: {
+        enabled: true, // Master switch for the feature
+        // List of domains YOU want to send consent TO
+        targetDomains: [
+            "https://booking.roomraccoon.com",
+            "https://dev-rpractice.pantheonsite.io/"
+        ],
+        // List of domains you are willing to RECEIVE consent FROM
+        allowedSenders: [
+            "https://burrennaturesanctuary.ie",
+            "https://your-trusted-partner.com"
+        ],
+        // Optional: Add a shared secret key for extra security (highly recommended for production)
+        secretKey: "your_shared_secret_phrase_here", // Change this to a unique, strong phrase
+        // Timeout for the connection attempt to each target domain (milliseconds)
+        connectionTimeout: 2000 
+    },
+
+
+
+  
 
    // NEW: URL Filter Configuration
     urlFilter: {
@@ -429,6 +462,19 @@ geoConfig: {
     }
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
 // Initialize dataLayer for Google Tag Manager
@@ -524,6 +570,76 @@ function setDefaultUetConsent() {
         'location_data': locationData
     });
 }
+
+
+// ========== UPDATE CONSENT MODE FUNCTION ========== //
+// ========== MISSING FUNCTIONS NEEDED FOR CROSS-DOMAIN ========== //
+
+// setCookie function (missing from your code)
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax; Secure";
+}
+
+// updateConsentMode function (missing from your code)
+function updateConsentMode(consentData) {
+    // Your implementation to update consent mode based on the received data
+    // This should update Google Tag Manager, Microsoft Clarity, etc.
+    console.log('Updating consent mode with:', consentData);
+    
+    // Example implementation:
+    const consentStates = {
+        'ad_storage': consentData.categories?.advertising ? 'granted' : 'denied',
+        'analytics_storage': consentData.categories?.analytics ? 'granted' : 'denied',
+        'ad_user_data': consentData.categories?.advertising ? 'granted' : 'denied',
+        'ad_personalization': consentData.categories?.advertising ? 'granted' : 'denied',
+        'personalization_storage': consentData.categories?.performance ? 'granted' : 'denied',
+        'functionality_storage': consentData.categories?.functional ? 'granted' : 'denied',
+        'security_storage': 'granted'
+    };
+
+    // Update Google consent
+    if (typeof gtag === 'function') {
+        gtag('consent', 'update', consentStates);
+    }
+    
+    // Update dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+        'event': 'cookie_consent_update',
+        'consent_mode': consentStates,
+        'consent_status': consentData.status,
+        'consent_source': 'cross-domain',
+        'timestamp': new Date().toISOString()
+    });
+    
+    // Update Microsoft UET consent if enabled
+    if (config.uetConfig.enabled && typeof window.uetq !== 'undefined') {
+        const uetConsentState = consentData.categories?.advertising ? 'granted' : 'denied';
+        window.uetq.push('consent', 'update', {
+            'ad_storage': uetConsentState
+        });
+    }
+    
+    // Update Microsoft Clarity consent
+    if (config.clarityConfig.enabled && typeof window.clarity === 'function') {
+        const clarityConsent = consentData.categories?.analytics;
+        window.clarity('consent', clarityConsent);
+    }
+}
+
+
+
+
+
+
+
+
 
 
 // Enhanced cookie database with detailed descriptions
@@ -3670,6 +3786,8 @@ function shouldShowBanner() {
         const endTime = sessionStartTime + (config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
         
         return now.getTime() <= endTime;
+
+      checkForCrossDomainConsent();
     }
 
     // Check date range
@@ -3882,6 +4000,27 @@ function sendClarityConsentSignal(consentGranted) {
         }, config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Setup password prompt events
 function setupPasswordPromptEvents() {
@@ -4102,6 +4241,9 @@ function acceptAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+
+   sendConsentToOtherDomains(consentData); // ADD THIS LINE
+  
 }
 
 function rejectAllCookies() {
@@ -4149,6 +4291,12 @@ function rejectAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+
+
+  sendConsentToOtherDomains(consentData); // ADD THIS LINE
+
+
+  
 }
 
 function saveCustomSettings() {
@@ -4248,7 +4396,97 @@ function saveCustomSettings() {
             'location_data': locationData
         });
     }
+
+
+  sendConsentToOtherDomains(consentData); // ADD THIS LINE
+
+
+  
 }
+
+
+// ========== CROSS-DOMAIN CONSENT SHARING ========== //
+function sendConsentToOtherDomains(consentData) {
+    // Check if the feature is enabled and has target domains
+    if (!config.crossDomain?.enabled || !config.crossDomain.targetDomains?.length) {
+        console.log('Cross-domain sharing disabled or no targets configured.');
+        return;
+    }
+
+    console.log('Sharing consent with target domains:', config.crossDomain.targetDomains);
+
+    const message = JSON.stringify({
+        type: "cookie_consent_xd",
+        payload: consentData,
+        timestamp: new Date().getTime(),
+        key: config.crossDomain.secretKey
+    });
+
+    // Send to each target domain using postMessage
+    config.crossDomain.targetDomains.forEach(targetOrigin => {
+        try {
+            // Try to find an iframe from this domain
+            const iframes = document.querySelectorAll('iframe');
+            let targetFrame = null;
+            
+            for (let iframe of iframes) {
+                try {
+                    if (iframe.src && iframe.src.startsWith(targetOrigin)) {
+                        targetFrame = iframe;
+                        break;
+                    }
+                } catch (e) {
+                    // Cross-origin iframe, skip
+                    continue;
+                }
+            }
+            
+            if (targetFrame && targetFrame.contentWindow) {
+                // Send message to iframe
+                targetFrame.contentWindow.postMessage(message, targetOrigin);
+                console.log('Consent sent to iframe:', targetOrigin);
+            }
+        } catch (e) {
+            console.error('Error sending consent to', targetOrigin, ':', e);
+        }
+    });
+}
+
+
+
+// Check for cross-domain consent on page load
+// Function to handle incoming cross-domain consent messages
+// Check for cross-domain consent on page load
+function checkForCrossDomainConsent() {
+    if (!config.crossDomain?.enabled) return;
+    
+    // Check if we have consent data in localStorage from another domain
+    const receivedConsent = localStorage.getItem('cookie_consent_data');
+    if (receivedConsent) {
+        try {
+            const consentData = JSON.parse(receivedConsent);
+            console.log('Applying previously received cross-domain consent');
+            
+            // Update the consent mode based on the stored data
+            updateConsentMode(consentData.consent);
+            
+            // Set the local cookie_consent cookie to match
+            setCookie('cookie_consent', JSON.stringify(consentData.consent), 365);
+            
+            // Clear the stored data
+            localStorage.removeItem('cookie_consent_data');
+        } catch (e) {
+            console.error('Error applying received consent data:', e);
+        }
+    }
+}
+
+
+
+
+
+
+
 // Helper functions
 function clearNonEssentialCookies() {
     const cookies = document.cookie.split(';');
@@ -4629,6 +4867,30 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadAnalyticsData();
     }
 
+
+
+  // NEW: Check for cross-domain consent data on page load
+    const receivedConsent = localStorage.getItem('cookie_consent_data');
+    if (receivedConsent) {
+        try {
+            const consentData = JSON.parse(receivedConsent);
+            console.log('Applying previously received cross-domain consent from:', consentData.source);
+            // Update the consent mode based on the stored data
+            updateConsentMode(consentData.consent);
+            // Optional: You can also set the local cookie_consent cookie to match
+            setCookie('cookie_consent', JSON.stringify(consentData.consent), 365);
+        } catch (e) {
+            console.error('Error applying received consent data:', e);
+        }
+    }
+
+
+
+
+
+
+
+  
     // Set default UET consent
     setDefaultUetConsent();
 
@@ -4722,4 +4984,3 @@ if (typeof window !== 'undefined') {
         config: config
     };
 }
-
