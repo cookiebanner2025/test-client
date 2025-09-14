@@ -69,9 +69,11 @@ const EU_COUNTRIES = [
 
 
 // Function to check if visitor is from EEA/UK/CH
-// Single consolidated function to check if visitor is from EEA/UK/CH
 function isEEAVisitor() {
-    if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
+    // Default to requiring consent if unknown or still loading
+    if (!locationData || !locationData.country || locationData.country === 'Unknown') {
+        return true;
+    }
     return EU_COUNTRIES.includes(locationData.country);
 }
 
