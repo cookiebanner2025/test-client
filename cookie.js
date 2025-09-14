@@ -4480,8 +4480,7 @@ function checkForCrossDomainConsent() {
     }
 }
 
-// Add event listener for incoming messages
-window.addEventListener('message', handleIncomingConsentMessage);
+
 
 
 
