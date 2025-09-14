@@ -4302,6 +4302,7 @@ function acceptAllCookies() {
     });
 
    sendConsentToOtherDomains(consentData); // ADD THIS LINE
+  checkForCrossDomainConsent(); // ADD THIS LINE TOO
 }
 
 function rejectAllCookies() {
@@ -4352,6 +4353,7 @@ function rejectAllCookies() {
 
 
   sendConsentToOtherDomains(consentData); // ADD THIS LINE
+  checkForCrossDomainConsent(); // ADD THIS LINE TOO
 
   
 }
@@ -4456,19 +4458,16 @@ function saveCustomSettings() {
 
 
   sendConsentToOtherDomains(consentData); // ADD THIS LINE
+  checkForCrossDomainConsent(); // ADD THIS LINE TOO
 
   
 }
 
 
 // ========== CROSS-DOMAIN CONSENT SHARING ========== //
-// Function to send consent data to other specified domains
-// ========== CROSS-DOMAIN CONSENT SHARING (ROBUST) ========== //
-// ========== CROSS-DOMAIN CONSENT SENDER (ROBUST) ========== //
-// Function to send consent data to other specified domains
 function sendConsentToOtherDomains(consentData) {
     // Check if the feature is enabled and has target domains
-   if (!config.crossDomain || !config.crossDomain.enabled || !config.crossDomain.targetDomains || !config.crossDomain.targetDomains.length) {
+    if (!config.crossDomain?.enabled || !config.crossDomain.targetDomains?.length) {
         console.log('Cross-domain sharing disabled or no targets configured.');
         return;
     }
@@ -4482,53 +4481,43 @@ function sendConsentToOtherDomains(consentData) {
         key: config.crossDomain.secretKey
     });
 
-  if (!config.crossDomain.targetDomains) return;  
-  config.crossDomain.targetDomains.forEach(targetOrigin => {
-        try {
-            // Try to send the message directly to the target window
-            const targetWindow = window.open('', '_blank', 'noopener,noreferrer');
-            
-            if (targetWindow && targetWindow.location.origin === targetOrigin) {
-                targetWindow.postMessage(message, targetOrigin);
-                console.log(`Consent sent successfully to: ${targetOrigin}`);
-                setTimeout(() => { 
-                    if(targetWindow && !targetWindow.closed) targetWindow.close(); 
-                }, 500);
-            } else {
-                // Use a relay window approach
-                const relayWindow = window.open(
-                    targetOrigin, 
-                    'xdConsentRelay', 
-                    'width=100,height=100,left=-9999,top=-9999,noopener,noreferrer'
-                );
+    // Store in localStorage for other domains to pick up
+    try {
+        localStorage.setItem('cross_domain_consent', message);
+    } catch (e) {
+        console.log('Could not store consent in localStorage:', e);
+    }
 
-                if (relayWindow) {
-                    const timeoutId = setTimeout(() => {
-                        console.warn(`Timeout: Could not send consent to ${targetOrigin}`);
-                        if (!relayWindow.closed) relayWindow.close();
-                    }, config.crossDomain.connectionTimeout || 2000);
-
-                    relayWindow.addEventListener('load', () => {
-                        clearTimeout(timeoutId);
-                        try {
-                            relayWindow.postMessage(message, targetOrigin);
-                            console.log(`Consent sent via relay to: ${targetOrigin}`);
-                        } catch (e) {
-                            console.error(`Error posting message to ${targetOrigin}:`, e);
-                        }
-                        setTimeout(() => { 
-                            if(!relayWindow.closed) relayWindow.close(); 
-                        }, 1000);
-                    }, { once: true });
-                } else {
-                    console.warn(`Popup blocked? Could not open relay window for: ${targetOrigin}`);
-                }
-            }
-        } catch (error) {
-            console.error(`Error in cross-domain process for ${targetOrigin}:`, error);
-        }
+    // Just log the intent - no window opening
+    config.crossDomain.targetDomains.forEach(targetOrigin => {
+        console.log(`Consent ready for: ${targetOrigin}`);
     });
 }
+
+
+
+// Check for cross-domain consent on page load
+function checkForCrossDomainConsent() {
+    try {
+        const storedConsent = localStorage.getItem('cross_domain_consent');
+        if (storedConsent) {
+            const data = JSON.parse(storedConsent);
+            
+            // Verify the secret key matches
+            if (data.key === config.crossDomain.secretKey) {
+                console.log('Applying cross-domain consent');
+                updateConsentMode(data.payload);
+                setCookie('cookie_consent', JSON.stringify(data.payload), 365);
+            }
+            
+            // Clean up
+            localStorage.removeItem('cross_domain_consent');
+        }
+    } catch (e) {
+        console.error('Error processing cross-domain consent:', e);
+    }
+}
+
 
 
 
@@ -5032,3 +5021,4 @@ if (typeof window !== 'undefined') {
         config: config
     };
 }
+
