@@ -4242,7 +4242,7 @@ function acceptAllCookies() {
     });
 
    sendConsentToOtherDomains(consentData); // ADD THIS LINE
-  checkForCrossDomainConsent(); // ADD THIS LINE TOO
+  
 }
 
 function rejectAllCookies() {
@@ -4293,7 +4293,7 @@ function rejectAllCookies() {
 
 
   sendConsentToOtherDomains(consentData); // ADD THIS LINE
-  checkForCrossDomainConsent(); // ADD THIS LINE TOO
+
 
   
 }
@@ -4398,7 +4398,7 @@ function saveCustomSettings() {
 
 
   sendConsentToOtherDomains(consentData); // ADD THIS LINE
-  checkForCrossDomainConsent(); // ADD THIS LINE TOO
+
 
   
 }
