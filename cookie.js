@@ -16,35 +16,49 @@ you can change the cookie category description text by this class. like you can 
 
 // ========== CROSS-DOMAIN CONSENT RECEIVER ========== //
 // Listen for consent messages from other trusted domains
+// ========== CROSS-DOMAIN CONSENT RECEIVER (ROBUST) ========== //
+// Listen for consent messages from other trusted domains
 window.addEventListener('message', function(event) {
-    // Check if the feature is enabled and if the message is from a trusted domain
+    // 1. Basic validation: Check if the feature is enabled and message is from a trusted domain
     if (!config?.crossDomain?.enabled) return;
-    const allowedSenders = config.crossDomain.allowedSenderDomains || [];
+    const allowedSenders = config.crossDomain.allowedSenders || [];
     
-    if (!allowedSenders.includes(event.origin)) return; // Block messages from untrusted domains
-    
+    // Verify the origin of the message is in our allowed list
+    if (!allowedSenders.includes(event.origin)) {
+        // console.log('Message ignored: Untrusted origin:', event.origin);
+        return;
+    }
+
     try {
         const data = JSON.parse(event.data);
-        // Check if it's a consent message
-        if (data.type === "cookie_consent" && data.payload) {
+        
+        // 2. Validate the message structure and secret key
+        if (data.type === "cookie_consent_xd" && data.payload && data.key === config.crossDomain.secretKey) {
             
-            // Save the received consent data to this domain's localStorage
-            localStorage.setItem('cookie_consent_data', JSON.stringify({
+            console.log('Valid cross-domain consent received from:', event.origin);
+            
+            // 3. Save the received consent data to this domain's storage
+            const consentToSave = {
                 consent: data.payload,
                 source: event.origin,
                 timestamp: new Date().getTime()
-            }));
-            
-            console.log('Consent received and saved from:', event.origin);
-            
-            // IMPORTANT: Update the consent mode on THIS domain based on the received data
+            };
+            localStorage.setItem('cookie_consent_data', JSON.stringify(consentToSave));
+
+            // 4. IMPORTANT: Update the consent mode on THIS domain based on the received data
+            // This immediately applies the user's tracking preferences (e.g., denies Clarity/UET if rejected)
             updateConsentMode(data.payload);
             
-            // Optional: Send a confirmation message back (for debugging)
-            event.source.postMessage(JSON.stringify({
-                type: "acknowledge",
-                payload: "consent_received"
-            }), event.origin);
+            // 5. Set the local cookie_consent cookie to persist the choice on this domain
+            setCookie('cookie_consent', JSON.stringify(data.payload), 365);
+            
+            console.log('Cross-domain consent applied successfully.');
+
+            // 6. Optional: Send a confirmation message back (for debugging)
+            // event.source.postMessage(JSON.stringify({ type: "acknowledge", status: "success" }), event.origin);
+            
+        } else {
+            console.warn('Received message had invalid structure or key.');
         }
     } catch (e) {
         console.error("Error processing cross-domain message:", e);
@@ -133,19 +147,23 @@ const config = {
 
 
       // Cross-Domain Consent Sharing Configuration
+    // Cross-Domain Consent Sharing Configuration (ROBUST VERSION)
     crossDomain: {
-        enabled: true, // Set to true to enable sharing consent across different domains
-        // List ALL domains that should receive the consent data (including the current one if needed)
+        enabled: true, // Master switch for the feature
+        // List of domains YOU want to send consent TO
         targetDomains: [
             "https://booking.roomraccoon.com",
-            "https://your-second-domain.com",
-            "https://your-third-domain.com"
+            "https://your-other-domain.com"
         ],
-        // You can also set a list of domains that are allowed to SEND data to this site
-        allowedSenderDomains: [
+        // List of domains you are willing to RECEIVE consent FROM
+        allowedSenders: [
             "https://burrennaturesanctuary.ie",
             "https://your-trusted-partner.com"
-        ]
+        ],
+        // Optional: Add a shared secret key for extra security (highly recommended for production)
+        secretKey: "your_shared_secret_phrase_here", // Change this to a unique, strong phrase
+        // Timeout for the connection attempt to each target domain (milliseconds)
+        connectionTimeout: 2000 
     },
 
 
@@ -4327,37 +4345,70 @@ function saveCustomSettings() {
 
 // ========== CROSS-DOMAIN CONSENT SHARING ========== //
 // Function to send consent data to other specified domains
+// ========== CROSS-DOMAIN CONSENT SHARING (ROBUST) ========== //
+// Function to send consent data to other specified domains
 function sendConsentToOtherDomains(consentData) {
-    if (!config.crossDomain.enabled || !config.crossDomain.targetDomains.length) return;
+    // Check if the feature is enabled and has target domains
+    if (!config.crossDomain?.enabled || !config.crossDomain.targetDomains?.length) {
+        console.log('Cross-domain sharing disabled or no targets configured.');
+        return;
+    }
 
-    console.log('Attempting to share consent with other domains...');
-    
+    console.log('Sharing consent with target domains:', config.crossDomain.targetDomains);
+
     const message = JSON.stringify({
-        type: "cookie_consent",
+        type: "cookie_consent_xd", // Unique type to avoid conflicts
         payload: consentData,
-        timestamp: new Date().getTime()
+        timestamp: new Date().getTime(),
+        // Include a secret key for verification on the receiving end
+        key: config.crossDomain.secretKey
     });
 
     config.crossDomain.targetDomains.forEach(targetOrigin => {
         try {
-            // Create an invisible iframe to open a line of communication
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = targetOrigin; // This points the iframe to the target domain
-            document.body.appendChild(iframe);
+            // Try to send the message directly to the target window.
+            // This works if the target domain is already open in the user's browser.
+            // window.opener and window.parent are also potential targets, but less common.
+            const targetWindow = window.open('', '_blank', 'width=100,height=100,left=-9999,top=-9999'); // Open a tiny, off-screen window
 
-            // Wait for the iframe to load, then send the message
-            iframe.onload = function() {
-                iframe.contentWindow.postMessage(message, targetOrigin);
-                // Remove the iframe after sending to avoid clutter
-                setTimeout(() => document.body.removeChild(iframe), 1000);
-            };
+            if (targetWindow && targetWindow.location.origin === targetOrigin) {
+                // If the window is already on the target origin, send the message directly.
+                targetWindow.postMessage(message, targetOrigin);
+                console.log(`Consent sent successfully to: ${targetOrigin}`);
+                // Immediately close the helper window
+                setTimeout(() => { if(targetWindow && !targetWindow.closed) targetWindow.close(); }, 500);
+            } else {
+                // If the window isn't on the target origin, navigate it there first.
+                // This is the most reliable method.
+                const relayWindow = window.open(targetOrigin, 'xdConsentRelay', 'width=100,height=100,left=-9999,top=-9999');
+
+                if (relayWindow) {
+                    // Wait for the window to load, then send the message
+                    const timeoutId = setTimeout(() => {
+                        console.warn(`Timeout: Could not send consent to ${targetOrigin}. The domain may not be responding or was blocked by a popup blocker.`);
+                        if (!relayWindow.closed) relayWindow.close();
+                    }, config.crossDomain.connectionTimeout);
+
+                    relayWindow.addEventListener('load', () => {
+                        clearTimeout(timeoutId);
+                        try {
+                            relayWindow.postMessage(message, targetOrigin);
+                            console.log(`Consent sent via relay to: ${targetOrigin}`);
+                        } catch (e) {
+                            console.error(`Error posting message to ${targetOrigin}:`, e);
+                        }
+                        // Close the window after sending
+                        setTimeout(() => { if(!relayWindow.closed) relayWindow.close(); }, 1000);
+                    }, { once: true }); // Ensure the listener only runs once
+                } else {
+                    console.warn(`Popup blocked? Could not open relay window for: ${targetOrigin}. Please ensure popups are allowed for this site.`);
+                }
+            }
         } catch (error) {
-            console.error(`Error sending consent to ${targetOrigin}:`, error);
+            console.error(`Error in cross-domain process for ${targetOrigin}:`, error);
         }
     });
 }
-
 
 
 
