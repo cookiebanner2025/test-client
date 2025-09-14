@@ -494,11 +494,18 @@ window.addEventListener('message', function(event) {
                 setCookie('cookie_consent_xd', JSON.stringify(consentToSave), 30);
             }
 
-            // 4. IMPORTANT: Update the consent mode on THIS domain based on the received data
-            updateConsentMode(data.payload);
-            
-            // 5. Set the local cookie_consent cookie to persist the choice on this domain
+
+
+            // 4. Set the local cookie_consent cookie FIRST
             setCookie('cookie_consent', JSON.stringify(data.payload), 365);
+            
+            // 5. THEN update the consent mode on THIS domain based on the received data
+            // This ensures the cookie is set before any consent processing happens
+            setTimeout(() => {
+                updateConsentMode(data.payload);
+            }, 100);
+
+        
             
             console.log('Cross-domain consent applied successfully.');
 
