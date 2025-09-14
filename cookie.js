@@ -92,7 +92,7 @@ const config = {
 
    // NEW: URL Filter Configuration
     urlFilter: {
-        enabled: true, // Set to true to enable URL filtering
+        enabled: false, // Set to true to enable URL filtering
         showOnUrls: [
             // Add your specific URLs here
             '/example-privacy-policy', // Exact path
