@@ -619,6 +619,61 @@ function setDefaultUetConsent() {
 }
 
 
+// ========== UPDATE CONSENT MODE FUNCTION ========== //
+function updateConsentMode(consentData) {
+    // Your implementation to update consent mode based on the received data
+    // This should update Google Tag Manager, Microsoft Clarity, etc.
+    console.log('Updating consent mode with:', consentData);
+    
+    // Example implementation:
+    const consentStates = {
+        'ad_storage': consentData.categories?.advertising ? 'granted' : 'denied',
+        'analytics_storage': consentData.categories?.analytics ? 'granted' : 'denied',
+        'ad_user_data': consentData.categories?.advertising ? 'granted' : 'denied',
+        'ad_personalization': consentData.categories?.advertising ? 'granted' : 'denied',
+        'personalization_storage': consentData.categories?.performance ? 'granted' : 'denied',
+        'functionality_storage': consentData.categories?.functional ? 'granted' : 'denied',
+        'security_storage': 'granted'
+    };
+
+    // Update Google consent
+    if (typeof gtag === 'function') {
+        gtag('consent', 'update', consentStates);
+    }
+    
+    // Update dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+        'event': 'cookie_consent_update',
+        'consent_mode': consentStates,
+        'consent_status': consentData.status,
+        'consent_source': 'cross-domain',
+        'timestamp': new Date().toISOString()
+    });
+    
+    // Update Microsoft UET consent if enabled
+    if (config.uetConfig.enabled && typeof window.uetq !== 'undefined') {
+        const uetConsentState = consentData.categories?.advertising ? 'granted' : 'denied';
+        window.uetq.push('consent', 'update', {
+            'ad_storage': uetConsentState
+        });
+    }
+    
+    // Update Microsoft Clarity consent
+    if (config.clarityConfig.enabled && typeof window.clarity === 'function') {
+        const clarityConsent = consentData.categories?.analytics;
+        window.clarity('consent', clarityConsent);
+    }
+}
+
+
+
+
+
+
+
+
+
 // Enhanced cookie database with detailed descriptions
 const cookieDatabase = {
     // ========== ADVERTISING COOKIES ==========
