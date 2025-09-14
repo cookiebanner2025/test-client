@@ -1,11 +1,3 @@
-
-/**
- * Microsoft Clarity Configuration
- * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
- * for visitors from EEA, UK, and Switzerland. This configuration ensures compliance.
- */
-
-
 /**
 you can change the cookie category description text by this class. like you can change the essential cookies description text size.
   .broadcookiedes {
@@ -72,32 +64,9 @@ const config = {
     allowedDomains: [],
     
     // Privacy policy URL (configurable)
-    privacyPolicyUrl: 'https://yourdomain.com/privacy-policy', // Add your full privacy policy URL here
+    privacyPolicyUrl: 'https://worldeye.de/datenschutzrichtlinien/', // Add your full privacy policy URL here
 
 
-
- // NEW: URL Filter Configuration
-    urlFilter: {
-        enabled: true, // Set to true to enable URL filtering
-        showOnUrls: [
-            // Add your specific URLs here
-            '/example-privacy-policy', // Exact path
-            '/example-about-us', // Exact path
-            '/example-contact', // Exact path
-            '/example-blog/*', // Wildcard - any URL starting with /blog/
-            '*special-page*', // Contains - any URL with 'special-page' in it
-            'https://example.com/exact-full-url' // Full URL
-        ],
-        // OR use this alternative approach if you prefer to hide on specific URLs
-        hideOnUrls: [
-            // '/home',
-           // '/shop/*'
-        ]
-    },
-
-
-
-  
    
     // Query Parameter Storage Configuration
     queryParamsConfig: {
@@ -167,9 +136,9 @@ const config = {
     
     // Language configuration
     languageConfig: {
-        defaultLanguage: 'en',
+        defaultLanguage: 'de',
         availableLanguages: [], // Only en and fr as requested
-        showLanguageSelector: true,
+        showLanguageSelector: false,
         autoDetectLanguage: true
     },
     
@@ -239,11 +208,11 @@ geoConfig: {
     transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important',
         
        accept: {
-    background: '#1177d0 !important',
+    background: '#719430 !important',
     color: '#ffffff !important',
-    border: '1px solid #1177d0 !important',
+    border: '1px solid #719430 !important',
     hover: {
-        background: '#1177d0 !important',
+        background: '#719430 !important',
         color: '#ffffff !important',
         transform: 'translateY(-1px) !important'
     }
@@ -265,7 +234,7 @@ geoConfig: {
         color: '#333333 !important',
         border: '1px solid #e0e0e0 !important',
         hover: {
-            background: '#f0f2f5 !important',
+            background: '#f8f9fa !important',
             color: '#333333 !important',
             transform: 'translateY(-1px) !important'
         }
@@ -880,8 +849,8 @@ const translations = {
         description: "Wir verwenden Cookies, um Ihr Surferlebnis zu verbessern, personalisierte Anzeigen oder Inhalte bereitzustellen und unseren Datenverkehr zu analysieren. Wenn Sie auf \"Alle akzeptieren\" klicken, erklären Sie sich mit der Verwendung von Cookies einverstanden.",
         privacy: "Datenschutzrichtlinie",
         customize: "Anpassen",
-        reject: "Alle ablehnen",
-        accept: "Alle akzeptieren",
+        reject: "Ablehnen",
+        accept: "Akzeptieren",
         essential: "Essenzielle Cookies",
         essentialDesc: "Für Website-Funktionalität",
         analytics: "Analytics-Cookies",
@@ -3653,13 +3622,6 @@ function shouldShowBanner() {
 
 // Main initialization function
 function initializeCookieConsent(detectedCookies, language) {
-
-   // NEW: Check if we should show on this URL
-    if (!shouldShowOnCurrentUrl()) {
-        console.log('Cookie consent banner disabled for this URL');
-        return; // Don't show the banner on this URL
-    }
-  
     const consentGiven = getCookie('cookie_consent');
     
     // Check if banner should be shown based on geo-targeting and schedule
@@ -4150,79 +4112,6 @@ function clearNonEssentialCookies() {
         }
     });
 }
-
-
-
-// Check if current URL matches any of the specified patterns
-function shouldShowOnCurrentUrl() {
-    if (!config.urlFilter.enabled) {
-        return true; // Show on all URLs if filtering is disabled
-    }
-    
-    const currentUrl = window.location.href;
-    const currentPath = window.location.pathname;
-    
-    // Check hide list first (if any entries exist)
-    if (config.urlFilter.hideOnUrls && config.urlFilter.hideOnUrls.length > 0) {
-        for (const pattern of config.urlFilter.hideOnUrls) {
-            if (matchesUrlPattern(currentUrl, currentPath, pattern)) {
-                return false; // Hide on this URL
-            }
-        }
-        return true; // Show if not in hide list
-    }
-    
-    // Check show list (if any entries exist)
-    if (config.urlFilter.showOnUrls && config.urlFilter.showOnUrls.length > 0) {
-        for (const pattern of config.urlFilter.showOnUrls) {
-            if (matchesUrlPattern(currentUrl, currentPath, pattern)) {
-                return true; // Show on this URL
-            }
-        }
-        return false; // Don't show if not in show list
-    }
-    
-    return true; // Default to showing if no filters are defined
-}
-
-// Helper function to match URL patterns
-function matchesUrlPattern(url, path, pattern) {
-    // Exact match for full URL
-    if (pattern.startsWith('http') && url === pattern) {
-        return true;
-    }
-    
-    // Exact path match
-    if (pattern.startsWith('/') && !pattern.includes('*') && path === pattern) {
-        return true;
-    }
-    
-    // Wildcard path match (starts with)
-    if (pattern.endsWith('/*') && path.startsWith(pattern.slice(0, -2))) {
-        return true;
-    }
-    
-    // Contains match (anywhere in URL)
-    if (pattern.startsWith('*') && pattern.endsWith('*') && 
-        url.includes(pattern.slice(1, -1))) {
-        return true;
-    }
-    
-    // Contains match (anywhere in path)
-    if (pattern.startsWith('*') && pattern.endsWith('*') && 
-        path.includes(pattern.slice(1, -1))) {
-        return true;
-    }
-    
-    return false;
-}
-
-
-
-
-
-
-
 
 function clearCategoryCookies(category) {
     const cookies = scanAndCategorizeCookies()[category];
