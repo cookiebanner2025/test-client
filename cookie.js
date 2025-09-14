@@ -3787,6 +3787,8 @@ function shouldShowBanner() {
         const endTime = sessionStartTime + (config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
         
         return now.getTime() <= endTime;
+
+      checkForCrossDomainConsent();
     }
 
     // Check date range
