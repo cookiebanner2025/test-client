@@ -67,6 +67,18 @@ const EU_COUNTRIES = [
   "VA", // Vatican City
 ];
 
+
+// Function to check if visitor is from EEA/UK/CH
+// Single consolidated function to check if visitor is from EEA/UK/CH
+function isEEAVisitor() {
+    if (!locationData || !locationData.country) return true; // Default to requiring consent if unknown
+    return EU_COUNTRIES.includes(locationData.country);
+}
+
+
+
+
+
 const config = {
     // Domain restriction
     allowedDomains: [],
@@ -76,7 +88,16 @@ const config = {
 
 
 
- // NEW: URL Filter Configuration
+    // NEW: Cookie Banner Trigger Configuration
+    bannerTriggers: {
+        enabled: true, // Set to true to enable clicking links to open banner
+        triggerText: "Quick Links", // The text that will trigger the banner
+        triggerClass: "cookie-banners-trigger", // OR use a CSS class instead
+        triggerId: "cookie-banner-trigger" // OR use an ID instead
+    },
+  
+
+   // NEW: URL Filter Configuration
     urlFilter: {
         enabled: false, // Set to true to enable URL filtering
         showOnUrls: [
@@ -108,6 +129,22 @@ const config = {
         autoRestore: true, // Automatically restore params to new URLs
         manualClear: true // Enable manual clearing function
     },
+
+
+
+     // Microsoft Clarity Configuration
+  // Microsoft Clarity Configuration
+clarityConfig: {
+    enabled: true,
+    projectId: 'test-clarity-demo-12345', // Replace with your actual Clarity ID
+    requireConsent: true, // Set to true to require consent before loading
+    autoDetectRegion: true, // Automatically detect EEA/UK/CH visitors
+    defaultConsent: 'denied', // Default to denied until consent is given
+    sendConsentSignal: true, // NEW: Enable sending consent signals to Clarity
+    loadBeforeConsent: false // NEW: Prevent loading before consent in regulated regions
+},
+
+    
   
     // Microsoft UET Configuration
     // Microsoft UET Configuration
@@ -2125,33 +2162,47 @@ function checkGeoTargeting(geoData) {
 }
 
 // Detect user language based on country and browser settings
+// Detect user language based on country and browser settings
 function detectUserLanguage(geoData) {
-    // First check if language is stored in cookie
+    // First check if language is stored in cookie (user's previous choice)
     if (config.behavior.rememberLanguage) {
         const preferredLanguage = getCookie('preferred_language');
         if (preferredLanguage && translations[preferredLanguage]) {
+            console.log('Using preferred language from cookie:', preferredLanguage);
             return preferredLanguage;
         }
+    }
+    
+    // Then try to get language from browser settings
+    const browserLang = (navigator.language || navigator.userLanguage || 'en').split('-')[0];
+    console.log('Browser language detected:', browserLang);
+    
+    if (translations[browserLang]) {
+        // Save the detected language to cookie for future visits
+        if (config.behavior.rememberLanguage) {
+            setCookie('preferred_language', browserLang, 365);
+        }
+        return browserLang;
     }
     
     // Then try to get language from country if auto-detection is enabled
     if (config.languageConfig.autoDetectLanguage && geoData && geoData.country) {
         const countryLang = countryLanguageMap[geoData.country];
+        console.log('Country language detected:', countryLang, 'for country:', geoData.country);
+        
         if (countryLang && translations[countryLang]) {
+            // Save the detected language to cookie for future visits
+            if (config.behavior.rememberLanguage) {
+                setCookie('preferred_language', countryLang, 365);
+            }
             return countryLang;
         }
     }
     
-    // Fallback to browser language
-    const browserLang = (navigator.language || 'en').split('-')[0];
-    if (translations[browserLang]) {
-        return browserLang;
-    }
-    
     // Final fallback to configured default language
+    console.log('Using default language:', config.languageConfig.defaultLanguage);
     return config.languageConfig.defaultLanguage || 'en';
 }
-
 // Get available languages for dropdown
 function getAvailableLanguages() {
     if (config.languageConfig.availableLanguages.length > 0) {
@@ -2291,6 +2342,24 @@ function scanAndCategorizeCookies() {
     
     return result;
 }
+
+function getClarityConsentState() {
+    const consentCookie = getCookie('cookie_consent');
+    if (!consentCookie) return null;
+    
+    try {
+        const consentData = JSON.parse(consentCookie);
+        return consentData.categories.analytics;
+    } catch (e) {
+        return null;
+    }
+}
+
+
+
+
+
+
 
 // Enhanced getCookieDuration function
 function getCookieDuration(name) {
@@ -3684,6 +3753,64 @@ function initializeCookieConsent(detectedCookies, language) {
             showFloatingButton();
         }
     }
+
+
+
+    // Microsoft Clarity initialization
+// Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
+function initializeClarity(consentGranted) {
+    if (!config.clarityConfig.enabled) return;
+    
+    const consentRequired = isEEAVisitor();
+    
+    // If we don't need consent or it's granted, load Clarity
+    if (consentGranted || !consentRequired) {
+        // Only load if not already loaded
+        if (typeof window.clarity === 'undefined') {
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", config.clarityConfig.projectId);
+        }
+        
+        // Send consent signal
+        ensureClarityConsentSignal(consentGranted);
+    } else if (config.clarityConfig.loadBeforeConsent === false) {
+        // Ensure Clarity doesn't load if consent not given and not allowed to load before consent
+        window.clarity = window.clarity || function() {
+            // Store calls in queue but don't execute them
+            (window.clarity.q = window.clarity.q || []).push(arguments);
+        };
+        window.clarity('consent', false);
+    }
+}
+
+
+
+// Function to send consent signal to Microsoft Clarity
+function sendClarityConsentSignal(consentGranted) {
+    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
+    
+    try {
+        if (typeof window.clarity !== 'undefined') {
+            // Send consent signal to Clarity
+            window.clarity('consent', consentGranted);
+            console.log('Microsoft Clarity consent signal sent:', consentGranted);
+            
+            // Push to dataLayer for tracking
+            window.dataLayer.push({
+                'event': 'clarity_consent_signal',
+                'clarity_consent': consentGranted,
+                'timestamp': new Date().toISOString(),
+                'location_data': locationData
+            });
+        }
+    } catch (error) {
+        console.error('Failed to send Clarity consent signal:', error);
+    }
+}
+    
     // Explicitly apply the default language from config
     changeLanguage(config.languageConfig.defaultLanguage);
     
@@ -3699,6 +3826,9 @@ function initializeCookieConsent(detectedCookies, language) {
     
     // Set up event listeners
     setupEventListeners();
+
+    // NEW: Setup banner triggers
+    setupBannerTriggers();
     
     // Setup cookie details toggles
     document.querySelectorAll('.cookie-details-header').forEach(header => {
@@ -3797,6 +3927,52 @@ function setupPasswordPromptEvents() {
                 errorMessage.textContent = translations[lang].passwordIncorrect;
             }
         });
+    }
+}
+
+
+
+
+// NEW: Setup banner trigger functionality
+function setupBannerTriggers() {
+    if (!config.bannerTriggers.enabled) return;
+    
+    // Option 1: Trigger by text content
+    if (config.bannerTriggers.triggerText) {
+        const elements = Array.from(document.querySelectorAll('*')).filter(el => 
+            el.textContent.trim() === config.bannerTriggers.triggerText
+        );
+        elements.forEach(element => {
+            element.style.cursor = 'pointer';
+            element.addEventListener('click', function(e) {
+                e.preventDefault();
+                showCookieBanner();
+            });
+        });
+    }
+    
+    // Option 2: Trigger by CSS class
+    if (config.bannerTriggers.triggerClass) {
+        const elements = document.querySelectorAll('.' + config.bannerTriggers.triggerClass);
+        elements.forEach(element => {
+            element.style.cursor = 'pointer';
+            element.addEventListener('click', function(e) {
+                e.preventDefault();
+                showCookieBanner();
+            });
+        });
+    }
+    
+    // Option 3: Trigger by ID
+    if (config.bannerTriggers.triggerId) {
+        const element = document.getElementById(config.bannerTriggers.triggerId);
+        if (element) {
+            element.style.cursor = 'pointer';
+            element.addEventListener('click', function(e) {
+                e.preventDefault();
+                showCookieBanner();
+            });
+        }
     }
 }
 
@@ -3949,6 +4125,11 @@ function hideFloatingButton() {
 
 // Cookie consent functions
 function acceptAllCookies() {
+
+     // Add this line to initialize Clarity
+    initializeClarity(true);
+  sendClarityConsentSignal(true); // Add this line
+    
     const consentData = {
         status: 'accepted',
         gcs: 'G111', // Explicit GCS signal for all granted
@@ -3994,6 +4175,11 @@ function acceptAllCookies() {
 }
 
 function rejectAllCookies() {
+
+    // Add this line to ensure Clarity isn't loaded
+    initializeClarity(false);
+    sendClarityConsentSignal(false); // Add this line
+    
     const consentData = {
         status: 'rejected',
         gcs: 'G100', // Explicit GCS signal for all denied
@@ -4037,6 +4223,9 @@ function rejectAllCookies() {
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
+     // Initialize or stop Clarity based on consent
+    initializeClarity(analyticsChecked);
+    sendClarityConsentSignal(analyticsChecked); // Add this line
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
     
     // Restore stored query parameters when saving custom settings
@@ -4153,6 +4342,7 @@ function clearNonEssentialCookies() {
 
 
 
+
 // Check if current URL matches any of the specified patterns
 function shouldShowOnCurrentUrl() {
     if (!config.urlFilter.enabled) {
@@ -4222,6 +4412,26 @@ function matchesUrlPattern(url, path, pattern) {
 
 
 
+function ensureClarityConsentSignal(consentGranted) {
+    if (typeof window.clarity === 'function') {
+        window.clarity('consent', consentGranted);
+    } else {
+        // Initialize the queue if it doesn't exist
+        window.clarity = window.clarity || function() {
+            (window.clarity.q = window.clarity.q || []).push(arguments);
+        };
+        window.clarity('consent', consentGranted);
+    }
+    
+    // Log for debugging
+    console.log('Microsoft Clarity consent signal sent:', consentGranted);
+}
+
+
+
+
+
+
 
 
 function clearCategoryCookies(category) {
@@ -4240,6 +4450,84 @@ function loadCookiesAccordingToConsent(consentData) {
         loadPerformanceCookies();
     }
 }
+
+// Add this function to check if visitor is from EEA/UK/CH
+function isClarityConsentRequired() {
+    if (!config.clarityConfig.autoDetectRegion) return true;
+    
+    // Use your existing locationData
+    if (locationData && locationData.country) {
+        // EEA + UK + Switzerland - regions that require consent for Clarity
+        const clarityRegions = EU_COUNTRIES; // Use the same list as everywhere else
+        return clarityRegions.includes(locationData.country);
+    }
+    
+    // If we can't determine location, require consent to be safe
+    return true;
+}
+
+function initializeClarity(consentGranted) {
+    if (!config.clarityConfig.enabled) return;
+    
+    const consentRequired = isClarityConsentRequired();
+    
+    // If we don't need consent or it's granted, load Clarity
+    if (consentGranted || !consentRequired) {
+        // Only load if not already loaded
+        if (typeof window.clarity === 'undefined') {
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", config.clarityConfig.projectId);
+        }
+        
+        // Send consent signal after a brief delay to ensure Clarity is loaded
+        setTimeout(() => {
+            if (typeof window.clarity === 'function') {
+                window.clarity('consent', consentGranted);
+            }
+        }, 500);
+    } else {
+        // Ensure Clarity doesn't load if consent not given
+        window.clarity = window.clarity || function() {
+            // Store calls in queue but don't execute them
+            (window.clarity.q = window.clarity.q || []).push(arguments);
+        };
+        window.clarity('consent', false);
+    }
+}
+
+
+
+
+// Function to send consent signal to Microsoft Clarity
+function sendClarityConsentSignal(consentGranted) {
+    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
+    
+    try {
+        ensureClarityConsentSignal(consentGranted);
+        
+        // Enhanced logging
+        console.log('Microsoft Clarity consent signal sent:', consentGranted, 
+                   'for region:', locationData?.country || 'unknown');
+        
+        window.dataLayer.push({
+            'event': 'clarity_consent_signal',
+            'clarity_consent': consentGranted,
+            'clarity_region': locationData?.country || 'unknown',
+            'timestamp': new Date().toISOString(),
+            'location_data': locationData
+        });
+    } catch (error) {
+        console.error('Failed to send Clarity consent signal:', error);
+    }
+}
+
+
+
+
+
 
 // Update consent mode for both Google and Microsoft UET
 function updateConsentMode(consentData) {
@@ -4295,6 +4583,15 @@ function updateConsentMode(consentData) {
             },
             'location_data': locationData
         });
+    }
+    
+    // Update Microsoft Clarity consent
+    if (config.clarityConfig.enabled) {
+        const clarityConsent = consentData.categories.analytics;
+        if (typeof window.clarity === 'function') {
+            window.clarity('consent', clarityConsent);
+            sendClarityConsentSignal(clarityConsent); // Add this line
+        }
     }
     
     // Push general consent update to dataLayer with GCS signal
@@ -4369,10 +4666,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     } catch (e) {
         console.error('Failed to load location data:', e);
     }
+
+      // Check existing consent for Clarity compliance
+    checkExistingClarityConsent();
+
+  
     // Store query parameters on page load
     storeQueryParams();
    
 
+    // Check existing consent on page load and apply to Clarity
+    const existingConsent = getClarityConsentState();
+    if (existingConsent !== null) {
+        ensureClarityConsentSignal(existingConsent);
+    }
+
+
+
+
+
+
+
+  
  // Check if domain is allowed
     if (!isDomainAllowed()) {
         console.log('Cookie consent banner not shown - domain not allowed');
@@ -4445,6 +4760,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
+
+
+// Add this function to check consent on each page load
+function checkExistingClarityConsent() {
+    const consentCookie = getCookie('cookie_consent');
+    if (!consentCookie) return null;
+    
+    try {
+        const consentData = JSON.parse(consentCookie);
+        // Update Clarity with existing consent state
+        ensureClarityConsentSignal(consentData.categories.analytics);
+        return consentData.categories.analytics;
+    } catch (e) {
+        return null;
+    }
+}
+
+
 // Export functions for global access if needed
 if (typeof window !== 'undefined') {
     window.cookieConsent = {
@@ -4459,6 +4792,3 @@ if (typeof window !== 'undefined') {
         config: config
     };
 }
-
-
-
