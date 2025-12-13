@@ -1,69 +1,17 @@
-<!-- BLOCKING SCRIPT - ADD THIS FIRST -->
-<script>
-/* UNIVERSAL CMP BLOCKER */
-(function () {
-  'use strict';
-  var CONSENT = { analytics: false, ads: false };
-  var TRACKERS = {
-    analytics: ['google-analytics.com', 'googletagmanager.com', 'gtag/js', 'hotjar.com', 'clarity.ms'],
-    ads: ['doubleclick.net', 'googleads', 'googlesyndication', 'facebook.net', 'connect.facebook.net']
-  };
-  function isTrackingScript(src) {
-    return Object.values(TRACKERS).flat().some(function (d) { return src.includes(d); });
-  }
-  function shouldBlock(src) {
-    if (!src) return false;
-    if (!CONSENT.analytics && TRACKERS.analytics.some(d => src.includes(d))) return true;
-    if (!CONSENT.ads && TRACKERS.ads.some(d => src.includes(d))) return true;
-    return false;
-  }
-  document.querySelectorAll('script[src]').forEach(function (s) {
-    if (isTrackingScript(s.src) && shouldBlock(s.src)) {
-      s.type = 'text/plain';
-      s.dataset.cmpBlocked = 'true';
-      s.dataset.src = s.src;
-      s.removeAttribute('src');
-    }
-  });
-  var nativeCreate = document.createElement;
-  document.createElement = function (tag) {
-    var el = nativeCreate.call(document, tag);
-    if (tag === 'script') {
-      Object.defineProperty(el, 'src', {
-        set: function (src) {
-          if (isTrackingScript(src) && shouldBlock(src)) {
-            el.type = 'text/plain';
-            el.dataset.cmpBlocked = 'true';
-            el.dataset.src = src;
-          } else {
-            el.setAttribute('src', src);
-          }
-        }
-      });
-    }
-    return el;
-  };
-  window.CMPBlocker = {
-    applyConsent: function (c) {
-      CONSENT.analytics = !!c.analytics;
-      CONSENT.ads = !!c.ads;
-      document.querySelectorAll('script[data-cmp-blocked]').forEach(function (s) {
-        var src = s.dataset.src;
-        if (!shouldBlock(src)) {
-          var ns = document.createElement('script');
-          ns.src = src;
-          document.head.appendChild(ns);
-          s.remove();
-        }
-      });
-      console.log('[CMP] Consent applied:', CONSENT);
-    }
-  };
-})();
-</script>
-<!-- END OF BLOCKING SCRIPT -->
+
+/**
+ * Microsoft Clarity Configuration
+ * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
+ * for visitors from EEA, UK, and Switzerland. This configuration ensures compliance.
+ */
 
 
+/**
+you can change the cookie category description text by this class. like you can change the essential cookies description text size.
+  .broadcookiedes {
+      font-size: 15px;
+    } 
+ */
 
 const EU_COUNTRIES = [
   "AL", // Albania
@@ -489,16 +437,7 @@ geoConfig: {
 };
 
 // ============== IMPLEMENTATION SECTION ============== //
-
-// NEW FUNCTION: Tell blocker about current consent
-function updateBlockerConsent(analyticsEnabled, adsEnabled) {
-    if (window.CMPBlocker) {
-        window.CMPBlocker.applyConsent({
-            analytics: analyticsEnabled,
-            ads: adsEnabled
-        });
-    }
-}
+// ============== IMPLEMENTATION SECTION ============== //
 // Initialize dataLayer for Google Tag Manager
 window.dataLayer = window.dataLayer || [];
 
@@ -4188,9 +4127,6 @@ function hideFloatingButton() {
 // Cookie consent functions
 function acceptAllCookies() {
 
-     // ADD THIS LINE: Update blocker
-    updateBlockerConsent(true, true);
-
      // Add this line to initialize Clarity
     initializeClarity(true);
   sendClarityConsentSignal(true); // Add this line
@@ -4240,11 +4176,7 @@ function acceptAllCookies() {
 }
 
 function rejectAllCookies() {
-   
-  // ADD THIS LINE: Update blocker
-    updateBlockerConsent(false, false);
 
-   
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
     sendClarityConsentSignal(false); // Add this line
@@ -4292,17 +4224,10 @@ function rejectAllCookies() {
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
-    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
-
-
-    // ADD THIS LINE: Update blocker
-    updateBlockerConsent(analyticsChecked, advertisingChecked);
-
-   
      // Initialize or stop Clarity based on consent
     initializeClarity(analyticsChecked);
     sendClarityConsentSignal(analyticsChecked); // Add this line
-   
+    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -4518,15 +4443,7 @@ function clearCategoryCookies(category) {
 }
 
 function loadCookiesAccordingToConsent(consentData) {
-    // ADD THIS: Tell blocker about consent
-    if (window.CMPBlocker && consentData) {
-        window.CMPBlocker.applyConsent({
-            analytics: consentData.categories.analytics,
-            ads: consentData.categories.advertising
-        });
-    }
-    
-    if (consentData.categories.advertising) {
+   if (consentData.categories.advertising) {
         loadAdvertisingCookies();
     }
     
@@ -4534,8 +4451,6 @@ function loadCookiesAccordingToConsent(consentData) {
         loadPerformanceCookies();
     }
 }
-
-
 
 // Add this function to check if visitor is from EEA/UK/CH
 function isClarityConsentRequired() {
@@ -4736,27 +4651,6 @@ function loadPerformanceCookies() {
 
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
-
-
- // Initialize blocker on page load
-    if (window.CMPBlocker) {
-        const consentCookie = getCookie('cookie_consent');
-        if (consentCookie) {
-            try {
-                const consentData = JSON.parse(consentCookie);
-                window.CMPBlocker.applyConsent({
-                    analytics: consentData.categories.analytics,
-                    ads: consentData.categories.advertising
-                });
-            } catch (e) {}
-        } else {
-            window.CMPBlocker.applyConsent({ analytics: false, ads: false });
-        }
-    }
-    
-
-
-   
     // Ensure location data is loaded first
     try {
         if (!sessionStorage.getItem('locationData')) {
@@ -4899,6 +4793,3 @@ if (typeof window !== 'undefined') {
         config: config
     };
 }
-
-<!-- ADD THIS CLOSING SCRIPT TAG -->
-
