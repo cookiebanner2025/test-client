@@ -1,53 +1,23 @@
-<!-- ===================================================== -->
-<!-- COOKIE BLOCKING SYSTEM - ADD THIS AT THE VERY TOP -->
-<!-- ===================================================== -->
 <script>
+/* ==========================================================
+   UNIVERSAL CMP BLOCKER – SAFE CORE
+   (Does NOT block banner UI)
+========================================================== */
 (function () {
   'use strict';
 
-  /* =========================================================
-     CONSENT STATE (single source of truth)
-  ========================================================= */
-  const CONSENT = {
-    analytics: false,  // Will be updated based on user choice
-    ads: false         // Will be updated based on user choice
+  /* ===================== STATE ===================== */
+  var CONSENT = {
+    analytics: false,
+    ads: false
   };
 
-  /* =========================================================
-     INITIALIZATION FLAG - CRITICAL FIX
-  ========================================================= */
-  let isInitialized = false;
-  let shouldBlockInitially = false; // Don't block until user decides
-
-  /* =========================================================
-     CATEGORY RULE ENGINE (YOU CONTROL THIS)
-  ========================================================= */
-  const RULES = {
-    essential: [
-      /^PHPSESSID$/,
-      /^cf_/,
-      /^__Host-/
-    ],
-    analytics: [
-      /^_ga/,
-      /^_gid/,
-      /^_hj/,
-      /^clarity/,
-      /^mp_/
-    ],
-    ads: [
-      /^_gcl/,
-      /^_fbp/,
-      /^IDE$/,
-      /^ttclid/,
-      /^ads/
-    ]
-  };
-
-  const SCRIPT_MATCH = {
+  /* ===================== TRACKING DOMAINS ===================== */
+  var TRACKERS = {
     analytics: [
       'google-analytics.com',
       'googletagmanager.com',
+      'gtag/js',
       'hotjar.com',
       'clarity.ms',
       'mixpanel',
@@ -56,6 +26,7 @@
     ads: [
       'doubleclick.net',
       'googleads',
+      'googlesyndication',
       'facebook.net',
       'connect.facebook.net',
       'tiktok',
@@ -64,202 +35,107 @@
     ]
   };
 
-  /* =========================================================
-     DELAYED COOKIE BLOCKING - ONLY AFTER CONSENT
-  ========================================================= */
-  function initializeCookieBlocking() {
-    if (isInitialized) return;
-    
-    const nativeCookie = Object.getOwnPropertyDescriptor(
-      Document.prototype,
-      'cookie'
-    );
-
-    if (nativeCookie && !Object.getOwnPropertyDescriptor(document, 'cookie')) {
-      Object.defineProperty(document, 'cookie', {
-        configurable: true,
-        get() {
-          return nativeCookie.get.call(document);
-        },
-        set(value) {
-          const name = value.split('=')[0];
-          
-          if (isCookieAllowed(name)) {
-            nativeCookie.set.call(document, value);
-          } else {
-            console.debug('[CookieBlocker] Blocked cookie:', name);
-          }
-        }
-      });
-    }
-    
-    isInitialized = true;
+  /* ===================== SAFE SCRIPT FILTER ===================== */
+  function isTrackingScript(src) {
+    return Object.values(TRACKERS)
+      .flat()
+      .some(function (d) { return src.includes(d); });
   }
 
-  function isCookieAllowed(name) {
-    if (!shouldBlockInitially) return true; // CRITICAL: Allow all until user decides
-    
-    if (RULES.essential.some(r => r.test(name))) return true;
-    if (CONSENT.analytics && RULES.analytics.some(r => r.test(name))) return true;
-    if (CONSENT.ads && RULES.ads.some(r => r.test(name))) return true;
-    return false;
-  }
-
-  /* =========================================================
-     SCRIPT BLOCKING (STATIC + DYNAMIC) - DELAYED
-  ========================================================= */
-  function shouldBlockScript(src) {
-    if (!src || !shouldBlockInitially) return false; // CRITICAL: Don't block initially
+  function shouldBlock(src) {
+    if (!src) return false;
 
     if (!CONSENT.analytics &&
-        SCRIPT_MATCH.analytics.some(d => src.includes(d))) {
-      return true;
-    }
+        TRACKERS.analytics.some(d => src.includes(d))) return true;
 
     if (!CONSENT.ads &&
-        SCRIPT_MATCH.ads.some(d => src.includes(d))) {
-      return true;
-    }
+        TRACKERS.ads.some(d => src.includes(d))) return true;
 
     return false;
   }
 
-  function initializeScriptBlocking() {
-    if (!shouldBlockInitially) return; // Only block if user has made a choice
-    
-    // Existing scripts
-    document.querySelectorAll('script[src]').forEach(s => {
-      if (shouldBlockScript(s.src)) {
-        s.type = 'text/plain';
-        s.dataset.blocked = 'true';
-        s.dataset.src = s.src;
-        s.removeAttribute('src');
-      }
-    });
+  /* ===================== BLOCK EXISTING SCRIPTS ===================== */
+  document.querySelectorAll('script[src]').forEach(function (s) {
+    if (isTrackingScript(s.src) && shouldBlock(s.src)) {
+      s.type = 'text/plain';
+      s.dataset.cmpBlocked = 'true';
+      s.dataset.src = s.src;
+      s.removeAttribute('src');
+    }
+  });
 
-    // Dynamic scripts
-    const nativeCreate = document.createElement;
-    document.createElement = function (tag) {
-      const el = nativeCreate.call(document, tag);
-      if (tag === 'script') {
-        Object.defineProperty(el, 'src', {
-          set(src) {
-            if (shouldBlockScript(src)) {
-              el.type = 'text/plain';
-              el.dataset.blocked = 'true';
-              el.dataset.src = src;
-            } else {
-              el.setAttribute('src', src);
-            }
-          }
-        });
-      }
-      return el;
-    };
-  }
+  /* ===================== BLOCK DYNAMIC SCRIPTS ===================== */
+  var nativeCreate = document.createElement;
+  document.createElement = function (tag) {
+    var el = nativeCreate.call(document, tag);
 
-  /* =========================================================
-     IFRAME BLOCKING - DELAYED
-  ========================================================= */
-  function initializeIframeBlocking() {
-    if (!shouldBlockInitially || CONSENT.ads) return;
-    
-    document.querySelectorAll('iframe').forEach(f => {
-      if (!CONSENT.ads) {
-        f.dataset.src = f.src;
-        f.src = '';
-      }
-    });
-  }
-
-  function restoreIframes() {
-    document.querySelectorAll('iframe[data-src]').forEach(f => {
-      if (CONSENT.ads) {
-        f.src = f.dataset.src;
-      }
-    });
-  }
-
-  /* =========================================================
-     COOKIE CLEANUP (ON CONSENT CHANGE)
-  ========================================================= */
-  function deleteCookie(name) {
-    document.cookie =
-      name + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  }
-
-  function cleanupCookies() {
-    if (!shouldBlockInitially) return; // Only clean up if blocking is active
-    
-    document.cookie.split(';').forEach(c => {
-      const name = c.trim().split('=')[0];
-
-      if (!CONSENT.analytics && RULES.analytics.some(r => r.test(name))) {
-        deleteCookie(name);
-      }
-
-      if (!CONSENT.ads && RULES.ads.some(r => r.test(name))) {
-        deleteCookie(name);
-      }
-    });
-  }
-
-  /* =========================================================
-     PUBLIC API (USE FROM YOUR BANNER)
-  ========================================================= */
-  window.AdvancedCookieBlocker = {
-    // Initialize blocking ONLY when user makes a choice
-    initialize() {
-      shouldBlockInitially = true;
-      initializeCookieBlocking();
-      initializeScriptBlocking();
-      initializeIframeBlocking();
-      console.log('[CMP] Cookie blocking initialized');
-    },
-    
-    applyConsent(consent) {
-      // First time applying consent? Initialize blocking
-      if (!shouldBlockInitially) {
-        this.initialize();
-      }
-      
-      CONSENT.analytics = !!consent.analytics;
-      CONSENT.ads = !!consent.ads;
-
-      cleanupCookies();
-
-      if (CONSENT.ads) restoreIframes();
-
-      console.log('[CMP] Consent applied:', CONSENT);
-      
-      // Unblock scripts if consent is granted
-      if (CONSENT.analytics) {
-        this.unblockScripts('analytics');
-      }
-      if (CONSENT.ads) {
-        this.unblockScripts('ads');
-      }
-    },
-    
-    unblockScripts(category) {
-      document.querySelectorAll(`script[data-blocked="true"]`).forEach(s => {
-        const src = s.dataset.src;
-        if (src) {
-          const shouldUnblock = category === 'analytics' 
-            ? SCRIPT_MATCH.analytics.some(d => src.includes(d))
-            : SCRIPT_MATCH.ads.some(d => src.includes(d));
-          
-          if (shouldUnblock) {
-            s.type = 'text/javascript';
-            s.src = src;
-            s.removeAttribute('data-blocked');
+    if (tag === 'script') {
+      Object.defineProperty(el, 'src', {
+        set: function (src) {
+          if (isTrackingScript(src) && shouldBlock(src)) {
+            el.type = 'text/plain';
+            el.dataset.cmpBlocked = 'true';
+            el.dataset.src = src;
+          } else {
+            el.setAttribute('src', src);
           }
         }
       });
     }
+
+    return el;
   };
+
+  /* ===================== COOKIE HARD BLOCK ===================== */
+  var nativeCookie = Object.getOwnPropertyDescriptor(
+    Document.prototype, 'cookie'
+  );
+
+  Object.defineProperty(document, 'cookie', {
+    configurable: true,
+    get: function () {
+      return nativeCookie.get.call(document);
+    },
+    set: function (value) {
+      var name = value.split('=')[0];
+
+      if (
+        CONSENT.analytics ||
+        CONSENT.ads ||
+        /^PHPSESSID|^__Host-|^__Secure-/.test(name)
+      ) {
+        nativeCookie.set.call(document, value);
+      }
+    }
+  });
+
+  /* ===================== APPLY CONSENT (PUBLIC API) ===================== */
+  window.CMPBlocker = {
+    applyConsent: function (c) {
+      CONSENT.analytics = !!c.analytics;
+      CONSENT.ads = !!c.ads;
+
+      // Restore blocked scripts if allowed
+      document.querySelectorAll('script[data-cmp-blocked]').forEach(function (s) {
+        var src = s.dataset.src;
+        if (!shouldBlock(src)) {
+          var ns = document.createElement('script');
+          ns.src = src;
+          document.head.appendChild(ns);
+          s.remove();
+        }
+      });
+
+      console.log('[CMP] Consent applied:', CONSENT);
+    }
+  };
+
 })();
-</script>
+
+/* ==========================================================
+   YOUR EXISTING COOKIE BANNER CODE STARTS HERE
+   (Everything you already have below this line)
+========================================================== */
 
 const EU_COUNTRIES = [
   "AL", // Albania
@@ -4374,26 +4250,19 @@ function hideFloatingButton() {
 
 // Cookie consent functions
 function acceptAllCookies() {
+  // ========== ADD THIS BLOCKER CALL ==========
+  // Tell the blocker that analytics AND ads are allowed
+  if (window.CMPBlocker && window.CMPBlocker.applyConsent) {
+    window.CMPBlocker.applyConsent({
+      analytics: true,
+      ads: true
+    });
+  }
+  // ========== END OF NEW CODE ==========
 
      // Add this line to initialize Clarity
     initializeClarity(true);
   sendClarityConsentSignal(true); // Add this line
-
-
-  
-   // ========= ADD THIS CODE BLOCK =========
-    // Apply blocking consent
-     // Initialize blocking if not already done
-    if (window.AdvancedCookieBlocker) {
-        window.AdvancedCookieBlocker.applyConsent({
-            analytics: true,
-            ads: true
-        });
-    }
-    // ========= END OF ADDED CODE =========
-
-
-  
     
     const consentData = {
         status: 'accepted',
@@ -4440,26 +4309,19 @@ function acceptAllCookies() {
 }
 
 function rejectAllCookies() {
+  // ========== ADD THIS BLOCKER CALL ==========
+  // Tell the blocker that NEITHER analytics NOR ads are allowed
+  if (window.CMPBlocker && window.CMPBlocker.applyConsent) {
+    window.CMPBlocker.applyConsent({
+      analytics: false,
+      ads: false
+    });
+  }
+  // ========== END OF NEW CODE ==========
 
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
     sendClarityConsentSignal(false); // Add this line
-
-
-
-    // ========= ADD THIS CODE BLOCK =========
-    // Apply blocking consent (all denied)
-    // Initialize blocking if not already done
-    if (window.AdvancedCookieBlocker) {
-        window.AdvancedCookieBlocker.applyConsent({
-            analytics: false,
-            ads: false
-        });
-    }
-    // ========= END OF ADDED CODE =========
-
-
-  
     
     const consentData = {
         status: 'rejected',
@@ -4504,29 +4366,24 @@ function rejectAllCookies() {
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
+   const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
+
+
+    // ========== ADD THIS BLOCKER CALL ==========
+  // Tell the blocker what the user chose
+  if (window.CMPBlocker && window.CMPBlocker.applyConsent) {
+    window.CMPBlocker.applyConsent({
+      analytics: analyticsChecked,
+      ads: advertisingChecked
+    });
+  }
+  // ========== END OF NEW CODE ==========
+  
+
      // Initialize or stop Clarity based on consent
     initializeClarity(analyticsChecked);
     sendClarityConsentSignal(analyticsChecked); // Add this line
-    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
-
-
-
-
-
-  // ========= ADD THIS CODE BLOCK =========
-    // Apply blocking consent based on user choices
-    // Initialize blocking if not already done
-    if (window.AdvancedCookieBlocker) {
-        window.AdvancedCookieBlocker.applyConsent({
-            analytics: false,
-            ads: false
-        });
-    }
-    // ========= END OF ADDED CODE =========
-
-
-
-  
+   
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -4742,15 +4599,7 @@ function clearCategoryCookies(category) {
 }
 
 function loadCookiesAccordingToConsent(consentData) {
-    // Initialize blocking based on stored consent
-    if (window.AdvancedCookieBlocker) {
-        window.AdvancedCookieBlocker.applyConsent({
-            analytics: consentData.categories.analytics,
-            ads: consentData.categories.advertising
-        });
-    }
-    
-    if (consentData.categories.advertising) {
+   if (consentData.categories.advertising) {
         loadAdvertisingCookies();
     }
     
@@ -4758,8 +4607,6 @@ function loadCookiesAccordingToConsent(consentData) {
         loadPerformanceCookies();
     }
 }
-
-
 
 // Add this function to check if visitor is from EEA/UK/CH
 function isClarityConsentRequired() {
@@ -4838,9 +4685,17 @@ function sendClarityConsentSignal(consentGranted) {
 
 
 
-
 // Update consent mode for both Google and Microsoft UET
 function updateConsentMode(consentData) {
+  // ========== ADD THIS BLOCKER CALL ==========
+  // Update the blocker when loading saved preferences
+  if (window.CMPBlocker && window.CMPBlocker.applyConsent) {
+    window.CMPBlocker.applyConsent({
+      analytics: consentData.categories.analytics,
+      ads: consentData.categories.advertising
+    });
+  }
+  // ========== END OF NEW CODE ==========
     const consentStates = {
         'ad_storage': consentData.categories.advertising ? 'granted' : 'denied',
         'analytics_storage': consentData.categories.analytics ? 'granted' : 'denied',
@@ -4977,6 +4832,32 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Failed to load location data:', e);
     }
 
+
+
+
+// ========== ADD THIS ==========
+  // Check if user already gave consent and tell blocker
+  const existingConsent = getCookie('cookie_consent');
+  if (existingConsent) {
+    try {
+      const consentData = JSON.parse(existingConsent);
+      if (window.CMPBlocker && window.CMPBlocker.applyConsent) {
+        window.CMPBlocker.applyConsent({
+          analytics: consentData.categories.analytics,
+          ads: consentData.categories.advertising
+        });
+      }
+    } catch (e) {
+      console.error('Failed to parse existing consent:', e);
+    }
+  }
+  // ========== END OF NEW CODE ==========
+  
+
+
+
+
+  
       // Check existing consent for Clarity compliance
     checkExistingClarityConsent();
 
