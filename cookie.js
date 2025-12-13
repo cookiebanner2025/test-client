@@ -9,9 +9,15 @@
      CONSENT STATE (single source of truth)
   ========================================================= */
   const CONSENT = {
-    analytics: false,
-    ads: false
+    analytics: false,  // Will be updated based on user choice
+    ads: false         // Will be updated based on user choice
   };
+
+  /* =========================================================
+     INITIALIZATION FLAG - CRITICAL FIX
+  ========================================================= */
+  let isInitialized = false;
+  let shouldBlockInitially = false; // Don't block until user decides
 
   /* =========================================================
      CATEGORY RULE ENGINE (YOU CONTROL THIS)
@@ -59,28 +65,40 @@
   };
 
   /* =========================================================
-     HARD COOKIE API OVERRIDE (BLOCK FUTURE COOKIES)
+     DELAYED COOKIE BLOCKING - ONLY AFTER CONSENT
   ========================================================= */
-  const nativeCookie = Object.getOwnPropertyDescriptor(
-    Document.prototype,
-    'cookie'
-  );
+  function initializeCookieBlocking() {
+    if (isInitialized) return;
+    
+    const nativeCookie = Object.getOwnPropertyDescriptor(
+      Document.prototype,
+      'cookie'
+    );
 
-  Object.defineProperty(document, 'cookie', {
-    configurable: true,
-    get() {
-      return nativeCookie.get.call(document);
-    },
-    set(value) {
-      const name = value.split('=')[0];
-
-      if (isCookieAllowed(name)) {
-        nativeCookie.set.call(document, value);
-      }
+    if (nativeCookie && !Object.getOwnPropertyDescriptor(document, 'cookie')) {
+      Object.defineProperty(document, 'cookie', {
+        configurable: true,
+        get() {
+          return nativeCookie.get.call(document);
+        },
+        set(value) {
+          const name = value.split('=')[0];
+          
+          if (isCookieAllowed(name)) {
+            nativeCookie.set.call(document, value);
+          } else {
+            console.debug('[CookieBlocker] Blocked cookie:', name);
+          }
+        }
+      });
     }
-  });
+    
+    isInitialized = true;
+  }
 
   function isCookieAllowed(name) {
+    if (!shouldBlockInitially) return true; // CRITICAL: Allow all until user decides
+    
     if (RULES.essential.some(r => r.test(name))) return true;
     if (CONSENT.analytics && RULES.analytics.some(r => r.test(name))) return true;
     if (CONSENT.ads && RULES.ads.some(r => r.test(name))) return true;
@@ -88,10 +106,10 @@
   }
 
   /* =========================================================
-     SCRIPT BLOCKING (STATIC + DYNAMIC)
+     SCRIPT BLOCKING (STATIC + DYNAMIC) - DELAYED
   ========================================================= */
   function shouldBlockScript(src) {
-    if (!src) return false;
+    if (!src || !shouldBlockInitially) return false; // CRITICAL: Don't block initially
 
     if (!CONSENT.analytics &&
         SCRIPT_MATCH.analytics.some(d => src.includes(d))) {
@@ -106,49 +124,59 @@
     return false;
   }
 
-  // Existing scripts
-  document.querySelectorAll('script[src]').forEach(s => {
-    if (shouldBlockScript(s.src)) {
-      s.type = 'text/plain';
-      s.dataset.blocked = 'true';
-      s.dataset.src = s.src;
-      s.removeAttribute('src');
-    }
-  });
+  function initializeScriptBlocking() {
+    if (!shouldBlockInitially) return; // Only block if user has made a choice
+    
+    // Existing scripts
+    document.querySelectorAll('script[src]').forEach(s => {
+      if (shouldBlockScript(s.src)) {
+        s.type = 'text/plain';
+        s.dataset.blocked = 'true';
+        s.dataset.src = s.src;
+        s.removeAttribute('src');
+      }
+    });
 
-  // Dynamic scripts
-  const nativeCreate = document.createElement;
-  document.createElement = function (tag) {
-    const el = nativeCreate.call(document, tag);
-    if (tag === 'script') {
-      Object.defineProperty(el, 'src', {
-        set(src) {
-          if (shouldBlockScript(src)) {
-            el.type = 'text/plain';
-            el.dataset.blocked = 'true';
-            el.dataset.src = src;
-          } else {
-            el.setAttribute('src', src);
+    // Dynamic scripts
+    const nativeCreate = document.createElement;
+    document.createElement = function (tag) {
+      const el = nativeCreate.call(document, tag);
+      if (tag === 'script') {
+        Object.defineProperty(el, 'src', {
+          set(src) {
+            if (shouldBlockScript(src)) {
+              el.type = 'text/plain';
+              el.dataset.blocked = 'true';
+              el.dataset.src = src;
+            } else {
+              el.setAttribute('src', src);
+            }
           }
-        }
-      });
-    }
-    return el;
-  };
+        });
+      }
+      return el;
+    };
+  }
 
   /* =========================================================
-     IFRAME BLOCKING (YOUTUBE, MAPS, ETC.)
+     IFRAME BLOCKING - DELAYED
   ========================================================= */
-  document.querySelectorAll('iframe').forEach(f => {
-    if (!CONSENT.ads) {
-      f.dataset.src = f.src;
-      f.src = '';
-    }
-  });
+  function initializeIframeBlocking() {
+    if (!shouldBlockInitially || CONSENT.ads) return;
+    
+    document.querySelectorAll('iframe').forEach(f => {
+      if (!CONSENT.ads) {
+        f.dataset.src = f.src;
+        f.src = '';
+      }
+    });
+  }
 
   function restoreIframes() {
     document.querySelectorAll('iframe[data-src]').forEach(f => {
-      f.src = f.dataset.src;
+      if (CONSENT.ads) {
+        f.src = f.dataset.src;
+      }
     });
   }
 
@@ -161,6 +189,8 @@
   }
 
   function cleanupCookies() {
+    if (!shouldBlockInitially) return; // Only clean up if blocking is active
+    
     document.cookie.split(';').forEach(c => {
       const name = c.trim().split('=')[0];
 
@@ -178,7 +208,21 @@
      PUBLIC API (USE FROM YOUR BANNER)
   ========================================================= */
   window.AdvancedCookieBlocker = {
+    // Initialize blocking ONLY when user makes a choice
+    initialize() {
+      shouldBlockInitially = true;
+      initializeCookieBlocking();
+      initializeScriptBlocking();
+      initializeIframeBlocking();
+      console.log('[CMP] Cookie blocking initialized');
+    },
+    
     applyConsent(consent) {
+      // First time applying consent? Initialize blocking
+      if (!shouldBlockInitially) {
+        this.initialize();
+      }
+      
       CONSENT.analytics = !!consent.analytics;
       CONSENT.ads = !!consent.ads;
 
@@ -190,14 +234,13 @@
       
       // Unblock scripts if consent is granted
       if (CONSENT.analytics) {
-        unblockScripts('analytics');
+        this.unblockScripts('analytics');
       }
       if (CONSENT.ads) {
-        unblockScripts('ads');
+        this.unblockScripts('ads');
       }
     },
     
-    // Add this helper function to unblock scripts
     unblockScripts(category) {
       document.querySelectorAll(`script[data-blocked="true"]`).forEach(s => {
         const src = s.dataset.src;
@@ -4340,6 +4383,7 @@ function acceptAllCookies() {
   
    // ========= ADD THIS CODE BLOCK =========
     // Apply blocking consent
+     // Initialize blocking if not already done
     if (window.AdvancedCookieBlocker) {
         window.AdvancedCookieBlocker.applyConsent({
             analytics: true,
@@ -4405,6 +4449,7 @@ function rejectAllCookies() {
 
     // ========= ADD THIS CODE BLOCK =========
     // Apply blocking consent (all denied)
+    // Initialize blocking if not already done
     if (window.AdvancedCookieBlocker) {
         window.AdvancedCookieBlocker.applyConsent({
             analytics: false,
@@ -4470,10 +4515,11 @@ function saveCustomSettings() {
 
   // ========= ADD THIS CODE BLOCK =========
     // Apply blocking consent based on user choices
+    // Initialize blocking if not already done
     if (window.AdvancedCookieBlocker) {
         window.AdvancedCookieBlocker.applyConsent({
-            analytics: analyticsChecked,
-            ads: advertisingChecked
+            analytics: false,
+            ads: false
         });
     }
     // ========= END OF ADDED CODE =========
