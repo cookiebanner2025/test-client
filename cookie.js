@@ -1,15 +1,21 @@
+<!-- ===================================================== -->
+<!-- COOKIE BLOCKING SYSTEM - ADD THIS AT THE VERY TOP -->
+<!-- ===================================================== -->
 <script>
-// COOKIE BLOCKING SYSTEM - ADDED AT THE BEGINNING
 (function () {
   'use strict';
 
-  // INITIAL CONSENT STATE (everything blocked until user chooses)
+  /* =========================================================
+     CONSENT STATE (single source of truth)
+  ========================================================= */
   const CONSENT = {
     analytics: false,
     ads: false
   };
 
-  // WHAT COOKIES TO BLOCK
+  /* =========================================================
+     CATEGORY RULE ENGINE (YOU CONTROL THIS)
+  ========================================================= */
   const RULES = {
     essential: [
       /^PHPSESSID$/,
@@ -32,7 +38,6 @@
     ]
   };
 
-  // WHAT SCRIPTS TO BLOCK
   const SCRIPT_MATCH = {
     analytics: [
       'google-analytics.com',
@@ -53,8 +58,14 @@
     ]
   };
 
-  // BLOCK COOKIES FROM BEING SET
-  const nativeCookie = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+  /* =========================================================
+     HARD COOKIE API OVERRIDE (BLOCK FUTURE COOKIES)
+  ========================================================= */
+  const nativeCookie = Object.getOwnPropertyDescriptor(
+    Document.prototype,
+    'cookie'
+  );
+
   Object.defineProperty(document, 'cookie', {
     configurable: true,
     get() {
@@ -62,6 +73,7 @@
     },
     set(value) {
       const name = value.split('=')[0];
+
       if (isCookieAllowed(name)) {
         nativeCookie.set.call(document, value);
       }
@@ -75,15 +87,26 @@
     return false;
   }
 
-  // BLOCK SCRIPTS
+  /* =========================================================
+     SCRIPT BLOCKING (STATIC + DYNAMIC)
+  ========================================================= */
   function shouldBlockScript(src) {
     if (!src) return false;
-    if (!CONSENT.analytics && SCRIPT_MATCH.analytics.some(d => src.includes(d))) return true;
-    if (!CONSENT.ads && SCRIPT_MATCH.ads.some(d => src.includes(d))) return true;
+
+    if (!CONSENT.analytics &&
+        SCRIPT_MATCH.analytics.some(d => src.includes(d))) {
+      return true;
+    }
+
+    if (!CONSENT.ads &&
+        SCRIPT_MATCH.ads.some(d => src.includes(d))) {
+      return true;
+    }
+
     return false;
   }
 
-  // Block existing scripts
+  // Existing scripts
   document.querySelectorAll('script[src]').forEach(s => {
     if (shouldBlockScript(s.src)) {
       s.type = 'text/plain';
@@ -93,7 +116,7 @@
     }
   });
 
-  // Block new scripts
+  // Dynamic scripts
   const nativeCreate = document.createElement;
   document.createElement = function (tag) {
     const el = nativeCreate.call(document, tag);
@@ -113,7 +136,9 @@
     return el;
   };
 
-  // Block iframes
+  /* =========================================================
+     IFRAME BLOCKING (YOUTUBE, MAPS, ETC.)
+  ========================================================= */
   document.querySelectorAll('iframe').forEach(f => {
     if (!CONSENT.ads) {
       f.dataset.src = f.src;
@@ -127,45 +152,71 @@
     });
   }
 
-  // DELETE EXISTING COOKIES
+  /* =========================================================
+     COOKIE CLEANUP (ON CONSENT CHANGE)
+  ========================================================= */
   function deleteCookie(name) {
-    document.cookie = name + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie =
+      name + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
 
   function cleanupCookies() {
     document.cookie.split(';').forEach(c => {
       const name = c.trim().split('=')[0];
-      if (!CONSENT.analytics && RULES.analytics.some(r => r.test(name))) deleteCookie(name);
-      if (!CONSENT.ads && RULES.ads.some(r => r.test(name))) deleteCookie(name);
+
+      if (!CONSENT.analytics && RULES.analytics.some(r => r.test(name))) {
+        deleteCookie(name);
+      }
+
+      if (!CONSENT.ads && RULES.ads.some(r => r.test(name))) {
+        deleteCookie(name);
+      }
     });
   }
 
-  // THIS IS WHAT YOUR BANNER WILL USE
+  /* =========================================================
+     PUBLIC API (USE FROM YOUR BANNER)
+  ========================================================= */
   window.AdvancedCookieBlocker = {
     applyConsent(consent) {
       CONSENT.analytics = !!consent.analytics;
       CONSENT.ads = !!consent.ads;
+
       cleanupCookies();
+
       if (CONSENT.ads) restoreIframes();
-      console.log('[COOKIE BLOCKER] Consent applied:', CONSENT);
+
+      console.log('[CMP] Consent applied:', CONSENT);
+      
+      // Unblock scripts if consent is granted
+      if (CONSENT.analytics) {
+        unblockScripts('analytics');
+      }
+      if (CONSENT.ads) {
+        unblockScripts('ads');
+      }
+    },
+    
+    // Add this helper function to unblock scripts
+    unblockScripts(category) {
+      document.querySelectorAll(`script[data-blocked="true"]`).forEach(s => {
+        const src = s.dataset.src;
+        if (src) {
+          const shouldUnblock = category === 'analytics' 
+            ? SCRIPT_MATCH.analytics.some(d => src.includes(d))
+            : SCRIPT_MATCH.ads.some(d => src.includes(d));
+          
+          if (shouldUnblock) {
+            s.type = 'text/javascript';
+            s.src = src;
+            s.removeAttribute('data-blocked');
+          }
+        }
+      });
     }
   };
 })();
 </script>
-
-/**
- * Microsoft Clarity Configuration
- * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
- * for visitors from EEA, UK, and Switzerland. This configuration ensures compliance.
- */
-
-
-/**
-you can change the cookie category description text by this class. like you can change the essential cookies description text size.
-  .broadcookiedes {
-      font-size: 15px;
-    } 
- */
 
 const EU_COUNTRIES = [
   "AL", // Albania
@@ -4284,6 +4335,21 @@ function acceptAllCookies() {
      // Add this line to initialize Clarity
     initializeClarity(true);
   sendClarityConsentSignal(true); // Add this line
+
+
+  
+   // ========= ADD THIS CODE BLOCK =========
+    // Apply blocking consent
+    if (window.AdvancedCookieBlocker) {
+        window.AdvancedCookieBlocker.applyConsent({
+            analytics: true,
+            ads: true
+        });
+    }
+    // ========= END OF ADDED CODE =========
+
+
+  
     
     const consentData = {
         status: 'accepted',
@@ -4303,13 +4369,6 @@ function acceptAllCookies() {
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
-      // TELL COOKIE BLOCKER TO ALLOW ALL COOKIES
-    if (window.AdvancedCookieBlocker) {
-        window.AdvancedCookieBlocker.applyConsent({
-            analytics: true,   // Allow analytics
-            ads: true          // Allow ads
-        });
-    }
     loadCookiesAccordingToConsent(consentData);
     
     if (config.analytics.enabled) {
@@ -4341,6 +4400,21 @@ function rejectAllCookies() {
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
     sendClarityConsentSignal(false); // Add this line
+
+
+
+    // ========= ADD THIS CODE BLOCK =========
+    // Apply blocking consent (all denied)
+    if (window.AdvancedCookieBlocker) {
+        window.AdvancedCookieBlocker.applyConsent({
+            analytics: false,
+            ads: false
+        });
+    }
+    // ========= END OF ADDED CODE =========
+
+
+  
     
     const consentData = {
         status: 'rejected',
@@ -4357,15 +4431,6 @@ function rejectAllCookies() {
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
-      // TELL COOKIE BLOCKER TO BLOCK ALL COOKIES
-    if (window.AdvancedCookieBlocker) {
-        window.AdvancedCookieBlocker.applyConsent({
-            analytics: false,   // Block analytics
-            ads: false          // Block ads
-        });
-    }
-
-  
     clearNonEssentialCookies();
     
     if (config.analytics.enabled) {
@@ -4398,6 +4463,24 @@ function saveCustomSettings() {
     initializeClarity(analyticsChecked);
     sendClarityConsentSignal(analyticsChecked); // Add this line
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
+
+
+
+
+
+  // ========= ADD THIS CODE BLOCK =========
+    // Apply blocking consent based on user choices
+    if (window.AdvancedCookieBlocker) {
+        window.AdvancedCookieBlocker.applyConsent({
+            analytics: analyticsChecked,
+            ads: advertisingChecked
+        });
+    }
+    // ========= END OF ADDED CODE =========
+
+
+
+  
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -4429,13 +4512,6 @@ function saveCustomSettings() {
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
-      // TELL COOKIE BLOCKER THE CUSTOM SETTINGS
-    if (window.AdvancedCookieBlocker) {
-        window.AdvancedCookieBlocker.applyConsent({
-            analytics: analyticsChecked,    // Use user's choice for analytics
-            ads: advertisingChecked         // Use user's choice for ads
-        });
-    }
     loadCookiesAccordingToConsent(consentData);
     
     if (!consentData.categories.analytics) clearCategoryCookies('analytics');
@@ -4620,20 +4696,22 @@ function clearCategoryCookies(category) {
 }
 
 function loadCookiesAccordingToConsent(consentData) {
-   if (consentData.categories.advertising) {
-        loadAdvertisingCookies();
-    }
-    
-    if (consentData.categories.performance) {
-        loadPerformanceCookies();
-    }
-    
-    // TELL COOKIE BLOCKER ABOUT EXISTING CONSENT WHEN PAGE LOADS
+    // ========= ADD THIS CODE BLOCK =========
+    // Apply blocking based on stored consent
     if (window.AdvancedCookieBlocker) {
         window.AdvancedCookieBlocker.applyConsent({
             analytics: consentData.categories.analytics,
             ads: consentData.categories.advertising
         });
+    }
+    // ========= END OF ADDED CODE =========
+    
+    if (consentData.categories.advertising) {
+        loadAdvertisingCookies();
+    }
+    
+    if (consentData.categories.performance) {
+        loadPerformanceCookies();
     }
 }
 
