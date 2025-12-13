@@ -63,7 +63,7 @@
 </script>
 <!-- END OF BLOCKING SCRIPT -->
 
-   <script>
+
 
 const EU_COUNTRIES = [
   "AL", // Albania
@@ -4901,4 +4901,4 @@ if (typeof window !== 'undefined') {
 }
 
 <!-- ADD THIS CLOSING SCRIPT TAG -->
-</script>
+
