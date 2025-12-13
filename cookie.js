@@ -4742,15 +4742,13 @@ function clearCategoryCookies(category) {
 }
 
 function loadCookiesAccordingToConsent(consentData) {
-    // ========= ADD THIS CODE BLOCK =========
-    // Apply blocking based on stored consent
+    // Initialize blocking based on stored consent
     if (window.AdvancedCookieBlocker) {
         window.AdvancedCookieBlocker.applyConsent({
             analytics: consentData.categories.analytics,
             ads: consentData.categories.advertising
         });
     }
-    // ========= END OF ADDED CODE =========
     
     if (consentData.categories.advertising) {
         loadAdvertisingCookies();
@@ -4760,6 +4758,8 @@ function loadCookiesAccordingToConsent(consentData) {
         loadPerformanceCookies();
     }
 }
+
+
 
 // Add this function to check if visitor is from EEA/UK/CH
 function isClarityConsentRequired() {
