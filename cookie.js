@@ -436,155 +436,6 @@ geoConfig: {
     }
 };
 
-
-<!-- Add the blocking script HERE, before everything else -->
-<script>
-/* ==========================================================
-   UNIVERSAL CMP BLOCKER – SAFE CORE
-   (Does NOT block banner UI)
-========================================================== */
-(function () {
-  'use strict';
-
-  /* ===================== STATE ===================== */
-  var CONSENT = {
-    analytics: false,
-    ads: false
-  };
-
-  /* ===================== TRACKING DOMAINS ===================== */
-  var TRACKERS = {
-    analytics: [
-      'google-analytics.com',
-      'googletagmanager.com',
-      'gtag/js',
-      'hotjar.com',
-      'clarity.ms',
-      'mixpanel',
-      'segment'
-    ],
-    ads: [
-      'doubleclick.net',
-      'googleads',
-      'googlesyndication',
-      'facebook.net',
-      'connect.facebook.net',
-      'tiktok',
-      'snapchat',
-      'bing.com'
-    ]
-  };
-
-  /* ===================== SAFE SCRIPT FILTER ===================== */
-  function isTrackingScript(src) {
-    return Object.values(TRACKERS)
-      .flat()
-      .some(function (d) { return src.includes(d); });
-  }
-
-  function shouldBlock(src) {
-    if (!src) return false;
-
-    if (!CONSENT.analytics &&
-        TRACKERS.analytics.some(d => src.includes(d))) return true;
-
-    if (!CONSENT.ads &&
-        TRACKERS.ads.some(d => src.includes(d))) return true;
-
-    return false;
-  }
-
-  /* ===================== BLOCK EXISTING SCRIPTS ===================== */
-  document.querySelectorAll('script[src]').forEach(function (s) {
-    if (isTrackingScript(s.src) && shouldBlock(s.src)) {
-      s.type = 'text/plain';
-      s.dataset.cmpBlocked = 'true';
-      s.dataset.src = s.src;
-      s.removeAttribute('src');
-    }
-  });
-
-  /* ===================== BLOCK DYNAMIC SCRIPTS ===================== */
-  var nativeCreate = document.createElement;
-  document.createElement = function (tag) {
-    var el = nativeCreate.call(document, tag);
-
-    if (tag === 'script') {
-      Object.defineProperty(el, 'src', {
-        set: function (src) {
-          if (isTrackingScript(src) && shouldBlock(src)) {
-            el.type = 'text/plain';
-            el.dataset.cmpBlocked = 'true';
-            el.dataset.src = src;
-          } else {
-            el.setAttribute('src', src);
-          }
-        }
-      });
-    }
-
-    return el;
-  };
-
-  /* ===================== COOKIE HARD BLOCK ===================== */
-  var nativeCookie = Object.getOwnPropertyDescriptor(
-    Document.prototype, 'cookie'
-  );
-
-  Object.defineProperty(document, 'cookie', {
-    configurable: true,
-    get: function () {
-      return nativeCookie.get.call(document);
-    },
-    set: function (value) {
-      var name = value.split('=')[0];
-
-      if (
-        CONSENT.analytics ||
-        CONSENT.ads ||
-        /^PHPSESSID|^__Host-|^__Secure-/.test(name)
-      ) {
-        nativeCookie.set.call(document, value);
-      }
-    }
-  });
-
-  /* ===================== APPLY CONSENT (PUBLIC API) ===================== */
-  window.CMPBlocker = {
-    applyConsent: function (c) {
-      CONSENT.analytics = !!c.analytics;
-      CONSENT.ads = !!c.ads;
-
-      // Restore blocked scripts if allowed
-      document.querySelectorAll('script[data-cmp-blocked]').forEach(function (s) {
-        var src = s.dataset.src;
-        if (!shouldBlock(src)) {
-          var ns = document.createElement('script');
-          ns.src = src;
-          document.head.appendChild(ns);
-          s.remove();
-        }
-      });
-
-      console.log('[CMP] Consent applied:', CONSENT);
-    }
-  };
-
-})();
-</script>
-
-<!-- THEN CONTINUE WITH YOUR EXISTING CODE -->
-// ============== IMPLEMENTATION SECTION ============== //
-// ============== IMPLEMENTATION SECTION ============== //
-// Initialize dataLayer for Google Tag Manager
-window.dataLayer = window.dataLayer || [];
-
-
-
-
-
-
-
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
 // Initialize dataLayer for Google Tag Manager
@@ -990,6 +841,57 @@ const cookieDatabase = {
     'euconsent-v2': { category: 'functional', duration: '1 year', description: 'IAB TCF consent string' },
     'eupubconsent-v2': { category: 'functional', duration: '1 year', description: 'IAB TCF publisher consent' }
 };
+
+
+
+
+// Add this after line 658 (after the existing cookieDatabase object)
+
+// Cookie blocking patterns - ORGANIZED BY CATEGORY
+const cookieBlockingPatterns = {
+    advertising: [
+        '_gcl', '_gcl_au', 'gclid', 'IDE', 'NID', '_gat_gtag', 'DSID', 'FPLC',
+        'msclkid', '_uetmsdns', 'MUID', '_uetsid', '_uetmsclkid', '_uetmsd',
+        'MUIDB', '_uetvid', '_uetsid_exp',
+        '_fbp', 'fr', 'datr', 'lu', 'xs', 'c_user', 'm_user', 'pl', 'dbln', '_fbc',
+        '_ttp', 'ttclid', 'tt_sessionid',
+        'lidc', 'bcookie', 'li_sugr', 'bscookie',
+        '_pinterest_ct_ua', '_pinterest_sess',
+        'personalization_id', 'guest_id',
+        'sc_at', '_scid'
+    ],
+    analytics: [
+        '_ga', '_gid', '_gat', '_ga_', '_dc_gtm_',
+        '_clck', '_clsk', '_cltk', 'CLID', 'ANONCHK', 'SM',
+        '_hj', '_hjid',
+        'hubspotutk', '__hssc', '__hstc',
+        '_gaexp', '_opt_',
+        '_ym_uid', '_ym_d'
+    ],
+    performance: [
+        '__cf', 'cf_clearance', 'AWSALB', 'AWSALBCORS'
+    ]
+};
+
+// Function to test if cookie matches a pattern
+function matchesCookiePattern(cookieName, patterns) {
+    return patterns.some(pattern => {
+        // Exact match or starts with pattern
+        if (pattern.endsWith('*')) {
+            return cookieName.startsWith(pattern.slice(0, -1));
+        }
+        return cookieName === pattern || cookieName.startsWith(pattern + '_');
+    });
+}
+
+
+
+
+
+
+
+
+
 
 // Language translations (keeping only en and fr as requested)
 const translations = {
@@ -2504,7 +2406,71 @@ function getClarityConsentState() {
     }
 }
 
+// Add this after the getCookie function (around line 2700)
 
+// Automatic cookie blocking function
+function blockNonEssentialCookies(consentData) {
+    console.log('🔍 Starting automatic cookie blocking...');
+    
+    const cookies = document.cookie.split(';');
+    let blockedCount = 0;
+    
+    cookies.forEach(cookie => {
+        const [nameValue] = cookie.trim().split('=');
+        const cookieName = nameValue.trim();
+        
+        if (!cookieName || cookieName === 'cookie_consent') return;
+        
+        let shouldBlock = false;
+        let category = '';
+        
+        // Check advertising cookies
+        if (!consentData.categories.advertising && 
+            matchesCookiePattern(cookieName, cookieBlockingPatterns.advertising)) {
+            shouldBlock = true;
+            category = 'advertising';
+        }
+        // Check analytics cookies
+        else if (!consentData.categories.analytics && 
+                 matchesCookiePattern(cookieName, cookieBlockingPatterns.analytics)) {
+            shouldBlock = true;
+            category = 'analytics';
+        }
+        // Check performance cookies
+        else if (!consentData.categories.performance && 
+                 matchesCookiePattern(cookieName, cookieBlockingPatterns.performance)) {
+            shouldBlock = true;
+            category = 'performance';
+        }
+        
+        // Block the cookie if needed
+        if (shouldBlock) {
+            deleteCookie(cookieName);
+            blockedCount++;
+            console.log(`🚫 Blocked ${category} cookie: ${cookieName}`);
+        }
+    });
+    
+    console.log(`✅ Blocked ${blockedCount} non-essential cookies`);
+    return blockedCount;
+}
+
+// Helper function to delete cookies
+function deleteCookie(name) {
+    const domain = window.location.hostname;
+    const domains = [
+        domain,
+        '.' + domain,
+        window.location.hostname.split('.').slice(-2).join('.'),
+        '.' + window.location.hostname.split('.').slice(-2).join('.')
+    ];
+    
+    // Try multiple domain variations
+    domains.forEach(d => {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${d}`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+    });
+}
 
 
 
@@ -4292,6 +4258,10 @@ function acceptAllCookies() {
         },
         timestamp: new Date().getTime()
     };
+
+   // ADD THIS LINE at the end of the function (after clearNonEssentialCookies):
+    blockNonEssentialCookies(consentData);
+  
     
     // Restore stored query parameters when accepting cookies
     addStoredParamsToURL();
@@ -4342,6 +4312,9 @@ function rejectAllCookies() {
         },
         timestamp: new Date().getTime()
     };
+
+  // ADD THIS LINE at the end of the function (after clearNonEssentialCookies):
+    blockNonEssentialCookies(consentData);
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
@@ -4405,6 +4378,10 @@ function saveCustomSettings() {
         },
         timestamp: new Date().getTime()
     };
+
+
+    // ADD THIS LINE at the end of the function:
+    blockNonEssentialCookies(consentData);
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
@@ -4691,17 +4668,6 @@ function updateConsentMode(consentData) {
         'security_storage': 'granted'
     };
 
-
-  // ============ ADD THIS CODE ============ //
-    // Tell the blocker script about user's choices
-    if (typeof window.CMPBlocker !== 'undefined') {
-        window.CMPBlocker.applyConsent({
-            analytics: consentData.categories.analytics,
-            ads: consentData.categories.advertising
-        });
-    }
-    // ============ END ADDED CODE ============ //
-
     // Determine GCS signal based on consent status and categories
     let gcsSignal = 'G100'; // Default to all denied
     
@@ -4844,23 +4810,30 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 
 
-// ============ ADD THIS CODE ============ //
-// Tell blocker about existing cookie consent
-const consentCookie = getCookie('cookie_consent');
-if (consentCookie) {
-    try {
-        const consentData = JSON.parse(consentCookie);
-        if (typeof window.CMPBlocker !== 'undefined') {
-            window.CMPBlocker.applyConsent({
-                analytics: consentData.categories.analytics,
-                ads: consentData.categories.advertising
-            });
-        }
-    } catch (e) {
-        console.log('Could not parse existing consent for blocker');
-    }
+// Add this with your other functions
+
+function forceBlockThirdPartyCookies() {
+    // Special handling for persistent third-party cookies
+    const toughCookies = [
+        '_ga', '_gid', '_gat', // Google Analytics
+        '_fbp', 'fr', // Facebook
+        '_gcl_au', '_gcl', // Google Ads
+        '_clck', '_clsk' // Microsoft Clarity
+    ];
+    
+    toughCookies.forEach(cookie => {
+        // Try multiple deletion methods
+        deleteCookie(cookie);
+        
+        // Also try with . prefix
+        deleteCookie('.' + cookie);
+        
+        // Try with various paths
+        ['/', '/path/', '/path/to/page'].forEach(path => {
+            document.cookie = `${cookie}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${path}`;
+        });
+    });
 }
-// ============ END ADDED CODE ============ //
 
 
 
