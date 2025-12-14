@@ -436,6 +436,155 @@ geoConfig: {
     }
 };
 
+
+<!-- Add the blocking script HERE, before everything else -->
+<script>
+/* ==========================================================
+   UNIVERSAL CMP BLOCKER – SAFE CORE
+   (Does NOT block banner UI)
+========================================================== */
+(function () {
+  'use strict';
+
+  /* ===================== STATE ===================== */
+  var CONSENT = {
+    analytics: false,
+    ads: false
+  };
+
+  /* ===================== TRACKING DOMAINS ===================== */
+  var TRACKERS = {
+    analytics: [
+      'google-analytics.com',
+      'googletagmanager.com',
+      'gtag/js',
+      'hotjar.com',
+      'clarity.ms',
+      'mixpanel',
+      'segment'
+    ],
+    ads: [
+      'doubleclick.net',
+      'googleads',
+      'googlesyndication',
+      'facebook.net',
+      'connect.facebook.net',
+      'tiktok',
+      'snapchat',
+      'bing.com'
+    ]
+  };
+
+  /* ===================== SAFE SCRIPT FILTER ===================== */
+  function isTrackingScript(src) {
+    return Object.values(TRACKERS)
+      .flat()
+      .some(function (d) { return src.includes(d); });
+  }
+
+  function shouldBlock(src) {
+    if (!src) return false;
+
+    if (!CONSENT.analytics &&
+        TRACKERS.analytics.some(d => src.includes(d))) return true;
+
+    if (!CONSENT.ads &&
+        TRACKERS.ads.some(d => src.includes(d))) return true;
+
+    return false;
+  }
+
+  /* ===================== BLOCK EXISTING SCRIPTS ===================== */
+  document.querySelectorAll('script[src]').forEach(function (s) {
+    if (isTrackingScript(s.src) && shouldBlock(s.src)) {
+      s.type = 'text/plain';
+      s.dataset.cmpBlocked = 'true';
+      s.dataset.src = s.src;
+      s.removeAttribute('src');
+    }
+  });
+
+  /* ===================== BLOCK DYNAMIC SCRIPTS ===================== */
+  var nativeCreate = document.createElement;
+  document.createElement = function (tag) {
+    var el = nativeCreate.call(document, tag);
+
+    if (tag === 'script') {
+      Object.defineProperty(el, 'src', {
+        set: function (src) {
+          if (isTrackingScript(src) && shouldBlock(src)) {
+            el.type = 'text/plain';
+            el.dataset.cmpBlocked = 'true';
+            el.dataset.src = src;
+          } else {
+            el.setAttribute('src', src);
+          }
+        }
+      });
+    }
+
+    return el;
+  };
+
+  /* ===================== COOKIE HARD BLOCK ===================== */
+  var nativeCookie = Object.getOwnPropertyDescriptor(
+    Document.prototype, 'cookie'
+  );
+
+  Object.defineProperty(document, 'cookie', {
+    configurable: true,
+    get: function () {
+      return nativeCookie.get.call(document);
+    },
+    set: function (value) {
+      var name = value.split('=')[0];
+
+      if (
+        CONSENT.analytics ||
+        CONSENT.ads ||
+        /^PHPSESSID|^__Host-|^__Secure-/.test(name)
+      ) {
+        nativeCookie.set.call(document, value);
+      }
+    }
+  });
+
+  /* ===================== APPLY CONSENT (PUBLIC API) ===================== */
+  window.CMPBlocker = {
+    applyConsent: function (c) {
+      CONSENT.analytics = !!c.analytics;
+      CONSENT.ads = !!c.ads;
+
+      // Restore blocked scripts if allowed
+      document.querySelectorAll('script[data-cmp-blocked]').forEach(function (s) {
+        var src = s.dataset.src;
+        if (!shouldBlock(src)) {
+          var ns = document.createElement('script');
+          ns.src = src;
+          document.head.appendChild(ns);
+          s.remove();
+        }
+      });
+
+      console.log('[CMP] Consent applied:', CONSENT);
+    }
+  };
+
+})();
+</script>
+
+<!-- THEN CONTINUE WITH YOUR EXISTING CODE -->
+// ============== IMPLEMENTATION SECTION ============== //
+// ============== IMPLEMENTATION SECTION ============== //
+// Initialize dataLayer for Google Tag Manager
+window.dataLayer = window.dataLayer || [];
+
+
+
+
+
+
+
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
 // Initialize dataLayer for Google Tag Manager
@@ -4542,6 +4691,17 @@ function updateConsentMode(consentData) {
         'security_storage': 'granted'
     };
 
+
+  // ============ ADD THIS CODE ============ //
+    // Tell the blocker script about user's choices
+    if (typeof window.CMPBlocker !== 'undefined') {
+        window.CMPBlocker.applyConsent({
+            analytics: consentData.categories.analytics,
+            ads: consentData.categories.advertising
+        });
+    }
+    // ============ END ADDED CODE ============ //
+
     // Determine GCS signal based on consent status and categories
     let gcsSignal = 'G100'; // Default to all denied
     
@@ -4684,7 +4844,23 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 
 
-
+// ============ ADD THIS CODE ============ //
+// Tell blocker about existing cookie consent
+const consentCookie = getCookie('cookie_consent');
+if (consentCookie) {
+    try {
+        const consentData = JSON.parse(consentCookie);
+        if (typeof window.CMPBlocker !== 'undefined') {
+            window.CMPBlocker.applyConsent({
+                analytics: consentData.categories.analytics,
+                ads: consentData.categories.advertising
+            });
+        }
+    } catch (e) {
+        console.log('Could not parse existing consent for blocker');
+    }
+}
+// ============ END ADDED CODE ============ //
 
 
 
