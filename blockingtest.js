@@ -440,146 +440,64 @@ geoConfig: {
 
 
 
-
-
-
-
 /* =========================================================
-   ADVANCED COOKIE BLOCKER WITH CATEGORIES
+   SUPER SIMPLE COOKIE BLOCKER THAT WORKS
    ========================================================= */
 
-// Wait for page to load
-window.addEventListener('DOMContentLoaded', function() {
-    console.log("🍪 Advanced cookie blocker started");
-    
-    // Get consent data
-    function getConsentData() {
-        const consentCookie = document.cookie.split('; ').find(row => row.startsWith('cookie_consent='));
-        if (!consentCookie) return null;
-        
-        try {
-            const cookieValue = consentCookie.split('=')[1];
-            return JSON.parse(decodeURIComponent(cookieValue));
-        } catch (e) {
-            return null;
-        }
-    }
-    
-    const consentData = getConsentData();
-    
-    // If NO consent yet, block everything
-    if (!consentData) {
-        console.log("⛔ No consent yet - blocking ALL cookies");
-        setupCookieBlocker('block_all');
-    } 
-    // If rejected all, block everything
-    else if (consentData.status === 'rejected') {
-        console.log("⛔ Consent rejected - blocking non-essential cookies");
-        setupCookieBlocker('block_non_essential');
-    }
-    // If custom consent, block based on categories
-    else if (consentData.status === 'custom') {
-        console.log("⚙️ Custom consent - blocking based on selections");
-        setupCookieBlocker('custom', consentData.categories);
-    }
-    // If accepted all, allow everything
-    else {
-        console.log("✅ All cookies accepted - allowing everything");
-    }
-    
-    function setupCookieBlocker(mode, categories) {
-        // Save original cookie function
-        const originalCookieSetter = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie').set;
-        
-        // Block cookie setting
-        Object.defineProperty(document, 'cookie', {
-            get: Object.getOwnPropertyDescriptor(Document.prototype, 'cookie').get,
-            set: function(value) {
-                const cookieName = String(value).split('=')[0].trim();
-                
-                // ALWAYS allow these (essential)
-                const alwaysAllowed = [
-                    'cookie_consent',
-                    'PHPSESSID',
-                    'session',
-                    'wordpress_',
-                    '__cfduid',
-                    'AWSALB',
-                    'JSESSIONID',
-                    'ARRAffinity'
-                ];
-                
-                // Check if always allowed
-                for (let allowedCookie of alwaysAllowed) {
-                    if (cookieName === allowedCookie || 
-                        (allowedCookie.endsWith('_') && cookieName.startsWith(allowedCookie))) {
-                        console.log("✅ Essential cookie allowed:", cookieName);
-                        return originalCookieSetter.call(this, value);
-                    }
-                }
-                
-                // Check consent mode
-                if (mode === 'block_all') {
-                    console.log("🚫 Blocking all cookies (no consent):", cookieName);
-                    return false;
-                }
-                
-                if (mode === 'block_non_essential') {
-                    // Block everything except essentials (already checked above)
-                    console.log("🚫 Blocking non-essential cookie:", cookieName);
-                    return false;
-                }
-                
-                if (mode === 'custom' && categories) {
-                    // Check cookie categories
-                    const cookieCategory = getCookieCategory(cookieName);
-                    
-                    if (cookieCategory && categories[cookieCategory] === true) {
-                        console.log("✅ Allowing", cookieCategory, "cookie:", cookieName);
-                        return originalCookieSetter.call(this, value);
-                    } else {
-                        console.log("🚫 Blocking", cookieCategory, "cookie (not consented):", cookieName);
-                        return false;
-                    }
-                }
-                
-                // Default: allow if we got here
-                return originalCookieSetter.call(this, value);
-            },
-            configurable: true
-        });
-    }
-    
-    // Simple category detection
-    function getCookieCategory(cookieName) {
-        // Analytics cookies
-        if (cookieName.startsWith('_ga') || cookieName.startsWith('_gid') || 
-            cookieName.startsWith('_cl') || cookieName.includes('analytics')) {
-            return 'analytics';
-        }
-        
-        // Advertising cookies
-        if (cookieName.startsWith('_fb') || cookieName.includes('fb_') || 
-            cookieName.startsWith('msclkid') || cookieName.includes('ads') ||
-            cookieName.includes('marketing') || cookieName.includes('ad_')) {
-            return 'advertising';
-        }
-        
-        // Performance cookies
-        if (cookieName.includes('perf_') || cookieName.includes('optimize') ||
-            cookieName.includes('cache_')) {
-            return 'performance';
-        }
-        
-        // Functional cookies
-        if (cookieName.includes('wp_') || cookieName.includes('wordpress') ||
-            cookieName.includes('user_') || cookieName.includes('preference')) {
-            return 'functional';
-        }
-        
-        return 'uncategorized';
-    }
+// Check if we already have consent
+var consentCookie = document.cookie.split('; ').find(function(row) {
+    return row.startsWith('cookie_consent=');
 });
+
+// If NO consent cookie exists, BLOCK EVERYTHING
+if (!consentCookie) {
+    console.log("🚫 NO CONSENT - BLOCKING ALL NON-ESSENTIAL COOKIES");
+    
+    // Stop ALL cookies from being set
+    Object.defineProperty(document, 'cookie', {
+        get: function() { return ''; },
+        set: function(value) {
+            var cookieName = value.split('=')[0];
+            
+            // ONLY allow these ESSENTIAL cookies:
+            var essentialCookies = [
+                'cookie_consent',  // Most important - so banner can work!
+                'PHPSESSID',       // PHP sessions
+                'session',         // General sessions
+                'wordpress_',      // WordPress
+                '__cfduid',        // Cloudflare
+                'AWSALB',          // Amazon AWS
+                'JSESSIONID',      // Java sessions
+                'ARRAffinity'      // Azure
+            ];
+            
+            // Check if this is an essential cookie
+            var isEssential = false;
+            for (var i = 0; i < essentialCookies.length; i++) {
+                var essential = essentialCookies[i];
+                if (cookieName === essential || 
+                    (essential.endsWith('_') && cookieName.startsWith(essential))) {
+                    isEssential = true;
+                    break;
+                }
+            }
+            
+            if (isEssential) {
+                console.log("✅ Allowing essential cookie:", cookieName);
+                
+                // Allow essential cookies
+                var originalSet = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie').set;
+                return originalSet.call(document, value);
+            }
+            
+            // BLOCK everything else (Facebook, Google, etc.)
+            console.log("🚫 BLOCKED non-essential cookie:", cookieName);
+            return false;
+        }
+    });
+} else {
+    console.log("✅ CONSENT EXISTS - ALLOWING ALL COOKIES");
+}
 
 
 
