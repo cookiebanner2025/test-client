@@ -442,8 +442,10 @@ geoConfig: {
 
 
 
+
+
 /* =========================================================
-   INTEGRATED COOKIE + PIXEL BLOCKER (UPDATED)
+   COOKIE BLOCKING SCRIPT - ALLOWS TAG MANAGER
    ========================================================= */
 (function () {
 
@@ -463,16 +465,6 @@ geoConfig: {
     }
   };
 
-  // Define script blocking for each category
-  var SCRIPT_BLOCKING = {
-    marketing: {
-      scripts: ["connect.facebook.net", "facebook.com/tr", "googletagmanager.com", "googleadservices.com", "doubleclick.net", "analytics.tiktok.com"]
-    },
-    analytics: {
-      scripts: ["google-analytics.com", "googletagmanager.com"]
-    }
-  };
-
   /* ===================== UTILITIES ===================== */
   function getCookie(name) {
     const nameEQ = name + "=";
@@ -483,18 +475,6 @@ geoConfig: {
       if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
     }
     return null;
-  }
-
-  function hasConsentForCategory(category) {
-    const consentCookie = getCookie(CONSENT_COOKIE);
-    if (!consentCookie) return false;
-    
-    try {
-      const consentData = JSON.parse(consentCookie);
-      return consentData.categories[category] === true;
-    } catch (e) {
-      return false;
-    }
   }
 
   function deleteCookie(name) {
@@ -557,8 +537,8 @@ geoConfig: {
     }
   }
 
-  /* ===================== BLOCK SCRIPT URLS ===================== */
-  function setupScriptBlocking() {
+  /* ===================== SIMPLE SCRIPT BLOCKING ===================== */
+  function setupSimpleScriptBlocking() {
     var originalCreateElement = document.createElement;
     document.createElement = function () {
       var el = originalCreateElement.apply(document, arguments);
@@ -578,40 +558,57 @@ geoConfig: {
               }
             }
 
-            // If no consent, block all marketing and analytics scripts
+            // ALWAYS ALLOW GOOGLE TAG MANAGER - It's needed for consent mode
+            if (src.indexOf('googletagmanager.com') !== -1) {
+              console.log("✅ Allowing Google Tag Manager (essential for consent mode)");
+              this.setAttribute("src", src);
+              return;
+            }
+
+            // If no consent, block other scripts
             if (!consentData) {
-              // Check if it's a marketing script
-              for (var i = 0; i < SCRIPT_BLOCKING.marketing.scripts.length; i++) {
-                if (src.indexOf(SCRIPT_BLOCKING.marketing.scripts[i]) !== -1) {
-                  console.warn("🚫 Blocked marketing script (no consent):", src);
-                  return;
-                }
+              // Block Facebook Pixel
+              if (src.indexOf('connect.facebook.net') !== -1 || src.indexOf('facebook.com/tr') !== -1) {
+                console.warn("🚫 Blocked Facebook Pixel (no consent):", src);
+                return;
               }
-              // Check if it's an analytics script
-              for (var j = 0; j < SCRIPT_BLOCKING.analytics.scripts.length; j++) {
-                if (src.indexOf(SCRIPT_BLOCKING.analytics.scripts[j]) !== -1) {
-                  console.warn("🚫 Blocked analytics script (no consent):", src);
-                  return;
-                }
+              // Block Google Ads
+              if (src.indexOf('googleadservices.com') !== -1 || src.indexOf('doubleclick.net') !== -1) {
+                console.warn("🚫 Blocked Google Ads (no consent):", src);
+                return;
+              }
+              // Block TikTok
+              if (src.indexOf('analytics.tiktok.com') !== -1) {
+                console.warn("🚫 Blocked TikTok (no consent):", src);
+                return;
+              }
+              // Block Google Analytics
+              if (src.indexOf('google-analytics.com') !== -1) {
+                console.warn("🚫 Blocked Google Analytics (no consent):", src);
+                return;
               }
             } else {
               // Check consent for marketing scripts
               if (!consentData.categories.advertising) {
-                for (var k = 0; k < SCRIPT_BLOCKING.marketing.scripts.length; k++) {
-                  if (src.indexOf(SCRIPT_BLOCKING.marketing.scripts[k]) !== -1) {
-                    console.warn("🚫 Blocked marketing script (marketing denied):", src);
-                    return;
-                  }
+                if (src.indexOf('connect.facebook.net') !== -1 || src.indexOf('facebook.com/tr') !== -1) {
+                  console.warn("🚫 Blocked Facebook Pixel (marketing denied):", src);
+                  return;
+                }
+                if (src.indexOf('googleadservices.com') !== -1 || src.indexOf('doubleclick.net') !== -1) {
+                  console.warn("🚫 Blocked Google Ads (marketing denied):", src);
+                  return;
+                }
+                if (src.indexOf('analytics.tiktok.com') !== -1) {
+                  console.warn("🚫 Blocked TikTok (marketing denied):", src);
+                  return;
                 }
               }
               
               // Check consent for analytics scripts
               if (!consentData.categories.analytics) {
-                for (var l = 0; l < SCRIPT_BLOCKING.analytics.scripts.length; l++) {
-                  if (src.indexOf(SCRIPT_BLOCKING.analytics.scripts[l]) !== -1) {
-                    console.warn("🚫 Blocked analytics script (analytics denied):", src);
-                    return;
-                  }
+                if (src.indexOf('google-analytics.com') !== -1) {
+                  console.warn("🚫 Blocked Google Analytics (analytics denied):", src);
+                  return;
                 }
               }
             }
@@ -626,9 +623,9 @@ geoConfig: {
     };
   }
 
-  /* ===================== DELAYED PIXEL BLOCKING ===================== */
-  function setupDelayedPixelBlocking() {
-    // Wait for cookie banner to set up consent mode first
+  /* ===================== PIXEL BLOCKING ===================== */
+  function setupPixelBlocking() {
+    // Wait a bit for page to load
     setTimeout(function() {
       const consentCookie = getCookie(CONSENT_COOKIE);
       let consentData = null;
@@ -643,16 +640,8 @@ geoConfig: {
 
       // If no consent or marketing denied, block marketing pixels
       if (!consentData || !consentData.categories.advertising) {
-        console.log("🚫 Setting up marketing pixel blocking");
-        // Backup original functions if they exist
-        if (typeof window.fbq === 'function') {
-          window._original_fbq = window.fbq;
-        }
-        if (typeof window.ttq === 'function') {
-          window._original_ttq = window.ttq;
-        }
-        
-        // Override marketing pixels
+        // Don't block gtag - it's needed for consent mode
+        // Only block fbq and ttq
         window.fbq = function () { 
           console.warn("🚫 fbq blocked (no marketing consent)", arguments); 
         };
@@ -661,31 +650,45 @@ geoConfig: {
         };
       }
 
-      // If no consent or analytics denied, block analytics pixels
+      // If no consent or analytics denied, block analytics pixels but NOT gtag
       if (!consentData || !consentData.categories.analytics) {
-        console.log("🚫 Setting up analytics pixel blocking");
+        // We don't block gtag because it's needed for consent mode
+        // Instead, we'll check inside gtag function
         if (typeof window.gtag === 'function') {
-          window._original_gtag = window.gtag;
+          var originalGtag = window.gtag;
+          window.gtag = function() {
+            // Check if this is an analytics event
+            if (arguments[0] === 'event' && arguments[1] === 'page_view') {
+              console.warn("🚫 Blocked GA4 page_view (analytics denied)", arguments);
+              return;
+            }
+            // Allow consent updates and other essential gtag calls
+            return originalGtag.apply(this, arguments);
+          };
         }
-        
-        window.gtag = function () { 
-          console.warn("🚫 gtag blocked (no analytics consent)", arguments); 
-        };
       }
       
-    }, 100); // Small delay to let cookie banner initialize first
+    }, 500); // Longer delay to ensure everything loads
   }
 
   /* ===================== INITIALIZE BLOCKING ===================== */
-  // Don't block cookies immediately - wait a bit
-  setTimeout(function() {
-    console.log("🛡️ Initializing cookie blocking...");
-    blockCookiesBasedOnConsent();
-    setupScriptBlocking();
-    setupDelayedPixelBlocking();
-  }, 50); // Small delay to ensure dataLayer is set up
+  // Start blocking after page loads
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(initBlocking, 100);
+    });
+  } else {
+    setTimeout(initBlocking, 100);
+  }
 
-  // Re-check when consent might change
+  function initBlocking() {
+    console.log("🛡️ Initializing cookie blocking (Tag Manager allowed)...");
+    blockCookiesBasedOnConsent();
+    setupSimpleScriptBlocking();
+    setupPixelBlocking();
+  }
+
+  // Monitor for consent changes
   let lastConsentCookie = getCookie(CONSENT_COOKIE);
   setInterval(() => {
     const currentConsentCookie = getCookie(CONSENT_COOKIE);
@@ -693,17 +696,11 @@ geoConfig: {
       console.log("🔄 Consent changed - reapplying blocking rules");
       lastConsentCookie = currentConsentCookie;
       blockCookiesBasedOnConsent();
-      setupDelayedPixelBlocking();
+      setupPixelBlocking();
     }
   }, 1000);
 
 })();
-/* =========================================================
-   END OF COOKIE BLOCKER
-   ========================================================= */
-
-
-
 
 
 
