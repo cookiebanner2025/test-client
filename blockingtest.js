@@ -440,64 +440,449 @@ geoConfig: {
 
 
 
+
+
+
+
 /* =========================================================
-   SUPER SIMPLE COOKIE BLOCKER THAT WORKS
+   ADVANCED COOKIE & SCRIPT BLOCKER (Like Big CMPs)
    ========================================================= */
-
-// Check if we already have consent
-var consentCookie = document.cookie.split('; ').find(function(row) {
-    return row.startsWith('cookie_consent=');
-});
-
-// If NO consent cookie exists, BLOCK EVERYTHING
-if (!consentCookie) {
-    console.log("🚫 NO CONSENT - BLOCKING ALL NON-ESSENTIAL COOKIES");
+(function() {
+    console.log("🍪 ADVANCED COOKIE BLOCKER INITIALIZED");
     
-    // Stop ALL cookies from being set
-    Object.defineProperty(document, 'cookie', {
-        get: function() { return ''; },
-        set: function(value) {
-            var cookieName = value.split('=')[0];
+    // ============ CONFIGURATION ============
+    const CONFIG = {
+        consentCookieName: 'cookie_consent',
+        blockerEnabled: true,
+        
+        // Essential cookies that should ALWAYS be allowed
+        essentialCookies: [
+            'cookie_consent',
+            'PHPSESSID',
+            'wordpress_',
+            'wp-',
+            'session',
+            'AWSALB',
+            'AWSALBCORS',
+            '__cfduid',
+            '__cf_bm',
+            'JSESSIONID',
+            'ARRAffinity'
+        ],
+        
+        // Scripts to block/queue
+        scriptsToBlock: [
+            'facebook.net',
+            'fbcdn.net',
+            'facebook.com',
+            'google-analytics.com',
+            'googletagmanager.com',
+            'googleadservices.com',
+            'doubleclick.net',
+            'clarity.ms',
+            'bing.com',
+            'tiktok.com',
+            'snapchat.com',
+            'linkedin.com',
+            'twitter.com',
+            'pinterest.com'
+        ]
+    };
+    
+    // ============ UTILITY FUNCTIONS ============
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+    
+    function getConsentData() {
+        const cookie = getCookie(CONFIG.consentCookieName);
+        if (!cookie) return null;
+        try {
+            return JSON.parse(cookie);
+        } catch (e) {
+            return null;
+        }
+    }
+    
+    // ============ CORE BLOCKING LOGIC ============
+    
+    // 1. INTERCEPT ALL SCRIPT LOADING
+    function interceptScripts() {
+        console.log("🔒 Intercepting script loading...");
+        
+        // Store original functions
+        const originalAppendChild = Element.prototype.appendChild;
+        const originalCreateElement = document.createElement;
+        
+        // Intercept script creation
+        document.createElement = function(tagName) {
+            const element = originalCreateElement.call(this, tagName);
             
-            // ONLY allow these ESSENTIAL cookies:
-            var essentialCookies = [
-                'cookie_consent',  // Most important - so banner can work!
-                'PHPSESSID',       // PHP sessions
-                'session',         // General sessions
-                'wordpress_',      // WordPress
-                '__cfduid',        // Cloudflare
-                'AWSALB',          // Amazon AWS
-                'JSESSIONID',      // Java sessions
-                'ARRAffinity'      // Azure
-            ];
-            
-            // Check if this is an essential cookie
-            var isEssential = false;
-            for (var i = 0; i < essentialCookies.length; i++) {
-                var essential = essentialCookies[i];
-                if (cookieName === essential || 
-                    (essential.endsWith('_') && cookieName.startsWith(essential))) {
-                    isEssential = true;
-                    break;
+            if (tagName.toLowerCase() === 'script') {
+                // Add intercept to script element
+                const originalSetAttribute = element.setAttribute.bind(element);
+                element.setAttribute = function(name, value) {
+                    if (name === 'src') {
+                        const shouldBlock = shouldBlockScript(value);
+                        if (shouldBlock) {
+                            console.log("🚫 Blocking script:", value);
+                            // Instead of blocking, mark it for later loading
+                            element.dataset.blockedSrc = value;
+                            element.dataset.requiresConsent = true;
+                            return; // Don't set src attribute
+                        }
+                    }
+                    return originalSetAttribute(name, value);
+                };
+            }
+            return element;
+        };
+        
+        // Intercept script appending
+        Element.prototype.appendChild = function(element) {
+            if (element.tagName && element.tagName.toLowerCase() === 'script') {
+                // Check if this is a blocked script
+                if (element.dataset.blockedSrc) {
+                    const shouldLoad = shouldLoadScript(element.dataset.blockedSrc);
+                    if (shouldLoad) {
+                        // Restore the src and load it
+                        element.setAttribute('src', element.dataset.blockedSrc);
+                        delete element.dataset.blockedSrc;
+                    } else {
+                        console.log("⏸️ Queueing blocked script:", element.dataset.blockedSrc);
+                        queueBlockedScript(element);
+                        return element; // Return but don't actually append
+                    }
                 }
             }
-            
-            if (isEssential) {
-                console.log("✅ Allowing essential cookie:", cookieName);
-                
-                // Allow essential cookies
-                var originalSet = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie').set;
-                return originalSet.call(document, value);
-            }
-            
-            // BLOCK everything else (Facebook, Google, etc.)
-            console.log("🚫 BLOCKED non-essential cookie:", cookieName);
+            return originalAppendChild.call(this, element);
+        };
+    }
+    
+    // 2. CHECK IF SCRIPT SHOULD BE BLOCKED
+    function shouldBlockScript(src) {
+        if (!src) return false;
+        
+        const consent = getConsentData();
+        if (consent && consent.status === 'accepted') return false;
+        
+        // Check if it's an essential/functional script
+        if (src.includes('jquery') || src.includes('bootstrap') || src.includes('fontawesome')) {
             return false;
         }
-    });
-} else {
-    console.log("✅ CONSENT EXISTS - ALLOWING ALL COOKIES");
+        
+        // Check against block list
+        for (const blockedDomain of CONFIG.scriptsToBlock) {
+            if (src.includes(blockedDomain)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    // 3. CHECK IF SCRIPT SHOULD NOW BE LOADED
+    function shouldLoadScript(src) {
+        const consent = getConsentData();
+        if (!consent) return false;
+        
+        // Always allow essential scripts
+        if (src.includes('jquery') || src.includes('bootstrap') || src.includes('fontawesome')) {
+            return true;
+        }
+        
+        // Check consent for different script types
+        if (src.includes('google-analytics') || src.includes('googletagmanager') || src.includes('clarity.ms')) {
+            return consent.categories.analytics === true;
+        }
+        
+        if (src.includes('facebook') || src.includes('doubleclick') || src.includes('bing.com')) {
+            return consent.categories.advertising === true;
+        }
+        
+        // Default: require all consent
+        return consent.status === 'accepted';
+    }
+    
+    // 4. QUEUE FOR BLOCKED SCRIPTS
+    const blockedScriptsQueue = [];
+    
+    function queueBlockedScript(scriptElement) {
+        blockedScriptsQueue.push({
+            src: scriptElement.dataset.blockedSrc,
+            element: scriptElement
+        });
+    }
+    
+    // 5. RELEASE QUEUED SCRIPTS WHEN CONSENT GIVEN
+    function releaseQueuedScripts() {
+        console.log("🎯 Releasing queued scripts...");
+        
+        const consent = getConsentData();
+        if (!consent) return;
+        
+        for (let i = blockedScriptsQueue.length - 1; i >= 0; i--) {
+            const script = blockedScriptsQueue[i];
+            if (shouldLoadScript(script.src)) {
+                console.log("✅ Loading queued script:", script.src);
+                
+                // Create and load the script
+                const newScript = document.createElement('script');
+                newScript.src = script.src;
+                newScript.async = true;
+                document.head.appendChild(newScript);
+                
+                // Remove from queue
+                blockedScriptsQueue.splice(i, 1);
+            }
+        }
+    }
+    
+    // 6. INTERCEPT COOKIE SETTING (MOST IMPORTANT!)
+    function interceptCookies() {
+        console.log("🔒 Intercepting cookie setting...");
+        
+        const originalDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie') || 
+                                  Object.getOwnPropertyDescriptor(HTMLDocument.prototype, 'cookie');
+        
+        if (!originalDescriptor) return;
+        
+        Object.defineProperty(document, 'cookie', {
+            get: originalDescriptor.get,
+            set: function(value) {
+                const cookieString = value.toString();
+                const cookieName = cookieString.split('=')[0].trim();
+                
+                // Check if this is an essential cookie
+                let isEssential = false;
+                for (const essential of CONFIG.essentialCookies) {
+                    if (cookieName.includes(essential) || cookieName === essential) {
+                        isEssential = true;
+                        break;
+                    }
+                }
+                
+                // Always allow essential cookies
+                if (isEssential) {
+                    return originalDescriptor.set.call(document, value);
+                }
+                
+                // Check consent
+                const consent = getConsentData();
+                
+                // If no consent yet, BLOCK all non-essential cookies
+                if (!consent) {
+                    console.log("🚫 Blocking cookie (no consent):", cookieName);
+                    return; // BLOCK THE COOKIE
+                }
+                
+                // Check cookie category based on name patterns
+                let category = 'uncategorized';
+                
+                // Analytics cookies
+                if (cookieName.startsWith('_ga') || 
+                    cookieName.startsWith('_gid') || 
+                    cookieName.startsWith('_gat') ||
+                    cookieName.startsWith('_cl')) {
+                    category = 'analytics';
+                }
+                // Advertising cookies
+                else if (cookieName.startsWith('_fb') || 
+                         cookieName.includes('gclid') ||
+                         cookieName.startsWith('msclkid') ||
+                         cookieName.includes('tt_')) {
+                    category = 'advertising';
+                }
+                // Performance cookies
+                else if (cookieName.includes('vuid') || 
+                         cookieName.includes('player') ||
+                         cookieName.includes('VISITOR_INFO')) {
+                    category = 'performance';
+                }
+                
+                // Check if this category is allowed
+                if (consent.categories[category] !== true) {
+                    console.log("🚫 Blocking cookie (category not allowed):", cookieName, "category:", category);
+                    return; // BLOCK THE COOKIE
+                }
+                
+                // Allow the cookie
+                return originalDescriptor.set.call(document, value);
+            },
+            configurable: true
+        });
+    }
+    
+    // 7. INTERCEPT FUNCTION CALLS (Facebook Pixel, Google Analytics, etc.)
+    function interceptFunctionCalls() {
+        console.log("🔒 Intercepting function calls...");
+        
+        // Facebook Pixel
+        if (typeof window.fbq === 'undefined') {
+            window._fbqQueue = [];
+            window.fbq = function() {
+                window._fbqQueue.push(Array.from(arguments));
+                console.log("📝 Facebook Pixel call queued:", arguments[0]);
+            };
+            window.fbq.loaded = true;
+            window.fbq.version = '2.0';
+        }
+        
+        // Google Tag Manager / gtag
+        if (typeof window.gtag === 'undefined') {
+            window._gtagQueue = [];
+            window.gtag = function() {
+                window._gtagQueue.push(Array.from(arguments));
+                console.log("📝 Google Tag call queued:", arguments[0]);
+            };
+        }
+        
+        // TikTok Pixel
+        if (typeof window.ttq === 'undefined') {
+            window._ttqQueue = [];
+            window.ttq = function() {
+                window._ttqQueue.push(Array.from(arguments));
+                console.log("📝 TikTok Pixel call queued");
+            };
+        }
+    }
+    
+    // 8. RELEASE FUNCTION CALLS
+    function releaseFunctionCalls() {
+        const consent = getConsentData();
+        if (!consent) return;
+        
+        // Release Facebook Pixel calls
+        if (consent.categories.advertising && window._fbqQueue && window._fbqQueue.length > 0) {
+            console.log("📤 Processing queued Facebook Pixel calls");
+            // Restore real fbq if available
+            if (typeof window.fbq !== 'function') {
+                // Facebook Pixel will load when script loads
+            }
+            window._fbqQueue = [];
+        }
+        
+        // Release Google Tag calls
+        if (consent.categories.analytics && window._gtagQueue && window._gtagQueue.length > 0) {
+            console.log("📤 Processing queued Google Tag calls");
+            window._gtagQueue = [];
+        }
+    }
+    
+    // 9. MONITOR CONSENT CHANGES
+    function setupConsentMonitor() {
+        let lastConsent = getCookie(CONFIG.consentCookieName);
+        
+        setInterval(() => {
+            const currentConsent = getCookie(CONFIG.consentCookieName);
+            if (currentConsent !== lastConsent) {
+                console.log("🔄 Consent changed, reloading page...");
+                lastConsent = currentConsent;
+                
+                // Reload page to apply all changes
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            }
+        }, 1000);
+    }
+    
+    // 10. INITIALIZE EVERYTHING
+    function initializeBlocker() {
+        if (!CONFIG.blockerEnabled) return;
+        
+        console.log("🚀 Starting advanced cookie blocker");
+        
+        // First: Intercept cookies (most important)
+        interceptCookies();
+        
+        // Second: Intercept scripts
+        interceptScripts();
+        
+        // Third: Intercept function calls
+        interceptFunctionCalls();
+        
+        // Fourth: Check existing consent
+        const consent = getConsentData();
+        if (consent) {
+            // Release what's allowed
+            releaseQueuedScripts();
+            releaseFunctionCalls();
+        }
+        
+        // Fifth: Monitor for consent changes
+        setupConsentMonitor();
+        
+        console.log("✅ Advanced cookie blocker initialized");
+    }
+    
+    // Start the blocker
+    setTimeout(initializeBlocker, 0);
+    
+    // Export for debugging
+    window.cookieBlocker = {
+        releaseQueuedScripts,
+        getConsentData,
+        blockedScriptsQueue
+    };
+    
+})();
+
+
+
+
+
+
+
+
+// MANUAL SCRIPT LOADER FOR AFTER CONSENT
+function loadScriptsByConsent(consentData) {
+    console.log("📦 Loading scripts based on consent:", consentData);
+    
+    // Load Google Analytics if consented
+    if (consentData.categories.analytics) {
+        // Google Analytics
+        if (typeof window.gtag === 'function' && window.dataLayer) {
+            window.dataLayer.push({
+                'event': 'analytics_scripts_loaded',
+                'timestamp': new Date().toISOString()
+            });
+        }
+        
+        // Microsoft Clarity
+        if (config.clarityConfig.enabled && consentData.categories.analytics) {
+            if (typeof window.clarity === 'undefined') {
+                (function(c,l,a,r,i,t,y){
+                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", config.clarityConfig.projectId);
+            }
+        }
+    }
+    
+    // Load Advertising scripts if consented
+    if (consentData.categories.advertising) {
+        // Facebook Pixel
+        if (typeof window.fbq === 'function') {
+            // Facebook will load when its script loads
+        }
+        
+        // Microsoft UET
+        if (config.uetConfig.enabled) {
+            // UET will load when its script loads
+        }
+    }
 }
+
+
 
 
 
@@ -4202,6 +4587,8 @@ function hideFloatingButton() {
 
 // Cookie consent functions
 function acceptAllCookies() {
+    console.log("🎯 ACCEPT ALL - Reloading to apply changes");
+    
     // Add this line to initialize Clarity
     initializeClarity(true);
     sendClarityConsentSignal(true);
@@ -4258,6 +4645,10 @@ function acceptAllCookies() {
 
 
 function rejectAllCookies() {
+
+
+   console.log("🎯 REJECT ALL - Reloading to apply changes");
+  
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
     sendClarityConsentSignal(false);
@@ -4312,6 +4703,9 @@ function rejectAllCookies() {
 
 
 function saveCustomSettings() {
+
+     console.log("🎯 SAVE CUSTOM - Reloading to apply changes");
+  
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
     
@@ -4897,4 +5291,4 @@ if (typeof window !== 'undefined') {
         showAnalytics: showAnalyticsDashboard,
         config: config
     };
-  }
+}
