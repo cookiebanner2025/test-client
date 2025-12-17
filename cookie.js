@@ -446,6 +446,8 @@ geoConfig: {
 
 
 
+
+
 /* =========================================================
    INTEGRATED COOKIE + PIXEL BLOCKER (UPDATED)
    ========================================================= */
@@ -467,7 +469,8 @@ geoConfig: {
     }
   };
 
-  // Define script blocking for each category (EXCLUDING Tag Manager)
+  // Define script blocking for each category
+   // Define script blocking for each category (EXCLUDING Tag Manager)
   var SCRIPT_BLOCKING = {
     marketing: {
       scripts: ["connect.facebook.net", "facebook.com/tr", "googleadservices.com", "doubleclick.net", "analytics.tiktok.com"]
@@ -479,6 +482,7 @@ geoConfig: {
     }
   };
 
+  
   /* ===================== UTILITIES ===================== */
   function getCookie(name) {
     const nameEQ = name + "=";
@@ -707,8 +711,6 @@ geoConfig: {
 /* =========================================================
    END OF COOKIE BLOCKER
    ========================================================= */
-
-
 
 
 
