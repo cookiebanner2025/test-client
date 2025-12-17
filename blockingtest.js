@@ -445,7 +445,6 @@ geoConfig: {
 
 
 
-
 /* =========================================================
    ULTIMATE COOKIE BLOCKER - LOADS FIRST, BLOCKS EVERYTHING
    ========================================================= */
@@ -689,14 +688,6 @@ geoConfig: {
     
     console.log("✅ ULTIMATE BLOCKER ACTIVE - All non-essential cookies/pixels blocked");
 })();
-
-
-
-
-
-
-
-
 
 
 
@@ -4417,13 +4408,6 @@ function acceptAllCookies() {
     addStoredParamsToURL();
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
-
-   // ADD THIS LINE:
-    if (window._releaseBlockedCookies) {
-        window._releaseBlockedCookies(consentData);
-    }
-
-  
     updateConsentMode(consentData);
     loadCookiesAccordingToConsent(consentData);
     
@@ -4549,13 +4533,6 @@ function saveCustomSettings() {
     };
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
-
- // ADD THIS LINE:
-    if (window._releaseBlockedCookies) {
-        window._releaseBlockedCookies(consentData);
-    }
-
-  
     updateConsentMode(consentData);
     loadCookiesAccordingToConsent(consentData);
     
