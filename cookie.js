@@ -89,35 +89,6 @@ const config = {
 
 
 
-languageRules: {
-    enabled: true,
-    rules: [
-        // Exact domain matches
-      //  { condition: 'exact', value: 'abcd.com', language: 'en' },
-        { condition: 'exact', value: 'dev-rpractice.pantheonsite.io/shop', language: 'de' },
-      //   { condition: 'exact', value: 'abcd.com.de', language: 'de' },
-        
-        // Contains pattern matches
-      //   { condition: 'contains', value: '.com.de', language: 'de' },
-       //  { condition: 'contains', value: '.de', language: 'de' },
-       //  { condition: 'contains', value: '.fr', language: 'fr' },
-       //  { condition: 'contains', value: '.es', language: 'es' },
-        
-        // Path-based language switching
-        // { condition: 'contains', value: '/de/', language: 'de' },
-        // { condition: 'contains', value: '/fr/', language: 'fr' },
-        // { condition: 'contains', value: '/es/', language: 'es' },
-        // { condition: 'contains', value: '/en/', language: 'en' }
-    ],
-    fallbackLanguage: 'en'
-},
-
-
-
-
-
-  
-
     // NEW: Cookie Banner Trigger Configuration
     bannerTriggers: {
         enabled: true, // Set to true to enable clicking links to open banner
@@ -188,6 +159,7 @@ clarityConfig: {
     },
     
     // Behavior configuration
+       // Behavior configuration
     behavior: {
         autoShow: true,
         bannerDelay: 0, // Desktop delay (seconds)
@@ -195,11 +167,22 @@ clarityConfig: {
         rememberLanguage: true,
         acceptOnScroll: false,
         acceptOnContinue: false,
+        
+        // NEW: Restrict user interaction when banner is visible
+        restrictInteraction: {
+            enabled: true,          // Turn this ON/OFF
+            preventScroll: true,    // Turn scroll blocking ON/OFF
+            preventClick: true,     // Turn click blocking ON/OFF
+            blurBackground: true,   // Turn blur effect ON/OFF
+            blurDensity: '5px'      // Control blur intensity
+        },
+        
         showFloatingButton: true,
         showAdminButton: false,
         floatingButtonPosition: 'left',
         adminButtonPosition: 'left',
         bannerPosition: 'left',
+      
         bannerAnimation: {
             duration: 0.4,
             easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
@@ -2193,7 +2176,6 @@ function checkGeoTargeting(geoData) {
 
 // Detect user language based on country and browser settings
 // Detect user language based on country and browser settings
-// Detect user language based on country and browser settings
 function detectUserLanguage(geoData) {
     // First check if language is stored in cookie (user's previous choice)
     if (config.behavior.rememberLanguage) {
@@ -2202,16 +2184,6 @@ function detectUserLanguage(geoData) {
             console.log('Using preferred language from cookie:', preferredLanguage);
             return preferredLanguage;
         }
-    }
-    
-    // NEW: Check URL-based language rules
-    const urlLanguage = detectLanguageFromUrl();
-    if (urlLanguage && translations[urlLanguage]) {
-        console.log('Using language from URL detection:', urlLanguage);
-        if (config.behavior.rememberLanguage) {
-            setCookie('preferred_language', urlLanguage, 365);
-        }
-        return urlLanguage;
     }
     
     // Then try to get language from browser settings
@@ -2244,11 +2216,6 @@ function detectUserLanguage(geoData) {
     console.log('Using default language:', config.languageConfig.defaultLanguage);
     return config.languageConfig.defaultLanguage || 'en';
 }
-
-
-
-
-
 // Get available languages for dropdown
 function getAvailableLanguages() {
     if (config.languageConfig.availableLanguages.length > 0) {
@@ -2683,6 +2650,27 @@ function injectConsentHTML(detectedCookies, language = 'en') {
             </div>
         </div>
     </div>
+
+
+
+
+
+
+
+
+    
+    <!-- Blur overlay for restricting interaction -->
+    <div id="cookieBlurOverlay" class="cookie-blur-overlay"></div>
+
+
+
+
+
+
+
+
+
+
     
     <style>
     /* Main Banner Styles */
@@ -2879,6 +2867,37 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         opacity: 0;
         transition: opacity ${config.behavior.modalAnimation.duration}s ${config.behavior.modalAnimation.easing};
     }
+
+
+    /* Blur overlay for restricting interaction */
+    .cookie-blur-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        z-index: 9998;
+        display: none;
+        pointer-events: none; /* Allows clicks to pass through to banner */
+    }
+    
+    /* When restricting clicks, make overlay block clicks */
+    .cookie-blur-overlay.block-clicks {
+        pointer-events: auto;
+        cursor: not-allowed;
+    }
+    
+    /* When preventing scroll */
+    .no-scroll {
+        overflow: hidden !important;
+    }
+
+
+
+
+
 
     .cookie-settings-modal.show {
         display: flex;
@@ -3775,92 +3794,6 @@ function initializeCookieConsent(detectedCookies, language) {
         console.log('Cookie consent banner disabled for this URL');
         return; // Don't show the banner on this URL
     }
-
-
-
-
-  
-
-// NEW: Function to detect language based on URL rules
-function detectLanguageFromUrl() {
-    if (!config.languageRules.enabled) {
-        return config.languageConfig.defaultLanguage;
-    }
-    
-    const currentUrl = window.location.href;
-    const currentHostname = window.location.hostname;
-    const currentPath = window.location.pathname;
-    
-    // Check each rule in order (first match wins)
-    for (const rule of config.languageRules.rules) {
-        let matches = false;
-        
-        switch (rule.condition) {
-            case 'exact':
-                // Exact match for hostname
-                if (currentHostname === rule.value) {
-                    matches = true;
-                }
-                break;
-                
-            case 'contains':
-                // Contains in URL (hostname or path)
-                if (currentUrl.includes(rule.value) || 
-                    currentHostname.includes(rule.value) || 
-                    currentPath.includes(rule.value)) {
-                    matches = true;
-                }
-                break;
-                
-            case 'startswith':
-                // Starts with
-                if (currentUrl.startsWith(rule.value) || 
-                    currentHostname.startsWith(rule.value) || 
-                    currentPath.startsWith(rule.value)) {
-                    matches = true;
-                }
-                break;
-                
-            case 'endswith':
-                // Ends with
-                if (currentUrl.endsWith(rule.value) || 
-                    currentHostname.endsWith(rule.value) || 
-                    currentPath.endsWith(rule.value)) {
-                    matches = true;
-                }
-                break;
-                
-            case 'regex':
-                // Regular expression match
-                const regex = new RegExp(rule.value);
-                if (regex.test(currentUrl) || 
-                    regex.test(currentHostname) || 
-                    regex.test(currentPath)) {
-                    matches = true;
-                }
-                break;
-        }
-        
-        if (matches) {
-            console.log('Language detected from URL rule:', rule.language, 'for rule:', rule);
-            return rule.language;
-        }
-    }
-    
-    // If no rules match, use fallback
-    console.log('No language rule matched, using fallback:', config.languageRules.fallbackLanguage);
-    return config.languageRules.fallbackLanguage;
-}
-
-
-  
-
-
-
-
-
-
-  
   
     const consentGiven = getCookie('cookie_consent');
     
@@ -4184,6 +4117,9 @@ function showCookieBanner() {
         banner.classList.add('show');
     }, 10);
     bannerShown = true;
+    
+    // NEW: Enable interaction restrictions when banner shows
+    enableInteractionRestrictions();
 }
 
 function hideCookieBanner() {
@@ -4193,8 +4129,10 @@ function hideCookieBanner() {
         banner.style.display = 'none';
     }, 400);
     bannerShown = false;
+    
+    // NEW: Disable interaction restrictions when banner hides
+    disableInteractionRestrictions();
 }
-
 function showCookieSettings() {
     const modal = document.getElementById('cookieSettingsModal');
     modal.style.display = 'flex';
@@ -4256,6 +4194,108 @@ function hideFloatingButton() {
     }, 300);
 }
 
+
+
+
+
+// NEW: Enable/disable interaction restrictions
+function enableInteractionRestrictions() {
+    if (!config.behavior.restrictInteraction.enabled) return;
+    
+    const overlay = document.getElementById('cookieBlurOverlay');
+    
+    // Apply blur effect
+    if (config.behavior.restrictInteraction.blurBackground) {
+        overlay.style.backdropFilter = `blur(${config.behavior.restrictInteraction.blurDensity})`;
+        overlay.style.webkitBackdropFilter = `blur(${config.behavior.restrictInteraction.blurDensity})`;
+        overlay.style.display = 'block';
+    }
+    
+    // Prevent scrolling
+    if (config.behavior.restrictInteraction.preventScroll) {
+        document.body.classList.add('no-scroll');
+    }
+    
+    // Prevent clicking outside banner
+    if (config.behavior.restrictInteraction.preventClick) {
+        overlay.classList.add('block-clicks');
+        
+        // Only allow clicks on the banner
+        overlay.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }, true);
+    }
+}
+
+// NEW: Disable interaction restrictions
+function disableInteractionRestrictions() {
+    const overlay = document.getElementById('cookieBlurOverlay');
+    
+    // Remove blur effect
+    overlay.style.display = 'none';
+    
+    // Enable scrolling
+    document.body.classList.remove('no-scroll');
+    
+    // Enable clicking
+    overlay.classList.remove('block-clicks');
+    
+    // Remove click blocker
+    overlay.removeEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }, true);
+}
+
+// NEW: Toggle functions for manual control
+function toggleRestrictions(enable) {
+    if (enable) {
+        enableInteractionRestrictions();
+    } else {
+        disableInteractionRestrictions();
+    }
+}
+
+function toggleScrollRestriction(enable) {
+    config.behavior.restrictInteraction.preventScroll = enable;
+    if (enable) {
+        document.body.classList.add('no-scroll');
+    } else {
+        document.body.classList.remove('no-scroll');
+    }
+}
+
+function toggleClickRestriction(enable) {
+    config.behavior.restrictInteraction.preventClick = enable;
+    const overlay = document.getElementById('cookieBlurOverlay');
+    if (enable) {
+        overlay.classList.add('block-clicks');
+    } else {
+        overlay.classList.remove('block-clicks');
+    }
+}
+
+function toggleBlurEffect(enable) {
+    config.behavior.restrictInteraction.blurBackground = enable;
+    const overlay = document.getElementById('cookieBlurOverlay');
+    overlay.style.display = enable ? 'block' : 'none';
+}
+
+function setBlurDensity(density) {
+    config.behavior.restrictInteraction.blurDensity = density;
+    const overlay = document.getElementById('cookieBlurOverlay');
+    overlay.style.backdropFilter = `blur(${density})`;
+    overlay.style.webkitBackdropFilter = `blur(${density})`;
+}
+
+
+
+
+
+
+
+
 // Cookie consent functions
 function acceptAllCookies() {
 
@@ -4305,6 +4345,10 @@ function acceptAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+
+  // NEW: Disable interaction restrictions when user accepts
+    disableInteractionRestrictions();
+  
 }
 
 function rejectAllCookies() {
@@ -4352,6 +4396,10 @@ function rejectAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+
+      // Add this at the end of rejectAllCookies function
+    disableInteractionRestrictions();
+  
 }
 
 function saveCustomSettings() {
@@ -4451,6 +4499,10 @@ function saveCustomSettings() {
             'location_data': locationData
         });
     }
+
+
+  // NEW: Disable interaction restrictions when user saves custom settings
+    disableInteractionRestrictions();
 }
 // Helper functions
 function clearNonEssentialCookies() {
@@ -4922,6 +4974,12 @@ if (typeof window !== 'undefined') {
         saveSettings: saveCustomSettings,
         changeLanguage: changeLanguage,
         showAnalytics: showAnalyticsDashboard,
-        config: config
+        config: config,
+        // NEW: Control functions for restrictions
+        toggleRestrictions: toggleRestrictions,
+        toggleScrollRestriction: toggleScrollRestriction,
+        toggleClickRestriction: toggleClickRestriction,
+        toggleBlurEffect: toggleBlurEffect,
+        setBlurDensity: setBlurDensity
     };
 }
