@@ -88,6 +88,35 @@ const config = {
 
 
 
+languageRules: {
+    enabled: true,
+    rules: [
+        // Exact domain matches
+        { condition: 'exact', value: 'abcd.com', language: 'en' },
+        { condition: 'exact', value: 'abcd.de', language: 'de' },
+        { condition: 'exact', value: 'abcd.com.de', language: 'de' },
+        
+        // Contains pattern matches
+        { condition: 'contains', value: '.com.de', language: 'de' },
+        { condition: 'contains', value: '.de', language: 'de' },
+        { condition: 'contains', value: '.fr', language: 'fr' },
+        { condition: 'contains', value: '.es', language: 'es' },
+        
+        // Path-based language switching
+        { condition: 'contains', value: '/de/', language: 'de' },
+        { condition: 'contains', value: '/fr/', language: 'fr' },
+        { condition: 'contains', value: '/es/', language: 'es' },
+        { condition: 'contains', value: '/en/', language: 'en' }
+    ],
+    fallbackLanguage: 'en'
+},
+
+
+
+
+
+  
+
     // NEW: Cookie Banner Trigger Configuration
     bannerTriggers: {
         enabled: true, // Set to true to enable clicking links to open banner
@@ -435,186 +464,6 @@ geoConfig: {
         }
     }
 };
-
-
-
-
-
-
-
-/* =========================================================
-   SIMPLE & WORKING COOKIE BLOCKER
-   ========================================================= */
-(function() {
-  console.log("🍪 Cookie blocker activated");
-
-  /* ===================== CONFIG ===================== */
-  var CONSENT_COOKIE = "cookie_consent";
-  
-  /* ===================== UTILITIES ===================== */
-  function getConsentData() {
-    var consentCookie = document.cookie.split('; ').find(row => row.startsWith(CONSENT_COOKIE + '='));
-    if (consentCookie) {
-      try {
-        return JSON.parse(consentCookie.split('=')[1]);
-      } catch(e) {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  /* ===================== SIMPLE COOKIE CLEANER ===================== */
-  function cleanCookies() {
-    var consent = getConsentData();
-    
-    // Common non-essential cookies to delete
-    var cookiesToDelete = [
-      '_fbp', '_fbc', 'fr', 'xs',           // Facebook
-      '_gcl', '_gcl_au', 'gclid',           // Google Ads
-      '_ttp', '_tt_enable_cookie',          // TikTok
-      '_ga', '_ga_', '_gid', '_gat',        // Google Analytics
-      '_clck', '_clsk', '_cltk'             // Clarity
-    ];
-    
-    // If NO consent, delete ALL
-    if (!consent) {
-      console.log("🚫 No consent - cleaning all cookies");
-      cookiesToDelete.forEach(function(cookie) {
-        document.cookie = cookie + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-      });
-    }
-    // If consent exists, check categories
-    else if (consent.categories) {
-      // Delete marketing cookies if marketing denied
-      if (!consent.categories.advertising) {
-        ['_fbp', '_fbc', 'fr', 'xs', '_gcl', '_gcl_au', 'gclid', '_ttp', '_tt_enable_cookie'].forEach(function(cookie) {
-          document.cookie = cookie + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-        });
-      }
-      
-      // Delete analytics cookies if analytics denied
-      if (!consent.categories.analytics) {
-        ['_ga', '_ga_', '_gid', '_gat', '_clck', '_clsk', '_cltk'].forEach(function(cookie) {
-          document.cookie = cookie + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-        });
-      }
-    }
-  }
-
-  /* ===================== SIMPLE PIXEL BLOCKING ===================== */
-  function setupPixelBlocking() {
-    // Store original functions
-    window._saved_fbq = window.fbq;
-    window._saved_ttq = window.ttq;
-    window._saved_gtag = window.gtag;
-    
-    // Check current consent
-    var consent = getConsentData();
-    
-    // Block marketing pixels if no marketing consent
-    if (!consent || !consent.categories || !consent.categories.advertising) {
-      window.fbq = function() { 
-        console.warn("🚫 fbq blocked - no marketing consent"); 
-      };
-      window.ttq = function() { 
-        console.warn("🚫 ttq blocked - no marketing consent"); 
-      };
-    }
-    
-    // Block analytics pixels if no analytics consent
-    if (!consent || !consent.categories || !consent.categories.analytics) {
-      window.gtag = function() { 
-        console.warn("🚫 gtag blocked - no analytics consent"); 
-      };
-    }
-    
-    // Function to restore pixels when consent is given
-    window._restorePixels = function() {
-      console.log("✅ Restoring pixel functions");
-      
-      var consent = getConsentData();
-      if (!consent || !consent.categories) return;
-      
-      // Restore marketing pixels if marketing consent exists
-      if (consent.categories.advertising && window._saved_fbq) {
-        window.fbq = window._saved_fbq;
-        console.log("✅ Facebook Pixel restored");
-      }
-      if (consent.categories.advertising && window._saved_ttq) {
-        window.ttq = window._saved_ttq;
-        console.log("✅ TikTok Pixel restored");
-      }
-      
-      // Restore analytics pixels if analytics consent exists
-      if (consent.categories.analytics && window._saved_gtag) {
-        window.gtag = window._saved_gtag;
-        console.log("✅ Google Analytics restored");
-      }
-    };
-  }
-
-  /* ===================== MONITOR CONSENT CHANGES ===================== */
-  function monitorConsent() {
-    var lastConsent = document.cookie;
-    
-    setInterval(function() {
-      var currentConsent = document.cookie;
-      if (currentConsent !== lastConsent) {
-        console.log("🔄 Consent cookie changed");
-        lastConsent = currentConsent;
-        
-        // Re-check and clean cookies
-        cleanCookies();
-        
-        // Restore pixels if consent is now given
-        var consent = getConsentData();
-        if (consent && consent.categories && 
-            (consent.categories.advertising || consent.categories.analytics)) {
-          if (window._restorePixels) {
-            window._restorePixels();
-          }
-        }
-      }
-    }, 1000);
-  }
-
-  /* ===================== MAIN INITIALIZATION ===================== */
-  function initialize() {
-    console.log("🔧 Starting cookie blocker");
-    
-    // 1. Clean existing cookies
-    cleanCookies();
-    
-    // 2. Setup pixel blocking
-    setupPixelBlocking();
-    
-    // 3. Start monitoring
-    monitorConsent();
-  }
-
-  // Start with small delay
-  setTimeout(initialize, 100);
-
-})();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
@@ -2343,6 +2192,7 @@ function checkGeoTargeting(geoData) {
 
 // Detect user language based on country and browser settings
 // Detect user language based on country and browser settings
+// Detect user language based on country and browser settings
 function detectUserLanguage(geoData) {
     // First check if language is stored in cookie (user's previous choice)
     if (config.behavior.rememberLanguage) {
@@ -2351,6 +2201,16 @@ function detectUserLanguage(geoData) {
             console.log('Using preferred language from cookie:', preferredLanguage);
             return preferredLanguage;
         }
+    }
+    
+    // NEW: Check URL-based language rules
+    const urlLanguage = detectLanguageFromUrl();
+    if (urlLanguage && translations[urlLanguage]) {
+        console.log('Using language from URL detection:', urlLanguage);
+        if (config.behavior.rememberLanguage) {
+            setCookie('preferred_language', urlLanguage, 365);
+        }
+        return urlLanguage;
     }
     
     // Then try to get language from browser settings
@@ -2383,6 +2243,11 @@ function detectUserLanguage(geoData) {
     console.log('Using default language:', config.languageConfig.defaultLanguage);
     return config.languageConfig.defaultLanguage || 'en';
 }
+
+
+
+
+
 // Get available languages for dropdown
 function getAvailableLanguages() {
     if (config.languageConfig.availableLanguages.length > 0) {
@@ -3909,6 +3774,92 @@ function initializeCookieConsent(detectedCookies, language) {
         console.log('Cookie consent banner disabled for this URL');
         return; // Don't show the banner on this URL
     }
+
+
+
+
+  
+
+// NEW: Function to detect language based on URL rules
+function detectLanguageFromUrl() {
+    if (!config.languageRules.enabled) {
+        return config.languageConfig.defaultLanguage;
+    }
+    
+    const currentUrl = window.location.href;
+    const currentHostname = window.location.hostname;
+    const currentPath = window.location.pathname;
+    
+    // Check each rule in order (first match wins)
+    for (const rule of config.languageRules.rules) {
+        let matches = false;
+        
+        switch (rule.condition) {
+            case 'exact':
+                // Exact match for hostname
+                if (currentHostname === rule.value) {
+                    matches = true;
+                }
+                break;
+                
+            case 'contains':
+                // Contains in URL (hostname or path)
+                if (currentUrl.includes(rule.value) || 
+                    currentHostname.includes(rule.value) || 
+                    currentPath.includes(rule.value)) {
+                    matches = true;
+                }
+                break;
+                
+            case 'startswith':
+                // Starts with
+                if (currentUrl.startsWith(rule.value) || 
+                    currentHostname.startsWith(rule.value) || 
+                    currentPath.startsWith(rule.value)) {
+                    matches = true;
+                }
+                break;
+                
+            case 'endswith':
+                // Ends with
+                if (currentUrl.endsWith(rule.value) || 
+                    currentHostname.endsWith(rule.value) || 
+                    currentPath.endsWith(rule.value)) {
+                    matches = true;
+                }
+                break;
+                
+            case 'regex':
+                // Regular expression match
+                const regex = new RegExp(rule.value);
+                if (regex.test(currentUrl) || 
+                    regex.test(currentHostname) || 
+                    regex.test(currentPath)) {
+                    matches = true;
+                }
+                break;
+        }
+        
+        if (matches) {
+            console.log('Language detected from URL rule:', rule.language, 'for rule:', rule);
+            return rule.language;
+        }
+    }
+    
+    // If no rules match, use fallback
+    console.log('No language rule matched, using fallback:', config.languageRules.fallbackLanguage);
+    return config.languageRules.fallbackLanguage;
+}
+
+
+  
+
+
+
+
+
+
+  
   
     const consentGiven = getCookie('cookie_consent');
     
@@ -4306,15 +4257,14 @@ function hideFloatingButton() {
 
 // Cookie consent functions
 function acceptAllCookies() {
-    // Add this line to initialize Clarity
-    initializeClarity(true);
-    sendClarityConsentSignal(true);
 
-  if (window._restorePixels) window._restorePixels();
+     // Add this line to initialize Clarity
+    initializeClarity(true);
+  sendClarityConsentSignal(true); // Add this line
     
     const consentData = {
         status: 'accepted',
-        gcs: 'G111',
+        gcs: 'G111', // Explicit GCS signal for all granted
         categories: {
             functional: true,
             analytics: true,
@@ -4348,29 +4298,23 @@ function acceptAllCookies() {
             'functionality_storage': 'granted',
             'security_storage': 'granted'
         },
-        'gcs': 'G111',
+        'gcs': 'G111', // Explicit GCS signal
         'consent_status': 'accepted',
         'consent_categories': consentData.categories,
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
-    
-    // RELOAD THE PAGE TO RELEASE BLOCKED COOKIES
-    setTimeout(() => {
-        window.location.reload();
-    }, 500);
 }
 
-
-
 function rejectAllCookies() {
+
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
-    sendClarityConsentSignal(false);
+    sendClarityConsentSignal(false); // Add this line
     
     const consentData = {
         status: 'rejected',
-        gcs: 'G100',
+        gcs: 'G100', // Explicit GCS signal for all denied
         categories: {
             functional: false,
             analytics: false,
@@ -4401,47 +4345,33 @@ function rejectAllCookies() {
             'functionality_storage': 'denied',
             'security_storage': 'granted'
         },
-        'gcs': 'G100',
+        'gcs': 'G100', // Explicit GCS signal
         'consent_status': 'rejected',
         'consent_categories': consentData.categories,
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
-    
-    // RELOAD THE PAGE TO ENSURE COOKIES ARE BLOCKED
-    setTimeout(() => {
-        window.location.reload();
-    }, 500);
 }
-
-
-
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
-    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
-
-
-     // ADD THIS LINE (restore pixels if marketing is checked):
-    if (advertisingChecked && window._restorePixels) window._restorePixels();
-  
-    
-    // Initialize or stop Clarity based on consent
+     // Initialize or stop Clarity based on consent
     initializeClarity(analyticsChecked);
-    sendClarityConsentSignal(analyticsChecked);
+    sendClarityConsentSignal(analyticsChecked); // Add this line
+    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
     
     let gcsSignal;
     if (analyticsChecked && advertisingChecked) {
-        gcsSignal = 'G111';
+        gcsSignal = 'G111'; // Both granted
     } else if (!analyticsChecked && !advertisingChecked) {
-        gcsSignal = 'G100';
+        gcsSignal = 'G100'; // Both denied
     } else if (analyticsChecked && !advertisingChecked) {
-        gcsSignal = 'G101';
+        gcsSignal = 'G101'; // Analytics granted, ads denied
     } else if (!analyticsChecked && advertisingChecked) {
-        gcsSignal = 'G110';
+        gcsSignal = 'G110'; // Ads granted, analytics denied
     }
 
     const consentData = {
@@ -4489,7 +4419,7 @@ function saveCustomSettings() {
                 'analytics_storage': 'granted',
                 'ad_storage': 'denied'
             },
-            'gcs': 'G101',
+            'gcs': 'G101', // Explicit GCS signal
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
@@ -4502,40 +4432,25 @@ function saveCustomSettings() {
                 'ad_storage': 'granted',
                 'analytics_storage': 'denied'
             },
-            'gcs': 'G110',
+            'gcs': 'G110', // Explicit GCS signal
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
             'location_data': locationData
         });
     } else {
+        // For all other cases (both accepted or both rejected)
         window.dataLayer.push({
             'event': 'cookie_consent_custom',
             'consent_mode': consentStates,
-            'gcs': gcsSignal,
+            'gcs': gcsSignal, // Explicit GCS signal
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
             'location_data': locationData
         });
     }
-    
-    // RELOAD THE PAGE TO APPLY CHANGES
-    setTimeout(() => {
-        window.location.reload();
-    }, 500);
 }
-
-
-
-
-
-
-
-
-
-
-
 // Helper functions
 function clearNonEssentialCookies() {
     const cookies = document.cookie.split(';');
