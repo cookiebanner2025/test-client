@@ -93,7 +93,7 @@ languageRules: {
     rules: [
         // Exact domain matches
         { condition: 'exact', value: 'abcd.com', language: 'en' },
-        { condition: 'exact', value: 'abcd.de', language: 'de' },
+        { condition: 'exact', value: 'dev-rpractice.pantheonsite.io/shop', language: 'de' },
         { condition: 'exact', value: 'abcd.com.de', language: 'de' },
         
         // Contains pattern matches
