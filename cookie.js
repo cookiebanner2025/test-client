@@ -92,21 +92,21 @@ languageRules: {
     enabled: true,
     rules: [
         // Exact domain matches
-        { condition: 'exact', value: 'abcd.com', language: 'en' },
+      //  { condition: 'exact', value: 'abcd.com', language: 'en' },
         { condition: 'exact', value: 'dev-rpractice.pantheonsite.io/shop', language: 'de' },
-        { condition: 'exact', value: 'abcd.com.de', language: 'de' },
+      //   { condition: 'exact', value: 'abcd.com.de', language: 'de' },
         
         // Contains pattern matches
-        { condition: 'contains', value: '.com.de', language: 'de' },
-        { condition: 'contains', value: '.de', language: 'de' },
-        { condition: 'contains', value: '.fr', language: 'fr' },
-        { condition: 'contains', value: '.es', language: 'es' },
+      //   { condition: 'contains', value: '.com.de', language: 'de' },
+       //  { condition: 'contains', value: '.de', language: 'de' },
+       //  { condition: 'contains', value: '.fr', language: 'fr' },
+       //  { condition: 'contains', value: '.es', language: 'es' },
         
         // Path-based language switching
-        { condition: 'contains', value: '/de/', language: 'de' },
-        { condition: 'contains', value: '/fr/', language: 'fr' },
-        { condition: 'contains', value: '/es/', language: 'es' },
-        { condition: 'contains', value: '/en/', language: 'en' }
+        // { condition: 'contains', value: '/de/', language: 'de' },
+        // { condition: 'contains', value: '/fr/', language: 'fr' },
+        // { condition: 'contains', value: '/es/', language: 'es' },
+        // { condition: 'contains', value: '/en/', language: 'en' }
     ],
     fallbackLanguage: 'en'
 },
