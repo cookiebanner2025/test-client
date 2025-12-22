@@ -14,6 +14,10 @@ you can change the cookie category description text by this class. like you can 
  */
 
 
+
+
+
+
 const EU_COUNTRIES = [
   "AL", // Albania
   "AD", // Andorra
@@ -171,7 +175,7 @@ clarityConfig: {
         // NEW: Restrict user interaction when banner is visible
         restrictInteraction: {
             enabled: true,          // Turn this ON/OFF
-            preventScroll: false,    // Turn scroll blocking ON/OFF
+            preventScroll: true,    // Turn scroll blocking ON/OFF
             preventClick: true,     // Turn click blocking ON/OFF
             blurBackground: true,   // Turn blur effect ON/OFF
             blurDensity: '5px'      // Control blur intensity
@@ -182,6 +186,8 @@ clarityConfig: {
         floatingButtonPosition: 'left',
         adminButtonPosition: 'left',
         bannerPosition: 'left',
+
+
       
         bannerAnimation: {
             duration: 0.4,
@@ -222,7 +228,202 @@ clarityConfig: {
         showLanguageSelector: true,
         autoDetectLanguage: true
     },
-    
+
+
+
+urlLanguageRules: {
+    enabled: true,
+    rules: [
+        // ===========================================================================
+        // ====== PATH-BASED CONDITIONS (HIGHEST PRIORITY) ===========================
+        // ===========================================================================
+        
+        // Path contains (Most Flexible)
+        { condition: 'path-contains', value: 'shop', language: 'nl' },
+     /**   { condition: 'path-contains', value: '/shop/pl/', language: 'pl' },
+        { condition: 'path-contains', value: '/shop/sv/', language: 'sv' },
+        { condition: 'path-contains', value: '/shop/da/', language: 'da' },
+        { condition: 'path-contains', value: '/shop/fi/', language: 'fi' },
+        { condition: 'path-contains', value: '/shop/el/', language: 'el' },
+        { condition: 'path-contains', value: '/shop/hu/', language: 'hu' },
+        { condition: 'path-contains', value: '/shop/cs/', language: 'cs' },
+        { condition: 'path-contains', value: '/shop/ro/', language: 'ro' }, */
+
+        
+        // General shop for specific languages
+     /**   { condition: 'path-contains', value: '/nederlandse-winkel', language: 'nl' },
+        { condition: 'path-contains', value: '/polski-sklep', language: 'pl' },
+        { condition: 'path-contains', value: '/svenska-butik', language: 'sv' }, */
+
+        
+        // Language-specific paths
+      /**  { condition: 'path-contains', value: '/nederlands/', language: 'nl' },
+        { condition: 'path-contains', value: '/polski/', language: 'pl' },
+        { condition: 'path-contains', value: '/svenska/', language: 'sv' },
+        { condition: 'path-contains', value: '/dansk/', language: 'da' },
+        { condition: 'path-contains', value: '/suomi/', language: 'fi' },
+        { condition: 'path-contains', value: '/ελληνικά/', language: 'el' },
+        { condition: 'path-contains', value: '/magyar/', language: 'hu' },
+        { condition: 'path-contains', value: '/čeština/', language: 'cs' },
+        { condition: 'path-contains', value: '/română/', language: 'ro' }, */
+
+        
+        // Path exact (Higher priority than contains)
+       /** { condition: 'path-exact', value: '/shop/de', language: 'de' },
+        { condition: 'path-exact', value: '/shop/fr', language: 'fr' },
+        { condition: 'path-exact', value: '/shop/en', language: 'en' },
+        { condition: 'path-exact', value: '/german-version', language: 'de' },
+        { condition: 'path-exact', value: '/french-version', language: 'fr' },
+        { condition: 'path-exact', value: '/english-version', language: 'en' }, */
+
+        
+        // Path starts with
+       /** { condition: 'path-starts-with', value: '/nl/', language: 'nl' },
+        { condition: 'path-starts-with', value: '/pl/', language: 'pl' },
+        { condition: 'path-starts-with', value: '/sv/', language: 'sv' },
+        { condition: 'path-starts-with', value: '/da/', language: 'da' },
+        { condition: 'path-starts-with', value: '/fi/', language: 'fi' }, */
+
+        
+        // ===========================================================================
+        // ====== URL-BASED CONDITIONS (MEDIUM PRIORITY) =============================
+        // ===========================================================================
+        
+        // URL contains (full URL matching)
+      /**  { condition: 'url-contains', value: 'example.com/fr/shop', language: 'fr' },
+        { condition: 'url-contains', value: 'example.com/de/shop', language: 'de' },
+        { condition: 'url-contains', value: 'example.com/nl/shop', language: 'nl' },
+        { condition: 'url-contains', value: 'dev-rpractice.pantheonsite.io/fr/', language: 'fr' }, */
+
+        
+        // URL exact (specific full URLs)
+       /** { condition: 'url-exact', value: 'https://dev-rpractice.pantheonsite.io/shop/nl/', language: 'nl' },
+        { condition: 'url-exact', value: 'https://dev-rpractice.pantheonsite.io/shop/pl/', language: 'pl' },
+        { condition: 'url-exact', value: 'https://dev-rpractice.pantheonsite.io/shop/sv/', language: 'sv' },
+        
+        // URL starts with
+        { condition: 'url-starts-with', value: 'https://dev-rpractice.pantheonsite.io/nl/', language: 'nl' },
+        { condition: 'url-starts-with', value: 'https://dev-rpractice.pantheonsite.io/pl/', language: 'pl' },
+        { condition: 'url-starts-with', value: 'https://dev-rpractice.pantheonsite.io/sv/', language: 'sv' }, */
+
+        
+        // ===========================================================================
+        // ====== HOSTNAME/DOMAIN CONDITIONS ========================================
+        // ===========================================================================
+        
+        // Exact hostname matches
+       /** { condition: 'exact', value: 'nl.example.com', language: 'nl' },
+        { condition: 'exact', value: 'pl.example.com', language: 'pl' },
+        { condition: 'exact', value: 'se.example.com', language: 'sv' },
+        { condition: 'exact', value: 'dk.example.com', language: 'da' },
+        { condition: 'exact', value: 'fi.example.com', language: 'fi' },
+        { condition: 'exact', value: 'gr.example.com', language: 'el' },
+        { condition: 'exact', value: 'hu.example.com', language: 'hu' },
+        { condition: 'exact', value: 'cz.example.com', language: 'cs' },
+        { condition: 'exact', value: 'ro.example.com', language: 'ro' },
+        { condition: 'exact', value: 'fr.example.com', language: 'fr' },
+        { condition: 'exact', value: 'de.example.com', language: 'de' }, */
+
+        
+        // Hostname contains
+       /** { condition: 'hostname-contains', value: '.fr.', language: 'fr' },
+        { condition: 'hostname-contains', value: '.de.', language: 'de' },
+        { condition: 'hostname-contains', value: '.nl.', language: 'nl' }, */
+
+        
+        // Hostname starts with (subdomains)
+      /**  { condition: 'hostname-starts-with', value: 'fr.', language: 'fr' },
+        { condition: 'hostname-starts-with', value: 'de.', language: 'de' },
+        { condition: 'hostname-starts-with', value: 'nl.', language: 'nl' }, */
+
+        
+        // Subdomain specific
+      /**  { condition: 'subdomain', value: 'fr', language: 'fr' },
+        { condition: 'subdomain', value: 'de', language: 'de' },
+        { condition: 'subdomain', value: 'nl', language: 'nl' },
+        { condition: 'subdomain', value: 'pl', language: 'pl' }, */
+
+        
+        // ===========================================================================
+        // ====== QUERY PARAMETER CONDITIONS =========================================
+        // ===========================================================================
+        
+        // General contains (old format - for backward compatibility)
+       /** { condition: 'contains', value: '?lang=nl', language: 'nl' },
+        { condition: 'contains', value: '?lang=pl', language: 'pl' },
+        { condition: 'contains', value: '?lang=sv', language: 'sv' },
+        { condition: 'contains', value: '?language=da', language: 'da' },
+        { condition: 'contains', value: '?language=fi', language: 'fi' },
+        { condition: 'contains', value: 'locale=el', language: 'el' },
+        { condition: 'contains', value: 'locale=hu', language: 'hu' }, */
+
+        
+        // Parameter contains (new format)
+       /** { condition: 'param-contains', value: 'lang=nl', language: 'nl' },
+        { condition: 'param-contains', value: 'lang=pl', language: 'pl' },
+        { condition: 'param-contains', value: 'lang=sv', language: 'sv' },
+        { condition: 'param-contains', value: 'language=da', language: 'da' },
+        { condition: 'param-contains', value: 'language=fi', language: 'fi' }, */
+
+        
+        // Parameter exact match
+     /**   { condition: 'param-exact', value: 'lang=fr', language: 'fr' },
+        { condition: 'param-exact', value: 'lang=de', language: 'de' },
+        { condition: 'param-exact', value: 'lang=en', language: 'en' },
+        { condition: 'param-exact', value: 'locale=fr_FR', language: 'fr' },
+        { condition: 'param-exact', value: 'locale=de_DE', language: 'de' }, */
+
+        
+        // Has parameter
+      /**  { condition: 'has-param', value: 'lang', language: 'en' },
+        { condition: 'has-param', value: 'language', language: 'en' },
+        { condition: 'has-param', value: 'locale', language: 'en' }, */
+
+        
+        // ===========================================================================
+        // ====== FALLBACK BY DOMAIN EXTENSION =======================================
+        // ===========================================================================
+        
+    /**    { condition: 'hostname-ends-with', value: '.nl', language: 'nl' },
+        { condition: 'hostname-ends-with', value: '.pl', language: 'pl' },
+        { condition: 'hostname-ends-with', value: '.se', language: 'sv' },
+        { condition: 'hostname-ends-with', value: '.dk', language: 'da' },
+        { condition: 'hostname-ends-with', value: '.fi', language: 'fi' },
+        { condition: 'hostname-ends-with', value: '.gr', language: 'el' },
+        { condition: 'hostname-ends-with', value: '.hu', language: 'hu' },
+        { condition: 'hostname-ends-with', value: '.cz', language: 'cs' },
+        { condition: 'hostname-ends-with', value: '.ro', language: 'ro' },
+        { condition: 'hostname-ends-with', value: '.sk', language: 'sk' },
+        { condition: 'hostname-ends-with', value: '.si', language: 'sl' },
+        { condition: 'hostname-ends-with', value: '.bg', language: 'bg' },
+        { condition: 'hostname-ends-with', value: '.hr', language: 'hr' },
+        { condition: 'hostname-ends-with', value: '.lt', language: 'lt' },
+        { condition: 'hostname-ends-with', value: '.lv', language: 'lv' },
+        { condition: 'hostname-ends-with', value: '.ee', language: 'et' },
+        { condition: 'hostname-ends-with', value: '.mt', language: 'mt' },
+        { condition: 'hostname-ends-with', value: '.fr', language: 'fr' },
+        { condition: 'hostname-ends-with', value: '.de', language: 'de' }, */
+
+        
+        // ===========================================================================
+        // ====== FINAL FALLBACK RULES ===============================================
+        // ===========================================================================
+        
+      /**  { condition: 'exact', value: 'dev-rpractice.pantheonsite.io', language: 'en' },
+        { condition: 'hostname-contains', value: 'dev-rpractice', language: 'en' }, */
+
+        
+        // Ultimate fallback - will match any page on your domain
+        { condition: 'url-contains', value: 'dev-rpractice.pantheonsite.io', language: 'en' }
+    ]
+},
+
+
+  
+
+
+
+  
     // Geo-targeting configuration
  // In your config object, update the geoConfig section:
 geoConfig: {
@@ -2176,8 +2377,30 @@ function checkGeoTargeting(geoData) {
 
 // Detect user language based on country and browser settings
 // Detect user language based on country and browser settings
+
+
+
+
+// Detect user language based on country and browser settings
 function detectUserLanguage(geoData) {
-    // First check if language is stored in cookie (user's previous choice)
+    console.log('=== Starting language detection ===');
+    
+    // Step 1: Check URL-based language rules first (highest priority)
+    if (config.urlLanguageRules && config.urlLanguageRules.enabled) {
+        const urlLanguage = detectLanguageFromURL();
+        if (urlLanguage) {
+            console.log('Language detected from URL rule:', urlLanguage);
+            
+            // Save the detected language to cookie for future visits
+            if (config.behavior.rememberLanguage) {
+                setCookie('preferred_language', urlLanguage, 365);
+            }
+            return urlLanguage;
+        }
+    }
+    console.log('No URL rule matched');
+    
+    // Step 2: Check cookie (user's previous choice)
     if (config.behavior.rememberLanguage) {
         const preferredLanguage = getCookie('preferred_language');
         if (preferredLanguage && translations[preferredLanguage]) {
@@ -2186,25 +2409,23 @@ function detectUserLanguage(geoData) {
         }
     }
     
-    // Then try to get language from browser settings
+    // Step 3: Browser language
     const browserLang = (navigator.language || navigator.userLanguage || 'en').split('-')[0];
     console.log('Browser language detected:', browserLang);
     
     if (translations[browserLang]) {
-        // Save the detected language to cookie for future visits
         if (config.behavior.rememberLanguage) {
             setCookie('preferred_language', browserLang, 365);
         }
         return browserLang;
     }
     
-    // Then try to get language from country if auto-detection is enabled
+    // Step 4: Country-based detection
     if (config.languageConfig.autoDetectLanguage && geoData && geoData.country) {
         const countryLang = countryLanguageMap[geoData.country];
         console.log('Country language detected:', countryLang, 'for country:', geoData.country);
         
         if (countryLang && translations[countryLang]) {
-            // Save the detected language to cookie for future visits
             if (config.behavior.rememberLanguage) {
                 setCookie('preferred_language', countryLang, 365);
             }
@@ -2212,10 +2433,187 @@ function detectUserLanguage(geoData) {
         }
     }
     
-    // Final fallback to configured default language
+    // Step 5: Final fallback
     console.log('Using default language:', config.languageConfig.defaultLanguage);
     return config.languageConfig.defaultLanguage || 'en';
 }
+
+
+
+
+
+
+// NEW: Detect language based on URL rules
+function detectLanguageFromURL() {
+    if (!config.urlLanguageRules || !config.urlLanguageRules.enabled) {
+        return null;
+    }
+    
+    const currentURL = window.location.href;
+    const currentHostname = window.location.hostname;
+    const currentPath = window.location.pathname;
+    const currentSearch = window.location.search;
+    const currentHash = window.location.hash;
+    
+    // Full URL for comprehensive matching
+    const fullURL = currentURL;
+    
+    console.log('🔍 URL Language Detection - Checking:', {
+        hostname: currentHostname,
+        path: currentPath,
+        search: currentSearch,
+        hash: currentHash,
+        fullURL: fullURL
+    });
+    
+    // Check each rule in the exact order they're defined
+    for (let i = 0; i < config.urlLanguageRules.rules.length; i++) {
+        const rule = config.urlLanguageRules.rules[i];
+        let matches = false;
+        
+        // First, validate that the language exists in translations
+        if (!translations[rule.language]) {
+            console.warn(`⚠️ Skipping rule ${i+1} - Language '${rule.language}' not found in translations`);
+            continue;
+        }
+        
+        // Perform matching based on condition type
+        switch (rule.condition) {
+            // ====== PATH-BASED CONDITIONS (HIGHEST PRIORITY) ======
+            case 'path-contains':
+                matches = currentPath.includes(rule.value);
+                break;
+                
+            case 'path-exact':
+                matches = currentPath === rule.value;
+                break;
+                
+            case 'path-starts-with':
+                matches = currentPath.startsWith(rule.value);
+                break;
+                
+            case 'path-ends-with':
+                matches = currentPath.endsWith(rule.value);
+                break;
+                
+            case 'path-regex':
+                try {
+                    const regex = new RegExp(rule.value);
+                    matches = regex.test(currentPath);
+                } catch (e) {
+                    console.error(`Invalid regex in rule ${i+1}:`, e);
+                }
+                break;
+                
+            // ====== URL-BASED CONDITIONS (MEDIUM PRIORITY) ======
+            case 'url-contains':
+                matches = fullURL.includes(rule.value);
+                break;
+                
+            case 'url-exact':
+                matches = fullURL === rule.value;
+                break;
+                
+            case 'url-starts-with':
+                matches = fullURL.startsWith(rule.value);
+                break;
+                
+            case 'url-ends-with':
+                matches = fullURL.endsWith(rule.value);
+                break;
+                
+            case 'url-regex':
+                try {
+                    const regex = new RegExp(rule.value);
+                    matches = regex.test(fullURL);
+                } catch (e) {
+                    console.error(`Invalid regex in rule ${i+1}:`, e);
+                }
+                break;
+                
+            // ====== HOSTNAME/DOMAIN CONDITIONS ======
+            case 'exact':
+                matches = currentHostname === rule.value;
+                break;
+                
+            case 'hostname-contains':
+                matches = currentHostname.includes(rule.value);
+                break;
+                
+            case 'hostname-starts-with':
+                matches = currentHostname.startsWith(rule.value);
+                break;
+                
+            case 'hostname-ends-with':
+                matches = currentHostname.endsWith(rule.value);
+                break;
+                
+            case 'subdomain':
+                const subdomainPattern = new RegExp(`^${rule.value}\\.`);
+                matches = subdomainPattern.test(currentHostname);
+                break;
+                
+            // ====== QUERY PARAMETER CONDITIONS ======
+            case 'contains':
+                matches = fullURL.includes(rule.value);
+                break;
+                
+            case 'param-contains':
+                matches = currentSearch.includes(rule.value);
+                break;
+                
+            case 'param-exact':
+                const params = new URLSearchParams(currentSearch);
+                const [key, value] = rule.value.split('=');
+                matches = params.get(key) === value;
+                break;
+                
+            case 'has-param':
+                const paramName = rule.value.replace('?', '');
+                matches = currentSearch.includes(paramName);
+                break;
+                
+            // ====== HASH/FRAGMENT CONDITIONS ======
+            case 'hash-contains':
+                matches = currentHash.includes(rule.value);
+                break;
+                
+            case 'hash-exact':
+                matches = currentHash === rule.value;
+                break;
+                
+            default:
+                console.warn(`Unknown condition type: ${rule.condition} in rule ${i+1}`);
+                continue;
+        }
+        
+        if (matches) {
+            console.log(`✅ Rule ${i+1} MATCHED!`, {
+                rule: `${rule.condition}: "${rule.value}"`,
+                language: rule.language,
+                languageName: translations[rule.language].language,
+                currentPath: currentPath,
+                currentHostname: currentHostname,
+                matchedValue: rule.value
+            });
+            return rule.language;
+        }
+    }
+    
+    console.log('ℹ️ No URL language rule matched');
+    return null;
+}
+
+
+
+
+
+
+
+
+
+
+
 // Get available languages for dropdown
 function getAvailableLanguages() {
     if (config.languageConfig.availableLanguages.length > 0) {
@@ -2652,22 +3050,9 @@ function injectConsentHTML(detectedCookies, language = 'en') {
     </div>
 
 
-
-
-
-
-
-
     
     <!-- Blur overlay for restricting interaction -->
     <div id="cookieBlurOverlay" class="cookie-blur-overlay"></div>
-
-
-
-
-
-
-
 
 
 
@@ -2869,6 +3254,8 @@ function injectConsentHTML(detectedCookies, language = 'en') {
     }
 
 
+
+
     /* Blur overlay for restricting interaction */
     .cookie-blur-overlay {
         position: fixed;
@@ -2883,7 +3270,7 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         pointer-events: none; /* Allows clicks to pass through to banner */
     }
     
-    /* When restricting clicks, make overlay block clicks */
+       /* When restricting clicks, make overlay block clicks */
     .cookie-blur-overlay.block-clicks {
         pointer-events: auto;
         cursor: default;  <-- CHANGED TO "default"
@@ -2893,6 +3280,8 @@ function injectConsentHTML(detectedCookies, language = 'en') {
     .no-scroll {
         overflow: hidden !important;
     }
+
+
 
 
 
@@ -3788,8 +4177,7 @@ function shouldShowBanner() {
 
 // Main initialization function
 function initializeCookieConsent(detectedCookies, language) {
-
-   // NEW: Check if we should show on this URL
+    // NEW: Check if we should show on this URL
     if (!shouldShowOnCurrentUrl()) {
         console.log('Cookie consent banner disabled for this URL');
         return; // Don't show the banner on this URL
@@ -3820,70 +4208,65 @@ function initializeCookieConsent(detectedCookies, language) {
         }
     }
 
-
-
-    // Microsoft Clarity initialization
-// Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
-function initializeClarity(consentGranted) {
-    if (!config.clarityConfig.enabled) return;
-    
-    const consentRequired = isEEAVisitor();
-    
-    // If we don't need consent or it's granted, load Clarity
-    if (consentGranted || !consentRequired) {
-        // Only load if not already loaded
-        if (typeof window.clarity === 'undefined') {
-            (function(c,l,a,r,i,t,y){
-                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", config.clarityConfig.projectId);
-        }
+    // Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
+    function initializeClarity(consentGranted) {
+        if (!config.clarityConfig.enabled) return;
         
-        // Send consent signal
-        ensureClarityConsentSignal(consentGranted);
-    } else if (config.clarityConfig.loadBeforeConsent === false) {
-        // Ensure Clarity doesn't load if consent not given and not allowed to load before consent
-        window.clarity = window.clarity || function() {
-            // Store calls in queue but don't execute them
-            (window.clarity.q = window.clarity.q || []).push(arguments);
-        };
-        window.clarity('consent', false);
-    }
-}
-
-
-
-// Function to send consent signal to Microsoft Clarity
-function sendClarityConsentSignal(consentGranted) {
-    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
-    
-    try {
-        if (typeof window.clarity !== 'undefined') {
-            // Send consent signal to Clarity
-            window.clarity('consent', consentGranted);
-            console.log('Microsoft Clarity consent signal sent:', consentGranted);
+        const consentRequired = isEEAVisitor();
+        
+        // If we don't need consent or it's granted, load Clarity
+        if (consentGranted || !consentRequired) {
+            // Only load if not already loaded
+            if (typeof window.clarity === 'undefined') {
+                (function(c,l,a,r,i,t,y){
+                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", config.clarityConfig.projectId);
+            }
             
-            // Push to dataLayer for tracking
-            window.dataLayer.push({
-                'event': 'clarity_consent_signal',
-                'clarity_consent': consentGranted,
-                'timestamp': new Date().toISOString(),
-                'location_data': locationData
-            });
+            // Send consent signal
+            ensureClarityConsentSignal(consentGranted);
+        } else if (config.clarityConfig.loadBeforeConsent === false) {
+            // Ensure Clarity doesn't load if consent not given and not allowed to load before consent
+            window.clarity = window.clarity || function() {
+                // Store calls in queue but don't execute them
+                (window.clarity.q = window.clarity.q || []).push(arguments);
+            };
+            window.clarity('consent', false);
         }
-    } catch (error) {
-        console.error('Failed to send Clarity consent signal:', error);
     }
-}
+
+    // Function to send consent signal to Microsoft Clarity
+    function sendClarityConsentSignal(consentGranted) {
+        if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
+        
+        try {
+            if (typeof window.clarity !== 'undefined') {
+                // Send consent signal to Clarity
+                window.clarity('consent', consentGranted);
+                console.log('Microsoft Clarity consent signal sent:', consentGranted);
+                
+                // Push to dataLayer for tracking
+                window.dataLayer.push({
+                    'event': 'clarity_consent_signal',
+                    'clarity_consent': consentGranted,
+                    'timestamp': new Date().toISOString(),
+                    'location_data': locationData
+                });
+            }
+        } catch (error) {
+            console.error('Failed to send Clarity consent signal:', error);
+        }
+    }
     
-    // Explicitly apply the default language from config
-    changeLanguage(config.languageConfig.defaultLanguage);
+    // FIXED: Apply the dynamically detected language instead of forcing default
+    changeLanguage(language);
     
-    // Set the dropdown to the default language
+    // FIXED: Set the dropdown to the detected language, not the default
     const languageSelect = document.getElementById('cookieLanguageSelect');
     if (languageSelect) {
-        languageSelect.value = config.languageConfig.defaultLanguage;
+        languageSelect.value = language;
         // Ensure the change event listener is correctly set up
         languageSelect.addEventListener('change', function() {
             changeLanguage(this.value);
@@ -4133,6 +4516,7 @@ function hideCookieBanner() {
     // NEW: Disable interaction restrictions when banner hides
     disableInteractionRestrictions();
 }
+
 function showCookieSettings() {
     const modal = document.getElementById('cookieSettingsModal');
     modal.style.display = 'flex';
@@ -4193,8 +4577,6 @@ function hideFloatingButton() {
         button.style.display = 'none';
     }, 300);
 }
-
-
 
 
 
@@ -4294,8 +4676,6 @@ function setBlurDensity(density) {
 
 
 
-
-
 // Cookie consent functions
 function acceptAllCookies() {
 
@@ -4346,7 +4726,7 @@ function acceptAllCookies() {
         'location_data': locationData
     });
 
-  // NEW: Disable interaction restrictions when user accepts
+    // Add this at the end of acceptAllCookies function
     disableInteractionRestrictions();
   
 }
@@ -4399,7 +4779,6 @@ function rejectAllCookies() {
 
       // Add this at the end of rejectAllCookies function
     disableInteractionRestrictions();
-  
 }
 
 function saveCustomSettings() {
@@ -4500,8 +4879,7 @@ function saveCustomSettings() {
         });
     }
 
-
-  // NEW: Disable interaction restrictions when user saves custom settings
+      // Add this at the end of saveCustomSettings function
     disableInteractionRestrictions();
 }
 // Helper functions
@@ -4963,6 +5341,7 @@ function checkExistingClarityConsent() {
 }
 
 
+// Export functions for global access if needed
 // Export functions for global access if needed
 if (typeof window !== 'undefined') {
     window.cookieConsent = {
