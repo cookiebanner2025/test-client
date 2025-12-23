@@ -11,273 +11,21 @@
     
     /* ===================== BLOCKING SETTINGS ===================== */
     // These are the defaults - you can customize these later
-/* ===================== COMPREHENSIVE BLOCKING SETTINGS ===================== */
-const BLOCKED_DOMAINS = [
-    // Google
-    "googletagmanager.com", "google-analytics.com", "google-analytics.io",
-    "googleadservices.com", "doubleclick.net", "googleads.g.doubleclick.net",
-    "googlesyndication.com", "googleadservices.com", "gstatic.com",
-    "google.com/ads", "google.com/adwords", "google.com/pagead",
-    "googleoptimize.com", "googletagservices.com", "googletraveladservices.com",
-    
-    // Facebook/Meta
-    "connect.facebook.net", "facebook.com/tr", "facebook.com/connect",
-    "facebook.net", "fbcdn.net", "fb.com", "fbsbx.com",
-    
-    // Microsoft
-    "clarity.ms", "bat.bing.com", "bing.com", "microsoft.com/clarity",
-    "live.com", "msn.com", "microsoftonline.com",
-    
-    // TikTok
-    "analytics.tiktok.com", "ads.tiktok.com", "tiktok.com/analytics",
-    "tiktok.com/ads", "bytedance.com",
-    
-    // LinkedIn
-    "snap.licdn.com", "linkedin.com/analytics", "linkedin.com/ads",
-    "licdn.com", "lnkd.in",
-    
-    // Twitter/X
-    "analytics.twitter.com", "twitter.com/analytics", "ads-twitter.com",
-    "x.com/analytics", "ads.x.com",
-    
-    // Snapchat
-    "snapchat.com", "sc-static.net", "snap-dev.net",
-    "snapkit.com", "snapads.com",
-    
-    // Pinterest
-    "pinterest.com", "pinimg.com", "pinterestads.com",
-    
-    // Hotjar
-    "hotjar.com", "hotjar.io", "insights.hotjar.com",
-    
-    // Segment
-    "segment.com", "cdn.segment.com", "segment.io",
-    
-    // Adobe
-    "adobe.com", "omniture.com", "adobedtm.com",
-    "assets.adobedtm.com", "demdex.net",
-    
-    // Amazon
-    "amazon-adsystem.com", "amazon.com/ads", "assoc-amazon.com",
-    
-    // Criteo
-    "criteo.com", "criteo.net", "casalemedia.com",
-    
-    // Taboola
-    "taboola.com", "taboolasyndication.com",
-    
-    // Outbrain
-    "outbrain.com", "outbrainimg.com",
-    
-    // Verizon Media
-    "verizonmedia.com", "aol.com", "yahoo.com",
-    
-    // The Trade Desk
-    "adsrvr.org", "tradedesk.com",
-    
-    // Quantcast
-    "quantcast.com", "quantserve.com",
-    
-    // LiveRamp
-    "rlcdn.com", "liveramp.com",
-    
-    // Yandex
-    "yandex.ru", "yandex.net", "metrika.yandex.ru",
-    
-    // Other Analytics Platforms
-    "mixpanel.com", "kissmetrics.com", "heap.io",
-    "amplitude.com", "mouseflow.com", "crazyegg.com",
-    "fullstory.com", "inspectlet.com", "smartlook.com",
-    
-    // Advertising Networks
-    "adroll.com", "adnxs.com", "rubiconproject.com",
-    "pubmatic.com", "openx.net", "indexexchange.com",
-    "sonobi.com", "yieldmo.com", "sharethrough.com",
-    "triplelift.com", "teads.tv", "spotxchange.com",
-    
-    // Consent Managers
-    "onetrust.com", "cookiebot.com", "usercentrics.com",
-    "trustarc.com", "quantcast.mgr.consensu.org",
-    
-    // CDNs with tracking
-    "cloudfront.net", "akamai.net", "fastly.net",
-    "jsdelivr.net", "unpkg.com", "cdnjs.com"
-];
-
-const BLOCKED_COOKIES = [
-    // Google
-    "_ga", "_gid", "_gat", "_gcl_au", "_gcl_aw", "_gcl_dc",
-    "gclid", "dclid", "IDE", "ANID", "NID", "1P_JAR",
-    "CONSENT", "SID", "HSID", "SSID", "APISID",
-    "SAPISID", "OTZ", "DV", "UULE",
-    
-    // Facebook
-    "_fbp", "_fbc", "fr", "datr", "c_user", "xs",
-    "sb", "dpr", "wd", "presence", "act",
-    
-    // Microsoft
-    "_clck", "_clsk", "_uetmsdns", "_uetsid", "_uetvid",
-    "_uetmsclkid", "MUID", "MUIDB", "_uetmsd",
-    
-    // TikTok
-    "_ttp", "ttclid", "tt_sessionid", "tt_medium",
-    "tt_campaign", "tt_source",
-    
-    // LinkedIn
-    "lidc", "bcookie", "bscookie", "li_sugr",
-    "lang", "UserMatchHistory",
-    
-    // Twitter/X
-    "personalization_id", "guest_id", "ct0", "auth_token",
-    "twid", "m_t", "kdt", "dnt",
-    
-    // Snapchat
-    "sc_at", "_scid", "_sctr",
-    
-    // Pinterest
-    "_pinterest_ct_ua", "_pinterest_sess", "_pin_unauth",
-    "_auth", "_pinterest_referrer",
-    
-    // Hotjar
-    "_hjid", "_hjAbsoluteSessionInProgress",
-    "_hjFirstSeen", "_hjIncludedInPageviewSample",
-    "_hjIncludedInSessionSample", "_hjTLDTest",
-    
-    // Adobe
-    "s_cc", "s_sq", "AMCV_", "s_vi", "demdex",
-    
-    // Shopify
-    "_shopify_y", "_shopify_s", "_shopify_sa_p",
-    "_shopify_fs", "_shopify_uniq",
-    
-    // Taboola
-    "t_gid", "t_sessionid", "taboola_usg",
-    
-    // Outbrain
-    "obuid", "obcl", "outbrain_cid",
-    
-    // Verizon
-    "TUUID", "TUUID_TIMESTAMP",
-    
-    // Quantcast
-    "d", "qc_shared",
-    
-    // LiveRamp
-    "_cc_cc", "_cc_id",
-    
-    // Yandex
-    "yandexuid", "ymex", "_ym_uid", "_ym_d",
-    
-    // Quora
-    "m-b", "m-uid",
-    
-    // StackAdapt
-    "sadb", "sadr",
-    
-    // The Trade Desk
-    "TDID", "TDCPM",
-    
-    // MediaMath
-    "mmapi", "mmdata",
-    
-    // Criteo
-    "criteo", "uid",
-    
-    // AdRoll
-    "__adroll", "__ar_v4",
-    
-    // Amazon
-    "ad-id", "ad-privacy", "adblk",
-    
-    // New Relic
-    "NRBA_POOL", "NRBA_SESSION",
-    
-    // Optimizely
-    "optimizelyEndUserId", "optimizelySegments",
-    
-    // Vimeo
-    "vuid", "player",
-    
-    // YouTube
-    "VISITOR_INFO1_LIVE", "YSC", "PREF",
-    
-    // Dailymotion
-    "dmvk", "dm_last_visit",
-    
-    // Trustpilot
-    "trustpilot_customer_auth", "trustpilot_machine_id",
-    
-    // Zendesk
-    "__zlcmid", "__zlcprivacy",
-    
-    // Freshchat
-    "_fw_crm_v", "_fw_l2_b",
-    
-    // Drift
-    "drift_aid", "drift_campaign_refresh",
-    
-    // Intercom
-    "intercom-id", "intercom-session",
-    
-    // Segment
-    "ajs_anonymous_id", "ajs_user_id",
-    
-    // Snowplow
-    "_sp_id", "_sp_ses",
-    
-    // Matomo
-    "_pk_id", "_pk_ses",
-    
-    // Crazy Egg
-    "is_returning", "ce_need_secure",
-    
-    // Mouseflow
-    "mf_user",
-    
-    // FullStory
-    "_fsuid", "_fssid",
-    
-    // Pardot
-    "visitor_id", "visitor_id-hash",
-    
-    // Marketo
-    "_mkto_trk", "BIGipServerpool_",
-    
-    // Eloqua
-    "ELOQUA", "ELQSTATUS",
-    
-    // Salesforce
-    "sid", "clientSrc",
-    
-    // Tealium
-    "utag_main", "utag_env",
-    
-    // OneTrust
-    "OptanonAlertBoxClosed", "OptanonConsent",
-    
-    // Cookiebot
-    "CookieConsent", "cookietest",
-    
-    // Usercentrics
-    "uc_user_interaction", "uc_user_interaction_ts",
-    
-    // TrustArc
-    "notice_gdpr_prefs", "notice_behavior",
-    
-    // Quantcast Choice
-    "quantcast_choice", "quantcast2.quantcast",
-    
-    // IAB TCF
-    "euconsent-v2", "eupubconsent-v2",
-    
-    // General tracking patterns
-    "tracking", "track", "analytics", "ads",
-    "advertising", "marketing", "pixel", "beacon",
-    
-    // Session and user IDs
-    "sessionid", "userid", "visitor", "uuid",
-    "client_id", "device_id", "browser_id"
-];
+    const BLOCKED_DOMAINS = [
+        "connect.facebook.net", "facebook.com/tr",
+        "googletagmanager.com", "google-analytics.com",
+        "googleadservices.com", "doubleclick.net",
+        "analytics.tiktok.com", "ads.tiktok.com",
+        "snap.licdn.com", "analytics.twitter.com",
+        "clarity.ms", "bat.bing.com",
+        "hotjar.com", "segment.com", "cdn.segment.com",
+        "snapchat.com", "pinterest.com"
+    ];
+    
+    const BLOCKED_COOKIES = [
+        "_fbp", "_fbc", "_ga", "_gid", "_gat", "_gcl_au",
+        "_clck", "_clsk", "IDE", "ANID", "test_cookie"
+    ];
     
     /* ============================================================
        EXIT IF CONSENT IS ALREADY GIVEN
@@ -327,220 +75,32 @@ const BLOCKED_COOKIES = [
         }
         return _open.apply(this, arguments);
     };
-
-
-
-// 3. Block XHR requests to tracking domains
-const _open = XMLHttpRequest.prototype.open;
-XMLHttpRequest.prototype.open = function (method, url) {
-    if (url && BLOCKED_DOMAINS.some(d => url.includes(d))) {
-        console.log("🛡️ Blocked XHR:", url);
-        return;
-    }
-    return _open.apply(this, arguments);
-};
-
-// 4. Block WebSocket connections to tracking domains
-const _WebSocket = window.WebSocket;
-window.WebSocket = function(url, protocols) {
-    if (url && BLOCKED_DOMAINS.some(d => url.includes && url.includes(d))) {
-        console.log("🛡️ Blocked WebSocket:", url);
-        return {
-            send: () => {},
-            close: () => {},
-            readyState: 3 // CLOSED
-        };
-    }
-    return new _WebSocket(url, protocols);
-};
-
-
-   
     
     // 4. Remove inline trackers
-   // 4. Remove inline trackers - Enhanced
-function removeInlineTrackers() {
-    document.querySelectorAll("script:not([src])").forEach(s => {
-        const scriptContent = s.innerText.toLowerCase();
-        
-        // Comprehensive list of tracker patterns
-        const trackerPatterns = [
-            /fbq|facebook.*pixel|facebook.*track/i,
-            /gtag|google.*tag.*manager|google.*analytics/i,
-            /dataLayer|google.*optimize/i,
-            /ttq|tiktok.*pixel|tiktok.*track/i,
-            /analytics.*init|analytics.*track/i,
-            /clarity|microsoft.*clarity/i,
-            /hotjar|hj.*trigger|_hjSettings/i,
-            /segment.*analytics|analytics.*load/i,
-            /mixpanel.*init|mixpanel.*track/i,
-            /amplitude.*init|amplitude.*track/i,
-            /heap.*load|heap.*identify/i,
-            /pinterest.*pin|pinterest.*track/i,
-            /linkedin.*insight.*tag|_linkedin/i,
-            /twitter.*pixel|twq\(|twttr\.conversion/i,
-            /snapchat.*pixel|snap.*trk/i,
-            /reddit.*pixel|rdt\.track/i,
-            /quora.*pixel|q.*track/i,
-            /bingads|_uetq\.push/i,
-            /adsbygoogle|google_ad/i,
-            /doubleclick.*floodlight/i,
-            /taboola.*pixel|_taboola/i,
-            /outbrain.*pixel|obApi/i,
-            /criteo.*pixel|criteo\.push/i,
-            /adroll.*pixel|__adroll/i
-        ];
-        
-        if (trackerPatterns.some(pattern => pattern.test(scriptContent))) {
-            console.log("🛡️ Removed inline tracker script");
-            s.remove();
-        }
-    });
-    
-    // Also check for noscript tracking pixels
-    document.querySelectorAll("noscript").forEach(n => {
-        if (/img.*track|pixel.*gif|tracking.*image/i.test(n.innerHTML)) {
-            console.log("🛡️ Removed noscript tracker");
-            n.remove();
-        }
-    });
-}
+    function removeInlineTrackers() {
+        document.querySelectorAll("script:not([src])").forEach(s => {
+            if (/fbq|gtag|dataLayer|ttq|analytics|clarity|hotjar/i.test(s.innerText)) {
+                console.log("🛡️ Removed inline tracker script");
+                s.remove();
+            }
+        });
+    }
     
     removeInlineTrackers();
     new MutationObserver(removeInlineTrackers)
         .observe(document.documentElement, { childList: true, subtree: true });
     
     // 5. Delete cookies aggressively
- // 5. Delete cookies aggressively but protect essential ones
-function clearBlockedCookies() {
-    BLOCKED_COOKIES.forEach(cookieName => {
-        // Skip if it's an essential cookie
-        if (ESSENTIAL_COOKIES.some(essential => 
-            cookieName.includes(essential) || essential.includes(cookieName))) {
-            return;
-        }
-        
-        // Delete for current domain
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-        // Delete for root domain
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-        
-        // Also try to delete with wildcard subdomains
-        const domainParts = window.location.hostname.split('.');
-        if (domainParts.length > 1) {
-            const rootDomain = domainParts.slice(-2).join('.');
-            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${rootDomain}`;
-        }
-    });
+    function clearBlockedCookies() {
+        BLOCKED_COOKIES.forEach(cookieName => {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        });
+    }
     
-    // Call essential cookies protection
-    protectEssentialCookies();
-}
-
-
-
-
-// 6. Define essential cookies that should NEVER be blocked
-const ESSENTIAL_COOKIES = [
-    // Security and authentication
-    "PHPSESSID", "JSESSIONID", "ASPSESSIONID", "ASP.NET_SessionId",
-    "laravel_session", "__RequestVerificationToken", "XSRF-TOKEN",
-    "csrf_token", "csrf", "__Host-session", "__Secure-session",
-    
-    // Load balancer and infrastructure
-    "AWSALB", "AWSALBCORS", "ARRAffinity", "ARRAffinitySameSite",
-    "__cfduid", "__cf_bm", "cf_clearance", "CloudFront-",
-    
-    // Language and localization
-    "locale", "language", "lang", "country", "currency",
-    "timezone", "region",
-    
-    // Shopping cart and e-commerce
-    "cart_id", "cart_token", "checkout_token", "order_id",
-    "shopify_cart", "woocommerce_cart_hash", "woocommerce_items_in_cart",
-    
-    // Form and validation
-    "form_token", "validation_token", "captcha",
-    
-    // User preferences (non-tracking)
-    "theme", "dark_mode", "font_size", "layout",
-    
-    // Cookie consent itself
-    "cookie_consent", "cookie_preferences", "consent_status",
-    "cookie_banner", "gdpr_consent",
-    
-    // Authentication (not tracking)
-    "auth_token", "remember_token", "login_token",
-    
-    // Essential functionality
-    "preferred_domain", "site_preferences", "accessibility",
-    "screen_size", "device_type"
-];
-
-// 7. Exempt essential cookies from deletion
-function protectEssentialCookies() {
-    ESSENTIAL_COOKIES.forEach(cookieName => {
-        // Ensure essential cookies are not deleted
-        // They're already protected by not being in BLOCKED_COOKIES
-        // This is just for documentation
-    });
-}
-
-
-
-
- Dynamic cookie detection and blocking
-function detectAndBlockNewCookies() {
-    const allCookies = document.cookie.split(';');
-    const knownEssential = [...ESSENTIAL_COOKIES, 'cookie_consent'];
-    
-    allCookies.forEach(cookie => {
-        const [name, value] = cookie.trim().split('=');
-        if (!name) return;
-        
-        // Check if it's already in our block list
-        const alreadyBlocked = BLOCKED_COOKIES.some(blocked => 
-            name.includes(blocked) || blocked.includes(name)
-        );
-        
-        // Check if it's essential
-        const isEssential = knownEssential.some(essential => 
-            name.includes(essential) || essential.includes(name)
-        );
-        
-        // Check for tracking patterns in cookie name
-        const isTrackingCookie = /(_ga|_gid|_fbp|_fbc|_clck|_uet|_sc|tt_|li_|_pin|_hj|_mkto|visitor_|tracking_|analytics_|ad_|ads_|marketing_|pixel_|beacon_|uuid_|session_|user_)/i.test(name);
-        
-        // Check for tracking patterns in cookie value (if any)
-        const hasTrackingValue = value && (
-            /^GA\d|^UA-|^G-|^fb|^tt|^li|^pin|^sc|^hj|^mkto/i.test(value) ||
-            value.includes('tracking') ||
-            value.includes('analytics') ||
-            value.includes('advertising')
-        );
-        
-        // Block if it looks like a tracking cookie and isn't essential
-        if (!alreadyBlocked && !isEssential && (isTrackingCookie || hasTrackingValue)) {
-            console.log(`🛡️ Dynamically blocking suspicious cookie: ${name}`);
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-            
-            // Add to blocked list for future reference
-            if (!BLOCKED_COOKIES.includes(name)) {
-                BLOCKED_COOKIES.push(name);
-            }
-        }
-    });
-}
-
-clearBlockedCookies();
-detectAndBlockNewCookies(); // Add this line
-setInterval(() => {
     clearBlockedCookies();
-    detectAndBlockNewCookies(); // Add this line
-}, 1000);
-
-   
+    setInterval(clearBlockedCookies, 1000);
+    
     console.info("🛡️ Privacy Firewall ACTIVE – waiting for cookie consent");
     
     /* ============================================================
