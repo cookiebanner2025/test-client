@@ -9,50 +9,23 @@
     const CONSENT_KEY = "__user_cookie_consent__";
     const HAS_CONSENT = localStorage.getItem(CONSENT_KEY) === "granted";
     
-    /* ===================== ESSENTIAL COOKIES - NEVER BLOCK ===================== */
-    // These cookies are ALWAYS allowed (essential for website functionality)
-    const ESSENTIAL_COOKIES = [
-        // Session cookies
-        "PHPSESSID",
-        "JSESSIONID",
-        "ASP.NET_SessionId",
-        "__cfduid", // Cloudflare security
-        "__cf_bm", // Cloudflare bot management
-        "AWSALB", // AWS load balancer
-        "AWSALBCORS", // AWS CORS load balancer
-        "ARRAffinity", // Azure load balancer
-        "wordpress_test_cookie", // WordPress test
-        "wfvt_", // Wordfence security
-        "cookie_consent", // Your own consent cookie
-        "__user_cookie_consent__", // Your consent key
-        // Essential functional cookies
-        "wp-settings-",
-        "wp-settings-time-",
-        // Essential security cookies
-        "csrf_token",
-        "XSRF-TOKEN",
-        "laravel_session"
-    ];
-    
-    /* ===================== ESSENTIAL DOMAINS - NEVER BLOCK ===================== */
-    // These domains are ALWAYS allowed (essential for website functionality)
-    const ESSENTIAL_DOMAINS = [
-        window.location.hostname, // Your own domain
-        "fonts.googleapis.com", // Google Fonts
-        "fonts.gstatic.com", // Google Fonts
-        "cdnjs.cloudflare.com", // Common CDN
-        "stackpath.bootstrapcdn.com", // Bootstrap
-        "unpkg.com", // Common packages
-        "ajax.googleapis.com", // Common AJAX
-        "code.jquery.com", // jQuery
-        "maxcdn.bootstrapcdn.com", // Bootstrap
-        "use.fontawesome.com", // Font Awesome
-        "kit.fontawesome.com", // Font Awesome
-        "cdn.jsdelivr.net" // Common CDN
-    ];
-    
     /* ===================== BLOCKING SETTINGS ===================== */
-    // We'll generate these dynamically from your cookieDatabase
+    // These are the defaults - you can customize these later
+    const BLOCKED_DOMAINS = [
+        "connect.facebook.net", "facebook.com/tr",
+        "googletagmanager.com", "google-analytics.com",
+        "googleadservices.com", "doubleclick.net",
+        "analytics.tiktok.com", "ads.tiktok.com",
+        "snap.licdn.com", "analytics.twitter.com",
+        "clarity.ms", "bat.bing.com",
+        "hotjar.com", "segment.com", "cdn.segment.com",
+        "snapchat.com", "pinterest.com"
+    ];
+    
+    const BLOCKED_COOKIES = [
+        "_fbp", "_fbc", "_ga", "_gid", "_gat", "_gcl_au",
+        "_clck", "_clsk", "IDE", "ANID", "test_cookie"
+    ];
     
     /* ============================================================
        EXIT IF CONSENT IS ALREADY GIVEN
@@ -60,238 +33,6 @@
     if (HAS_CONSENT) {
         console.info("✅ Consent found – tracking allowed");
         return;
-    }
-    
-    /* ===================== DYNAMIC BLOCK LIST GENERATION ===================== */
-    // Function to generate block lists from cookieDatabase
-    function generateBlockLists() {
-        const BLOCKED_COOKIES = [];
-        const BLOCKED_DOMAINS = [];
-        const ESSENTIAL_COOKIE_PATTERNS = [];
-        
-        // Define which categories to block (everything except 'essential')
-        const CATEGORIES_TO_BLOCK = ['advertising', 'analytics', 'performance', 'functional', 'uncategorized'];
-        
-        // Static essential domains (always allowed)
-        const staticEssentialDomains = [...ESSENTIAL_DOMAINS];
-        
-        // Check if cookieDatabase exists (from your main script)
-        if (typeof cookieDatabase !== 'undefined') {
-            console.log("🛡️ Generating block lists from cookieDatabase...");
-            
-            // Process each cookie in the database
-            for (const [cookiePattern, cookieInfo] of Object.entries(cookieDatabase)) {
-                // Only block if category is NOT 'essential'
-                if (cookieInfo.category !== 'essential') {
-                    if (CATEGORIES_TO_BLOCK.includes(cookieInfo.category)) {
-                        BLOCKED_COOKIES.push(cookiePattern);
-                    }
-                } else {
-                    // Add essential cookie patterns to allow list
-                    ESSENTIAL_COOKIE_PATTERNS.push(cookiePattern);
-                }
-            }
-            
-            console.log(`✅ Generated ${BLOCKED_COOKIES.length} blocked cookies from database`);
-            console.log(`✅ Found ${ESSENTIAL_COOKIE_PATTERNS.length} essential cookie patterns`);
-        } else {
-            console.warn("⚠️ cookieDatabase not found, using fallback block lists");
-            
-            // Fallback static lists if database not available yet
-            const FALLBACK_BLOCKED_COOKIES = [
-                // Google
-                "_ga", "_gid", "_gat", "_gcl_au", "gclid", "IDE", "NID", "_gat_gtag", "DSID", "FPLC",
-                // Facebook/Meta
-                "_fbp", "fr", "datr", "lu", "xs", "c_user", "m_user", "pl", "dbln", "_fbc",
-                // Microsoft
-                "msclkid", "_uetmsdns", "MUID", "_uetsid", "_uetmsclkid", "_uetmsd", "MUIDB", "_uetvid",
-                // TikTok
-                "_ttp", "ttclid", "tt_sessionid", "tt_medium", "tt_campaign",
-                // LinkedIn
-                "lidc", "bcookie", "li_sugr", "bscookie", "UserMatchHistory",
-                // Analytics & Tracking
-                "_clck", "_clsk", "_cltk", "CLID", "ANONCHK", "SM",
-                "_hj", "_hjid", "hubspotutk", "__hssc", "__hssrc", "__hstc",
-                // Other platforms
-                "_shopify_", "t_gid", "obuid", "d", "_cc_cc", "yandexuid",
-                "personalization_id", "guest_id", "sc_at", "_scid"
-            ];
-            
-            const FALLBACK_BLOCKED_DOMAINS = [
-                // Google domains
-                "google-analytics.com", "googletagmanager.com", "googleadservices.com",
-                "doubleclick.net", "google.com/ads", "gstatic.com/ad",
-                // Facebook domains
-                "connect.facebook.net", "facebook.com/tr", "fb.com", "facebook.com",
-                // Microsoft domains
-                "clarity.ms", "bat.bing.com", "bing.com", "microsoft.com",
-                // TikTok domains
-                "analytics.tiktok.com", "ads.tiktok.com", "tiktok.com",
-                // LinkedIn domains
-                "snap.licdn.com", "linkedin.com",
-                // Other tracking domains
-                "analytics.twitter.com", "twitter.com",
-                "hotjar.com", "segment.com", "cdn.segment.com",
-                "snapchat.com", "pinterest.com",
-                "quora.com", "reddit.com",
-                "criteo.com", "taboola.com", "outbrain.com",
-                "adsrvr.org", "mathtag.com", "bluekai.com"
-            ];
-            
-            BLOCKED_COOKIES.push(...FALLBACK_BLOCKED_COOKIES);
-            BLOCKED_DOMAINS.push(...FALLBACK_BLOCKED_DOMAINS);
-        }
-        
-        // Add any additional manual blocks
-        const MANUAL_BLOCKED_DOMAINS = [
-            "googlesyndication.com",
-            "google.com/pagead",
-            "amazon-adsystem.com",
-            "adnxs.com",
-            "rubiconproject.com",
-            "pubmatic.com",
-            "openx.net",
-            "indexexchange.com",
-            "sonobi.com",
-            "contextweb.com",
-            "lijit.com",
-            "casalemedia.com",
-            "adsymptotic.com",
-            "3lift.com",
-            "bidswitch.net",
-            "improvedigital.com",
-            "yieldlab.net",
-            "adform.net",
-            "smartadserver.com",
-            "adition.com",
-            "sitescout.com",
-            "districtm.io",
-            "sharethrough.com",
-            "teads.tv",
-            "spotxchange.com",
-            "spotx.tv",
-            "freewheel.tv",
-            "stickyadstv.com",
-            "innovid.com",
-            "tremorhub.com",
-            "videologygroup.com",
-            "brightcom.com",
-            "simpli.fi",
-            "zemanta.com",
-            "outbrainimg.com",
-            "taboola.com",
-            "revcontent.com",
-            "mgid.com",
-            "content.ad",
-            "taboolasyndication.com",
-            "plista.com",
-            "nativo.com",
-            "triplelift.com",
-            "sharethrough.com",
-            "media.net",
-            "moatads.com",
-            "integralads.com",
-            "eyereturn.com",
-            "adroll.com",
-            "demdex.net",
-            "everesttech.net",
-            "agkn.com",
-            "mathtag.com",
-            "tapad.com",
-            "turn.com",
-            "adsrvr.org",
-            "rfihub.com",
-            "adgrx.com",
-            "adsafety.net",
-            "zedo.com",
-            "adzerk.net",
-            "adnxs.com",
-            "rubiconproject.com",
-            "pubmatic.com"
-        ];
-        
-        BLOCKED_DOMAINS.push(...MANUAL_BLOCKED_DOMAINS);
-        
-        // Remove any essential domains from block list
-        const filteredDomains = BLOCKED_DOMAINS.filter(domain => 
-            !staticEssentialDomains.some(essential => 
-                domain.includes(essential) || essential.includes(domain)
-            )
-        );
-        
-        // Remove any essential cookies from block list
-        const filteredCookies = BLOCKED_COOKIES.filter(cookie => 
-            !ESSENTIAL_COOKIES.some(essential => 
-                cookie.includes(essential) || essential.includes(cookie)
-            ) &&
-            !ESSENTIAL_COOKIE_PATTERNS.some(essential => 
-                cookie.includes(essential) || essential.includes(cookie)
-            )
-        );
-        
-        return {
-            BLOCKED_COOKIES: [...new Set(filteredCookies)], // Remove duplicates
-            BLOCKED_DOMAINS: [...new Set(filteredDomains)], // Remove duplicates
-            ESSENTIAL_DOMAINS: staticEssentialDomains
-        };
-    }
-    
-    // Generate the block lists
-    const { BLOCKED_COOKIES, BLOCKED_DOMAINS, ESSENTIAL_DOMAINS: ALL_ESSENTIAL_DOMAINS } = generateBlockLists();
-    
-    // Make them available globally for you to modify
-    window.BLOCKED_COOKIES = BLOCKED_COOKIES;
-    window.BLOCKED_DOMAINS = BLOCKED_DOMAINS;
-    window.ESSENTIAL_DOMAINS = ALL_ESSENTIAL_DOMAINS;
-    
-    console.log("🛡️ Active Blocking Configuration:");
-    console.log(`- Blocking ${BLOCKED_COOKIES.length} cookie patterns`);
-    console.log(`- Blocking ${BLOCKED_DOMAINS.length} domains`);
-    console.log(`- Allowing ${ALL_ESSENTIAL_DOMAINS.length} essential domains`);
-    
-    /* ===================== ENHANCED BLOCKING FUNCTIONS ===================== */
-    
-    // Enhanced cookie checker - checks against database categories
-    function shouldBlockCookie(cookieName) {
-        // Always allow essential cookies
-        if (ESSENTIAL_COOKIES.some(essential => 
-            cookieName === essential || cookieName.startsWith(essential.replace('*', ''))
-        )) {
-            return false;
-        }
-        
-        // Check against dynamic block list
-        if (BLOCKED_COOKIES.some(blocked => 
-            cookieName === blocked || cookieName.startsWith(blocked.replace('*', ''))
-        )) {
-            return true;
-        }
-        
-        // Check against cookieDatabase if available
-        if (typeof cookieDatabase !== 'undefined') {
-            for (const [pattern, info] of Object.entries(cookieDatabase)) {
-                if (cookieName === pattern || cookieName.startsWith(pattern)) {
-                    // Block everything except 'essential' category
-                    return info.category !== 'essential';
-                }
-            }
-        }
-        
-        // Default: block unknown cookies (safe approach)
-        return true;
-    }
-    
-    // Enhanced domain checker - checks against essential domains
-    function shouldBlockDomain(url) {
-        if (!url) return false;
-        
-        // Always allow essential domains
-        if (ALL_ESSENTIAL_DOMAINS.some(essential => url.includes(essential))) {
-            return false;
-        }
-        
-        // Check against block list
-        return BLOCKED_DOMAINS.some(blocked => url.includes(blocked));
     }
     
     /* ===================== HARD BLOCKING ===================== */
@@ -303,7 +44,7 @@
         if (tag.toLowerCase() === "script") {
             Object.defineProperty(el, "src", {
                 set(url) {
-                    if (shouldBlockDomain(url)) {
+                    if (BLOCKED_DOMAINS.some(d => url && url.includes(d))) {
                         console.log("🛡️ Blocked script:", url);
                         return;
                     }
@@ -318,7 +59,7 @@
     const _fetch = window.fetch;
     window.fetch = function () {
         const url = arguments[0];
-        if (shouldBlockDomain(url)) {
+        if (url && BLOCKED_DOMAINS.some(d => url.includes && url.includes(d))) {
             console.log("🛡️ Blocked fetch:", url);
             return new Promise(() => {});
         }
@@ -328,7 +69,7 @@
     // 3. Block XHR requests to tracking domains
     const _open = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function (method, url) {
-        if (shouldBlockDomain(url)) {
+        if (url && BLOCKED_DOMAINS.some(d => url.includes(d))) {
             console.log("🛡️ Blocked XHR:", url);
             return;
         }
@@ -338,7 +79,7 @@
     // 4. Remove inline trackers
     function removeInlineTrackers() {
         document.querySelectorAll("script:not([src])").forEach(s => {
-            if (/fbq|gtag|dataLayer|ttq|analytics|clarity|hotjar|tracking|pixel|remarketing/i.test(s.innerText)) {
+            if (/fbq|gtag|dataLayer|ttq|analytics|clarity|hotjar/i.test(s.innerText)) {
                 console.log("🛡️ Removed inline tracker script");
                 s.remove();
             }
@@ -349,29 +90,18 @@
     new MutationObserver(removeInlineTrackers)
         .observe(document.documentElement, { childList: true, subtree: true });
     
-    // 5. Delete cookies aggressively using enhanced checker
+    // 5. Delete cookies aggressively
     function clearBlockedCookies() {
-        // Get all cookies
-        const allCookies = document.cookie.split(';').map(c => c.trim().split('=')[0]);
-        
-        allCookies.forEach(cookieName => {
-            if (cookieName && shouldBlockCookie(cookieName)) {
-                // Delete with domain
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-                // Delete without domain (fallback)
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-                console.log(`🛡️ Deleted blocked cookie: ${cookieName}`);
-            }
+        BLOCKED_COOKIES.forEach(cookieName => {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
         });
     }
     
     clearBlockedCookies();
-    const cleanupInterval = setInterval(clearBlockedCookies, 1000);
+    setInterval(clearBlockedCookies, 1000);
     
-    // Store interval ID for cleanup if needed
-    window._cookieCleanupInterval = cleanupInterval;
-    
-    console.info("🛡️ Advanced Privacy Firewall ACTIVE – blocking all non-essential cookies & trackers");
+    console.info("🛡️ Privacy Firewall ACTIVE – waiting for cookie consent");
     
     /* ============================================================
        HOOK INTO YOUR CUSTOM COOKIE BANNER CONSENT SYSTEM
@@ -379,11 +109,6 @@
     
     // This function will be called when user gives consent in YOUR banner
     window.enableTracking = function() {
-        // Stop aggressive cookie cleanup
-        if (window._cookieCleanupInterval) {
-            clearInterval(window._cookieCleanupInterval);
-        }
-        
         localStorage.setItem(CONSENT_KEY, "granted");
         console.log("✅ Tracking enabled via custom banner consent");
         location.reload();
@@ -5276,3 +5001,4 @@ window.showBlockingSettings = function() {
 
   
 }
+
