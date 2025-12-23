@@ -11,21 +11,369 @@
     
     /* ===================== BLOCKING SETTINGS ===================== */
     // These are the defaults - you can customize these later
-    const BLOCKED_DOMAINS = [
-        "connect.facebook.net", "facebook.com/tr",
-        "googletagmanager.com", "google-analytics.com",
-        "googleadservices.com", "doubleclick.net",
-        "analytics.tiktok.com", "ads.tiktok.com",
-        "snap.licdn.com", "analytics.twitter.com",
-        "clarity.ms", "bat.bing.com",
-        "hotjar.com", "segment.com", "cdn.segment.com",
-        "snapchat.com", "pinterest.com"
-    ];
+  const BLOCKED_COOKIES = [
+    // ========== GOOGLE COOKIES ==========
+    "_ga", "_gid", "_gat", "_gcl_au", "_gcl_aw", "_gcl_dc",
+    "_gac_", "_gcl_gb", "_gcl_gf", "_gcl_ha", "_dc_gtm_",
+    "_gaexp", "_opt_", "AMP_TOKEN", "_gali", "_gat_gtag_",
+    "_gat_UA-", "_gac_UA-", "_gcl_gf", "_gcl_aw", "_gcl_dc",
+    "_gcl_gb", "_gl", "_gcl_ha", "__utma", "__utmb",
+    "__utmc", "__utmz", "__utmv", "__utmx", "__utmxx",
+    "_drt_", "FPLC", "NID", "IDE", "DSID", "TAID",
+    "google_experiment_mod", "_gcl_aw", "_gcl_dc",
     
-    const BLOCKED_COOKIES = [
-        "_fbp", "_fbc", "_ga", "_gid", "_gat", "_gcl_au",
-        "_clck", "_clsk", "IDE", "ANID", "test_cookie"
-    ];
+    // ========== FACEBOOK/META COOKIES ==========
+    "_fbp", "_fbc", "fr", "datr", "sb", "c_user", "xs",
+    "presence", "m_pixel_ratio", "wd", "act", "lu", "pl",
+    "usida", "dbln", "fblo_", "fblc_", "fbsr_", "wd",
+    
+    // ========== MICROSOFT COOKIES ==========
+    "_clck", "_clsk", "_cltk", "CLID", "ANONCHK", "SM",
+    "MUID", "MUIDB", "_uetsid", "_uetvid", "_uetmsclkid",
+    "_uetmsd", "_uetmsdns", "SRM_B", "_EDGE_S", "_EDGE_V",
+    "MSCC", "_RwBf", "_SS", "_HPN", "_HSP", "_HSA",
+    
+    // ========== TIKTOK COOKIES ==========
+    "_ttp", "ttclid", "tt_sessionid", "tt_medium", "tt_campaign",
+    "tt_source", "tt_content", "tt_term", "tt_referrer",
+    
+    // ========== LINKEDIN COOKIES ==========
+    "lidc", "bcookie", "bscookie", "li_sugr", "li_oatml",
+    "li_alerts", "li_at", "liap", "UserMatchHistory",
+    "li_giant", "li_mc", "lang", "lissc", "lms_ads",
+    "lms_analytics",
+    
+    // ========== TWITTER COOKIES ==========
+    "personalization_id", "guest_id", "ct0", "auth_token",
+    "twid", "lang", "kdt", "remember_checked_on",
+    "external_referer", "_twitter_sess",
+    
+    // ========== PINTEREST COOKIES ==========
+    "_pinterest_ct_ua", "_pinterest_sess", "cm_sub",
+    "_pin_unauth", "_auth", "_pinterest_referrer",
+    "_pinterest_cm", "_pinterest_ct",
+    
+    // ========== SNAPCHAT COOKIES ==========
+    "sc_at", "_scid", "_sctr", "snap_ga",
+    
+    // ========== ADOBE COOKIES ==========
+    "s_cc", "s_sq", "AMCV_", "demdex", "dpm", "dpid",
+    "dst", "mbox", "s_vi", "s_fid", "s_ppv", "s_ppvl",
+    "s_tp", "sat_track",
+    
+    // ========== HOTJAR COOKIES ==========
+    "_hjClosedSurveyInvites", "_hjDonePolls", "_hjMinimizedPolls",
+    "_hjShownFeedbackMessage", "_hjid", "_hjIncludedInPageviewSample",
+    "_hjAbsoluteSessionInProgress", "_hjFirstSeen", "_hjTLDTest",
+    "_hjUserAttributesHash", "_hjCachedUserAttributes",
+    "_hjLocalStorageTest", "_hjptid",
+    
+    // ========== OTHER ANALYTICS COOKIES ==========
+    "__ar_v4", "__adroll", "__adroll_fpc", "__adroll_shared",
+    "__adroll_consent_params", "__adroll_consent_data",
+    "uuid", "uuidc", "uids", "u", "ud", "um",
+    
+    // ========== ADVERTISING COOKIES ==========
+    "__gads", "__gpi", "anj", "tuuid", "rud", "ruds",
+    "khaos", "put_", "bito", "bitoIsSecure", "B",
+    "BX", "CK1", "CK2", "CK3", "CK4", "CK5",
+    "CK6", "CK7", "CK8", "CK9", "CM14", "CM15",
+    "CM16", "CM17", "CM18", "CM19", "CM20",
+    
+    // ========== RETARGETING COOKIES ==========
+    "__adblocker", "__adblocker_test", "__adblocker_test2",
+    "__adblocker_test3", "__adblocker_test4",
+    "__adblocker_test5", "__adblocker_test6",
+    "__adblocker_test7", "__adblocker_test8",
+    "__adblocker_test9", "__adblocker_test10",
+    
+    // ========== CONSENT COOKIES ==========
+    "euconsent", "euconsent-v2", "eupubconsent",
+    "eupubconsent-v2", "OptanonAlertBoxClosed",
+    "OptanonConsent", "CookieConsent", "cookie_consent",
+    "cookieconsent_status", "cookieConsent",
+    
+    // ========== SESSION & TRACKING COOKIES ==========
+    "JSESSIONID", "PHPSESSID", "ASP.NET_SessionId",
+    "CFID", "CFTOKEN", "sessionid", "sid", "visid_incap_",
+    "nlbi_", "incap_ses_", "reese84", "reese84_",
+    
+    // ========== E-COMMERCE & SHOPPING ==========
+    "_shopify_y", "_shopify_s", "_shopify_sa_p",
+    "_shopify_sa_t", "_shopify_fs", "_shopify_uniq",
+    "_orig_referrer", "_landing_page", "_referring_domain",
+    "_s", "_shopify_visit", "_shopify_uniq",
+    "_y", "_tracking_consent",
+    
+    // ========== AFFILIATE & REFERRAL ==========
+    "ref", "referrer", "source", "utm_source", "utm_medium",
+    "utm_campaign", "utm_term", "utm_content", "gclid",
+    "fbclid", "msclkid", "ttclid", "irclickid",
+    "dclid", "s_kwcid", "rl_retargeting",
+    
+    // ========== PERSONALIZATION COOKIES ==========
+    "personalization_id", "remember_me", "user_id",
+    "user_hash", "user_session", "user_token",
+    "user_consent", "user_preferences",
+    
+    // ========== SECURITY SCANNERS ==========
+    "__cfduid", "__cf_bm", "cf_clearance", "rc::a",
+    "rc::b", "rc::c", "rc::d", "rc::e", "rc::f",
+    "rc::g", "rc::h", "rc::i", "rc::j",
+    
+    // ========== A/B TESTING ==========
+    "optimizelyEndUserId", "optimizelySegments",
+    "optimizelyBuckets", "optimizelyPendingLogEvents",
+    "_vwo_uuid", "_vwo_uuid_v2", "_vwo_ds",
+    "_vwo_sn", "_vwo_ss", "_vis_opt_test_cookie",
+    "_vis_opt_s", "_vis_opt_exp",
+    
+    // ========== CHAT & SUPPORT ==========
+    "__zlcid", "__zlcmid", "__zprivacy",
+    "intercom-id", "intercom-session",
+    "drift_aid", "drift_campaign_refresh",
+    "tawkUUID", "tawkConnectionTime",
+    
+    // ========== VIDEO PLAYERS ==========
+    "VISITOR_INFO1_LIVE", "YSC", "PREF", "GPS",
+    "vuid", "player", "dmvk", "dm_last_visit",
+    
+    // ========== NEWSLETTER & EMAIL ==========
+    "mailchimp_landing_site", "mc_user_id",
+    "mc_cart_", "mc_ga_", "mc_landing_site",
+    
+    // ========== SOCIAL SHARING ==========
+    "__atuvc", "__atuvs", "__atssc", "__atuvw",
+    "__atuvr", "__atuvl",
+    
+    // ========== FORM & CAPTCHA ==========
+    "rc::a", "rc::b", "rc::c", "CAPTCHA", "hcaptcha",
+    "recaptcha", "turnstile",
+    
+    // ========== PERFORMANCE & CDN ==========
+    "__cfruid", "__cflb", "__cf_bm", "AWSALB",
+    "AWSALBCORS", "ARRAffinity", "ARRAffinitySameSite",
+    
+    // ========== DEVICE FINGERPRINTING ==========
+    "fp", "fpuuid", "device_id", "browser_id",
+    "canvas_fp", "webgl_fp", "audio_fp",
+    
+    // ========== MISCELLANEOUS ==========
+    "test_cookie", "check_cookie", "cookie_test",
+    "accept_cookies", "cookies_accepted",
+    "cookies_preferences_set", "cookies_enabled"
+];
+    
+   const BLOCKED_COOKIES = [
+    // ========== GOOGLE COOKIES ==========
+    "_ga", "_gid", "_gat", "_gcl_au", "_gcl_aw", "_gcl_dc",
+    "_gac_", "_gcl_gb", "_gcl_gf", "_gcl_ha", "_dc_gtm_",
+    "_gaexp", "_opt_", "AMP_TOKEN", "_gali", "_gat_gtag_",
+    "_gat_UA-", "_gac_UA-", "_gcl_gf", "_gcl_aw", "_gcl_dc",
+    "_gcl_gb", "_gl", "_gcl_ha", "__utma", "__utmb",
+    "__utmc", "__utmz", "__utmv", "__utmx", "__utmxx",
+    "_drt_", "FPLC", "NID", "IDE", "DSID", "TAID",
+    "google_experiment_mod", "_gcl_aw", "_gcl_dc",
+    
+    // ========== FACEBOOK/META COOKIES ==========
+    "_fbp", "_fbc", "fr", "datr", "sb", "c_user", "xs",
+    "presence", "m_pixel_ratio", "wd", "act", "lu", "pl",
+    "usida", "dbln", "fblo_", "fblc_", "fbsr_", "wd",
+    
+    // ========== MICROSOFT COOKIES ==========
+    "_clck", "_clsk", "_cltk", "CLID", "ANONCHK", "SM",
+    "MUID", "MUIDB", "_uetsid", "_uetvid", "_uetmsclkid",
+    "_uetmsd", "_uetmsdns", "SRM_B", "_EDGE_S", "_EDGE_V",
+    "MSCC", "_RwBf", "_SS", "_HPN", "_HSP", "_HSA",
+    
+    // ========== TIKTOK COOKIES ==========
+    "_ttp", "ttclid", "tt_sessionid", "tt_medium", "tt_campaign",
+    "tt_source", "tt_content", "tt_term", "tt_referrer",
+    
+    // ========== LINKEDIN COOKIES ==========
+    "lidc", "bcookie", "bscookie", "li_sugr", "li_oatml",
+    "li_alerts", "li_at", "liap", "UserMatchHistory",
+    "li_giant", "li_mc", "lang", "lissc", "lms_ads",
+    "lms_analytics",
+    
+    // ========== TWITTER COOKIES ==========
+    "personalization_id", "guest_id", "ct0", "auth_token",
+    "twid", "lang", "kdt", "remember_checked_on",
+    "external_referer", "_twitter_sess",
+    
+    // ========== PINTEREST COOKIES ==========
+    "_pinterest_ct_ua", "_pinterest_sess", "cm_sub",
+    "_pin_unauth", "_auth", "_pinterest_referrer",
+    "_pinterest_cm", "_pinterest_ct",
+    
+    // ========== SNAPCHAT COOKIES ==========
+    "sc_at", "_scid", "_sctr", "snap_ga",
+    
+    // ========== ADOBE COOKIES ==========
+    "s_cc", "s_sq", "AMCV_", "demdex", "dpm", "dpid",
+    "dst", "mbox", "s_vi", "s_fid", "s_ppv", "s_ppvl",
+    "s_tp", "sat_track",
+    
+    // ========== HOTJAR COOKIES ==========
+    "_hjClosedSurveyInvites", "_hjDonePolls", "_hjMinimizedPolls",
+    "_hjShownFeedbackMessage", "_hjid", "_hjIncludedInPageviewSample",
+    "_hjAbsoluteSessionInProgress", "_hjFirstSeen", "_hjTLDTest",
+    "_hjUserAttributesHash", "_hjCachedUserAttributes",
+    "_hjLocalStorageTest", "_hjptid",
+    
+    // ========== OTHER ANALYTICS COOKIES ==========
+    "__ar_v4", "__adroll", "__adroll_fpc", "__adroll_shared",
+    "__adroll_consent_params", "__adroll_consent_data",
+    "uuid", "uuidc", "uids", "u", "ud", "um",
+    
+    // ========== ADVERTISING COOKIES ==========
+    "__gads", "__gpi", "anj", "tuuid", "rud", "ruds",
+    "khaos", "put_", "bito", "bitoIsSecure", "B",
+    "BX", "CK1", "CK2", "CK3", "CK4", "CK5",
+    "CK6", "CK7", "CK8", "CK9", "CM14", "CM15",
+    "CM16", "CM17", "CM18", "CM19", "CM20",
+    
+    // ========== RETARGETING COOKIES ==========
+    "__adblocker", "__adblocker_test", "__adblocker_test2",
+    "__adblocker_test3", "__adblocker_test4",
+    "__adblocker_test5", "__adblocker_test6",
+    "__adblocker_test7", "__adblocker_test8",
+    "__adblocker_test9", "__adblocker_test10",
+    
+    // ========== CONSENT COOKIES ==========
+    "euconsent", "euconsent-v2", "eupubconsent",
+    "eupubconsent-v2", "OptanonAlertBoxClosed",
+    "OptanonConsent", "CookieConsent", "cookie_consent",
+    "cookieconsent_status", "cookieConsent",
+    
+    // ========== SESSION & TRACKING COOKIES ==========
+    "JSESSIONID", "PHPSESSID", "ASP.NET_SessionId",
+    "CFID", "CFTOKEN", "sessionid", "sid", "visid_incap_",
+    "nlbi_", "incap_ses_", "reese84", "reese84_",
+    
+    // ========== E-COMMERCE & SHOPPING ==========
+    "_shopify_y", "_shopify_s", "_shopify_sa_p",
+    "_shopify_sa_t", "_shopify_fs", "_shopify_uniq",
+    "_orig_referrer", "_landing_page", "_referring_domain",
+    "_s", "_shopify_visit", "_shopify_uniq",
+    "_y", "_tracking_consent",
+    
+    // ========== AFFILIATE & REFERRAL ==========
+    "ref", "referrer", "source", "utm_source", "utm_medium",
+    "utm_campaign", "utm_term", "utm_content", "gclid",
+    "fbclid", "msclkid", "ttclid", "irclickid",
+    "dclid", "s_kwcid", "rl_retargeting",
+    
+    // ========== PERSONALIZATION COOKIES ==========
+    "personalization_id", "remember_me", "user_id",
+    "user_hash", "user_session", "user_token",
+    "user_consent", "user_preferences",
+    
+    // ========== SECURITY SCANNERS ==========
+    "__cfduid", "__cf_bm", "cf_clearance", "rc::a",
+    "rc::b", "rc::c", "rc::d", "rc::e", "rc::f",
+    "rc::g", "rc::h", "rc::i", "rc::j",
+    
+    // ========== A/B TESTING ==========
+    "optimizelyEndUserId", "optimizelySegments",
+    "optimizelyBuckets", "optimizelyPendingLogEvents",
+    "_vwo_uuid", "_vwo_uuid_v2", "_vwo_ds",
+    "_vwo_sn", "_vwo_ss", "_vis_opt_test_cookie",
+    "_vis_opt_s", "_vis_opt_exp",
+    
+    // ========== CHAT & SUPPORT ==========
+    "__zlcid", "__zlcmid", "__zprivacy",
+    "intercom-id", "intercom-session",
+    "drift_aid", "drift_campaign_refresh",
+    "tawkUUID", "tawkConnectionTime",
+    
+    // ========== VIDEO PLAYERS ==========
+    "VISITOR_INFO1_LIVE", "YSC", "PREF", "GPS",
+    "vuid", "player", "dmvk", "dm_last_visit",
+    
+    // ========== NEWSLETTER & EMAIL ==========
+    "mailchimp_landing_site", "mc_user_id",
+    "mc_cart_", "mc_ga_", "mc_landing_site",
+    
+    // ========== SOCIAL SHARING ==========
+    "__atuvc", "__atuvs", "__atssc", "__atuvw",
+    "__atuvr", "__atuvl",
+    
+    // ========== FORM & CAPTCHA ==========
+    "rc::a", "rc::b", "rc::c", "CAPTCHA", "hcaptcha",
+    "recaptcha", "turnstile",
+    
+    // ========== PERFORMANCE & CDN ==========
+    "__cfruid", "__cflb", "__cf_bm", "AWSALB",
+    "AWSALBCORS", "ARRAffinity", "ARRAffinitySameSite",
+    
+    // ========== DEVICE FINGERPRINTING ==========
+    "fp", "fpuuid", "device_id", "browser_id",
+    "canvas_fp", "webgl_fp", "audio_fp",
+    
+    // ========== MISCELLANEOUS ==========
+    "test_cookie", "check_cookie", "cookie_test",
+    "accept_cookies", "cookies_accepted",
+    "cookies_preferences_set", "cookies_enabled"
+];
+
+
+/* ========== ESSENTIAL DOMAINS - NEVER BLOCKED ==========
+   These are essential for website functionality
+======================================================== */
+const ESSENTIAL_DOMAINS = [
+    // Your own domains
+    window.location.hostname,
+    "www." + window.location.hostname,
+    
+    // CDNs for website assets
+    "cdnjs.cloudflare.com", "stackpath.bootstrapcdn.com",
+    "fonts.googleapis.com", "fonts.gstatic.com",
+    
+    // Common payment processors (essential for checkout)
+    "stripe.com", "paypal.com", "braintreegateway.com",
+    
+    // Essential APIs
+    "api." + window.location.hostname,
+    
+    // Add your essential third-party services here
+    // Example: "essential-service.com"
+];
+
+/* ========== ESSENTIAL COOKIES - NEVER BLOCKED ==========
+   These cookies are essential for website functionality
+======================================================== */
+const ESSENTIAL_COOKIES = [
+    // Session management
+    "sessionid", "PHPSESSID", "ASP.NET_SessionId",
+    "JSESSIONID", "laravel_session", "rails_session",
+    
+    // Authentication
+    "auth_token", "access_token", "refresh_token",
+    "remember_me", "user_session",
+    
+    // Security
+    "XSRF-TOKEN", "csrf_token", "_csrf",
+    "__Host-session", "__Secure-session",
+    
+    // Shopping cart
+    "cart_id", "cart_token", "shopping_cart",
+    
+    // Language & localization
+    "locale", "language", "user_language",
+    
+    // Form data protection
+    "form_key", "form_token",
+    
+    // Consent management (your own)
+    "cookie_consent_status", "consent_preferences",
+    
+    // Add your essential cookies here
+    // Example: "essential_cookie_name"
+];
+
+
+   
     
     /* ============================================================
        EXIT IF CONSENT IS ALREADY GIVEN
@@ -44,6 +392,14 @@
         if (tag.toLowerCase() === "script") {
             Object.defineProperty(el, "src", {
                 set(url) {
+                    // Check if it's an essential domain FIRST
+                if (ESSENTIAL_DOMAINS.some(d => url && url.includes(d))) {
+                    el.setAttribute("src", url);
+                    return;
+                }
+
+
+                   
                     if (BLOCKED_DOMAINS.some(d => url && url.includes(d))) {
                         console.log("🛡️ Blocked script:", url);
                         return;
@@ -59,6 +415,14 @@
     const _fetch = window.fetch;
     window.fetch = function () {
         const url = arguments[0];
+
+
+         // Allow essential domains
+    if (url && ESSENTIAL_DOMAINS.some(d => url.includes && url.includes(d))) {
+        return _fetch.apply(this, arguments);
+    }
+
+       
         if (url && BLOCKED_DOMAINS.some(d => url.includes && url.includes(d))) {
             console.log("🛡️ Blocked fetch:", url);
             return new Promise(() => {});
@@ -69,6 +433,13 @@
     // 3. Block XHR requests to tracking domains
     const _open = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function (method, url) {
+
+         // Allow essential domains
+    if (url && ESSENTIAL_DOMAINS.some(d => url.includes(d))) {
+        return _open.apply(this, arguments);
+    }
+
+       
         if (url && BLOCKED_DOMAINS.some(d => url.includes(d))) {
             console.log("🛡️ Blocked XHR:", url);
             return;
@@ -93,6 +464,12 @@
     // 5. Delete cookies aggressively
     function clearBlockedCookies() {
         BLOCKED_COOKIES.forEach(cookieName => {
+
+           // Skip essential cookies
+        if (ESSENTIAL_COOKIES.includes(cookieName)) {
+            return;
+        }
+           
             document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
             document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
         });
