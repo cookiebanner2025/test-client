@@ -13,6 +13,7 @@ you can change the cookie category description text by this class. like you can 
     } 
  */
 
+
 const EU_COUNTRIES = [
   "AL", // Albania
   "AD", // Andorra
@@ -76,7 +77,118 @@ function isEEAVisitor() {
 }
 
 
-
+// ============== COOKIE BLOCKING FUNCTION ============== //
+function applyCookieBlocking(consentGranted) {
+    // If consent is granted, do nothing (allow all cookies)
+    if (consentGranted) {
+        console.info("✅ Consent found – tracking allowed");
+        return;
+    }
+    
+    // Use config for blocked domains and cookies
+    // Check if config.blockingConfig exists, otherwise use defaults
+    let BLOCKED_DOMAINS = [
+        "connect.facebook.net","facebook.com/tr",
+        "googletagmanager.com","google-analytics.com",
+        "googleadservices.com","doubleclick.net",
+        "analytics.tiktok.com","ads.tiktok.com",
+        "snap.licdn.com","analytics.twitter.com",
+        "clarity.ms","bat.bing.com",
+        "hotjar.com","segment.com","cdn.segment.com",
+        "snapchat.com","pinterest.com"
+    ];
+    
+    let BLOCKED_COOKIES = [
+        "_fbp","_fbc","_ga","_gid","_gat","_gcl_au",
+        "_clck","_clsk","IDE","ANID","test_cookie"
+    ];
+    
+    // If blockingConfig exists in config, use it
+    if (config.blockingConfig) {
+        if (config.blockingConfig.blockedDomains) {
+            BLOCKED_DOMAINS = [
+                ...config.blockingConfig.blockedDomains,
+                ...(config.blockingConfig.customBlockedDomains || [])
+            ];
+        }
+        
+        if (config.blockingConfig.blockedCookies) {
+            BLOCKED_COOKIES = [
+                ...config.blockingConfig.blockedCookies,
+                ...(config.blockingConfig.customBlockedCookies || [])
+            ];
+        }
+        
+        // Apply whitelist filtering
+        if (config.blockingConfig.whitelistDomains && config.blockingConfig.whitelistDomains.length > 0) {
+            BLOCKED_DOMAINS = BLOCKED_DOMAINS.filter(domain => 
+                !config.blockingConfig.whitelistDomains.includes(domain)
+            );
+        }
+        
+        if (config.blockingConfig.whitelistCookies && config.blockingConfig.whitelistCookies.length > 0) {
+            BLOCKED_COOKIES = BLOCKED_COOKIES.filter(cookie => 
+                !config.blockingConfig.whitelistCookies.includes(cookie)
+            );
+        }
+    }
+    
+    console.info("🛡️ Privacy Firewall ACTIVE – blocking:", BLOCKED_DOMAINS.length, "domains and", BLOCKED_COOKIES.length, "cookies");
+    
+    /* ===================== HARD BLOCK ===================== */
+    
+    /* Block script loading */
+    const _createElement = document.createElement;
+    document.createElement = function (tag) {
+        const el = _createElement.call(document, tag);
+        if (tag.toLowerCase() === "script") {
+            Object.defineProperty(el, "src", {
+                set(url) {
+                    if (BLOCKED_DOMAINS.some(d => url && url.includes(d))) return;
+                    el.setAttribute("src", url);
+                }
+            });
+        }
+        return el;
+    };
+    
+    /* Block fetch */
+    const _fetch = window.fetch;
+    window.fetch = function () {
+        if (BLOCKED_DOMAINS.some(d => arguments[0]?.includes(d)))
+            return new Promise(()=>{});
+        return _fetch.apply(this, arguments);
+    };
+    
+    /* Block XHR */
+    const _open = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (m, url) {
+        if (BLOCKED_DOMAINS.some(d => url && url.includes(d))) return;
+        return _open.apply(this, arguments);
+    };
+    
+    /* Remove inline trackers */
+    function removeInlineTrackers() {
+        document.querySelectorAll("script:not([src])").forEach(s => {
+            if (/fbq|gtag|dataLayer|ttq|analytics|clarity|hotjar/i.test(s.innerText)) {
+                s.remove();
+            }
+        });
+    }
+    removeInlineTrackers();
+    new MutationObserver(removeInlineTrackers)
+        .observe(document.documentElement,{childList:true,subtree:true});
+    
+    /* Delete cookies aggressively */
+    function clearCookies() {
+        BLOCKED_COOKIES.forEach(c => {
+            document.cookie = c + "=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/";
+        });
+    }
+    clearCookies();
+    setInterval(clearCookies, 1000);
+}
+// ============== END BLOCKING FUNCTION ============== //
 
 
 const config = {
@@ -156,7 +268,39 @@ clarityConfig: {
         enforceInEEA: true,        // Enforce consent mode in EEA countries
         msd: window.location.hostname // Add this line for Microsoft Domain handling
     },
-    
+
+
+
+    // Cookie Blocking Control Configuration
+    blockingConfig: {
+        enabled: true,
+        blockedDomains: [
+            "connect.facebook.net","facebook.com/tr",
+            "googletagmanager.com","google-analytics.com",
+            "googleadservices.com","doubleclick.net",
+            "analytics.tiktok.com","ads.tiktok.com",
+            "snap.licdn.com","analytics.twitter.com",
+            "clarity.ms","bat.bing.com",
+            "hotjar.com","segment.com","cdn.segment.com",
+            "snapchat.com","pinterest.com"
+        ],
+        blockedCookies: [
+            "_fbp","_fbc","_ga","_gid","_gat","_gcl_au",
+            "_clck","_clsk","IDE","ANID","test_cookie"
+        ],
+        // Add your custom domains/cookies here:
+        customBlockedDomains: [],  // Add domains like "example-tracker.com"
+        customBlockedCookies: [],  // Add cookies like "my_custom_tracker"
+        // Whitelist (never block these)
+        whitelistDomains: [],      // Add domains to always allow
+        whitelistCookies: []       // Add cookies to always allow
+    },
+
+
+
+
+
+  
     // Behavior configuration
     behavior: {
         autoShow: true,
@@ -435,449 +579,6 @@ geoConfig: {
         }
     }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* =========================================================
-   TWO-STAGE COOKIE & SCRIPT BLOCKER - CONSENT AWARE
-   ========================================================= */
-(function () {
-    console.log("🛡️ Starting two-stage cookie blocker...");
-
-    /* ===================== CONFIG ===================== */
-    var CONSENT_COOKIE = "cookie_consent";
-    var BLOCKER_ENABLED = true;
-    
-    // Master list of all non-essential cookies - EXTENDED VERSION
-    var COOKIES_TO_BLOCK = {
-        advertising: [
-            // Facebook/Meta
-            '_fbp', '_fbc', 'fr', 'xs', 'datr', 'lu', 'c_user', 'm_user', 'pl', 'dbln', 
-            'usida', 'act', 'sb', 'presence', 'wd',
-            
-            // Google Ads
-            '_gcl', '_gcl_au', 'gclid', 'IDE', 'NID', 'DSID', 'FPLC',
-            '_gat_UA-', '_dc_gtm_',
-            
-            // TikTok
-            '_ttp', '_tt_enable_cookie', 'ttclid', 'tt_sessionid', 'tt_medium', 'tt_campaign',
-            
-            // Microsoft Advertising
-            'msclkid', '_uetmsdns', 'MUID', '_uetsid', '_uetmsclkid', '_uetmsd', 'MUIDB',
-            '_uetvid', '_uetsid_exp',
-            
-            // LinkedIn
-            'lidc', 'bcookie', 'li_sugr', 'bscookie', 'UserMatchHistory', 'lang',
-            
-            // Pinterest
-            '_pinterest_ct_ua', '_pinterest_sess', 'cm_sub', '_pin_unauth', '_auth', '_pinterest_referrer',
-            
-            // Twitter/X
-            'personalization_id', 'guest_id', 'ct0', 'auth_token', 'twid',
-            
-            // Snapchat
-            'sc_at', '_scid', '_sctr', 'snap_ga',
-            
-            // Generic advertising patterns
-            'ads_*', 'ad_*', 'tracking_*', 'trk_*', 'affiliate_*', 'partner_*', 'marketing_*'
-        ],
-        
-        analytics: [
-            // Google Analytics
-            '_ga', '_ga_', '_gid', '_gat', '_gat_gtag', '_gat_UA-', '_gat_', '_gac_',
-            '_gcl_aw', '_gcl_dc', '_gcl_gb', '_gcl_gf', '_gcl_ha',
-            
-            // Microsoft Clarity
-            '_clck', '_clsk', '_cltk', 'CLID', 'ANONCHK', 'SM',
-            
-            // Adobe Analytics
-            's_cc', 's_sq', 'AMCV_', 's_vi', 'demdex',
-            
-            // Hotjar
-            '_hjClosedSurveyInvites', '_hjDonePolls', '_hjMinimizedPolls', '_hjShownFeedbackMessage',
-            '_hjid', '_hjIncludedInPageviewSample', '_hjAbsoluteSessionInProgress', '_hjFirstSeen',
-            '_hjRecordingEnabled', '_hjTLDTest', '_hjUserAttributesHash', '_hjCachedUserAttributes',
-            '_hjLocalStorageTest', '_hjMinimizedPollsCount', '_hjDonePollsCount',
-            
-            // Your specific cookies
-            '_shopify_analytics', '_scid', '_scid_r', '_hjSession_', '_hjSessionUser_',
-            
-            // Generic analytics patterns
-            'analytics_*', 'stats_*', 'metric_*', 'measurement_*', 'track_*', 'trc_*'
-        ],
-        
-        performance: [
-            // YouTube (performance-related)
-            'VISITOR_INFO1_LIVE', 'PREF', 'wide',
-            
-            // Vimeo (performance-related)
-            'vuid', 'player',
-            
-            // Generic performance patterns
-            'perf_*', 'cache_*', 'cdn_*', 'optimize_*', 'speed_*'
-        ]
-    };
-
-    /* ===================== UTILITIES ===================== */
-    function getCookie(name) {
-        const nameEQ = name + "=";
-        const ca = document.cookie.split(';');
-        for (let i = 0; i < ca.length; i++) {
-            let c = ca[i];
-            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-        }
-        return null;
-    }
-
-    function getCurrentConsent() {
-        const consentCookie = getCookie(CONSENT_COOKIE);
-        if (!consentCookie) return null;
-        try {
-            return JSON.parse(consentCookie);
-        } catch (e) {
-            console.log("⚠️ Error parsing consent cookie");
-            return null;
-        }
-    }
-
-    /* ===================== STAGE 1: GENTLE SCRIPT BLOCKING ===================== */
-    function setupInitialScriptBlocking() {
-        console.log("🔧 Setting up initial script blocking...");
-        
-        const consentData = getCurrentConsent();
-        const hasConsent = consentData && consentData.status;
-        
-        // Store original functions before overriding
-        window._originalFunctions = {
-            fbq: window.fbq,
-            gtag: window.gtag,
-            ttq: window.ttq,
-            dataLayer: window.dataLayer || []
-        };
-        
-        // Only block if NO consent exists
-        if (!hasConsent) {
-            console.log("⏸️ No consent found - scripts will be queued, not blocked");
-            
-            // Queue system for Facebook Pixel
-            window._fbqQueue = [];
-            window.fbq = function() {
-                if (arguments.length > 0) {
-                    window._fbqQueue.push(Array.from(arguments));
-                    console.log("📝 Facebook Pixel call queued:", arguments[0]);
-                }
-            };
-            
-            // Queue system for Google Tag Manager
-            window._gtagQueue = [];
-            window.gtag = function() {
-                if (arguments.length > 0) {
-                    window._gtagQueue.push(Array.from(arguments));
-                    console.log("📝 Google Tag call queued:", arguments[0]);
-                }
-            };
-            
-            // Queue system for TikTok Pixel
-            window._ttqQueue = [];
-            window.ttq = function() {
-                if (arguments.length > 0) {
-                    window._ttqQueue.push(Array.from(arguments));
-                    console.log("📝 TikTok Pixel call queued:", arguments[0]);
-                }
-            };
-            
-            // Initialize dataLayer but don't process until consent
-            window.dataLayer = window.dataLayer || [];
-            const originalPush = window.dataLayer.push;
-            window.dataLayer.push = function() {
-                // Allow consent-related events through immediately
-                const eventName = arguments[0] && arguments[0].event;
-                const consentEvents = ['cookie_consent_', 'consent', 'initial_consent_state', 'gtm'];
-                
-                if (eventName && consentEvents.some(ce => eventName.includes(ce))) {
-                    return originalPush.apply(this, arguments);
-                }
-                
-                // Queue other events
-                console.log("📝 dataLayer event queued:", eventName);
-                return arguments.length;
-            };
-        } else {
-            console.log("✅ Consent exists - allowing all scripts");
-        }
-    }
-
-    /* ===================== STAGE 2: RELEASE QUEUED SCRIPTS ===================== */
-    function releaseQueuedScripts(consentData) {
-        console.log("🎉 Releasing queued scripts with consent:", consentData);
-        
-        // Release Facebook Pixel calls
-        if (window._fbqQueue && window._fbqQueue.length > 0) {
-            console.log("📤 Processing", window._fbqQueue.length, "queued Facebook Pixel calls");
-            
-            // Restore original fbq if it exists
-            if (window._originalFunctions && window._originalFunctions.fbq) {
-                window.fbq = window._originalFunctions.fbq;
-            } else {
-                // Initialize fbq if it doesn't exist
-                window.fbq = window.fbq || function() {
-                    console.log("📤 Facebook Pixel executed:", arguments[0]);
-                };
-            }
-            
-            // Process queued calls
-            window._fbqQueue.forEach(args => {
-                try {
-                    window.fbq.apply(null, args);
-                } catch (e) {
-                    console.warn("Failed to execute queued Facebook call:", e);
-                }
-            });
-        }
-        
-        // Release Google Tag calls
-        if (window._gtagQueue && window._gtagQueue.length > 0) {
-            console.log("📤 Processing", window._gtagQueue.length, "queued Google Tag calls");
-            
-            if (window._originalFunctions && window._originalFunctions.gtag) {
-                window.gtag = window._originalFunctions.gtag;
-            }
-            
-            window._gtagQueue.forEach(args => {
-                try {
-                    window.gtag.apply(null, args);
-                } catch (e) {
-                    console.warn("Failed to execute queued Google call:", e);
-                }
-            });
-        }
-        
-        // Release TikTok Pixel calls
-        if (window._ttqQueue && window._ttqQueue.length > 0) {
-            console.log("📤 Processing", window._ttqQueue.length, "queued TikTok Pixel calls");
-            
-            if (window._originalFunctions && window._originalFunctions.ttq) {
-                window.ttq = window._originalFunctions.ttq;
-            }
-            
-            window._ttqQueue.forEach(args => {
-                try {
-                    window.ttq.apply(null, args);
-                } catch (e) {
-                    console.warn("Failed to execute queued TikTok call:", e);
-                }
-            });
-        }
-    }
-
-    /* ===================== COOKIE INTERCEPTION (NON-DESTRUCTIVE) ===================== */
-    function setupCookieInterception() {
-        console.log("🍪 Setting up smart cookie interception...");
-        
-        // Store original cookie descriptor
-        const originalDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie') || 
-                                   Object.getOwnPropertyDescriptor(HTMLDocument.prototype, 'cookie');
-        
-        if (!originalDescriptor) return;
-        
-        const consentData = getCurrentConsent();
-        
-        Object.defineProperty(document, 'cookie', {
-            get: originalDescriptor.get,
-            set: function(value) {
-                const cookieString = value.toString();
-                const cookieName = cookieString.split('=')[0].trim();
-                
-                // ALWAYS allow these cookies through
-                const alwaysAllowed = [
-                    CONSENT_COOKIE,
-                    'cookie_consent',
-                    'essential_',
-                    'necessary_',
-                    'PHPSESSID',
-                    'session',
-                    'wordpress_'
-                ];
-                
-                // Check if cookie should always be allowed
-                for (const allowed of alwaysAllowed) {
-                    if (cookieName.includes(allowed) || cookieName === allowed) {
-                        return originalDescriptor.set.call(document, value);
-                    }
-                }
-                
-                // Check if cookie is non-essential
-                let isNonEssential = false;
-                let category = '';
-                
-                for (const [cat, cookies] of Object.entries(COOKIES_TO_BLOCK)) {
-                    for (const pattern of cookies) {
-                        if (pattern.endsWith('*')) {
-                            if (cookieName.startsWith(pattern.slice(0, -1))) {
-                                isNonEssential = true;
-                                category = cat;
-                                break;
-                            }
-                        } else if (cookieName === pattern) {
-                            isNonEssential = true;
-                            category = cat;
-                            break;
-                        }
-                    }
-                    if (isNonEssential) break;
-                }
-                
-                // If cookie is non-essential, check consent
-                if (isNonEssential && consentData) {
-                    // Check if this category is allowed in consent
-                    const categoryAllowed = consentData.categories && consentData.categories[category];
-                    
-                    if (!categoryAllowed) {
-                        console.warn(`🚫 Cookie blocked: ${cookieName} (${category} not consented)`);
-                        return; // Block the cookie
-                    }
-                } else if (isNonEssential && !consentData) {
-                    // No consent exists yet - block non-essential cookies
-                    console.warn(`🚫 Cookie blocked: ${cookieName} (waiting for consent)`);
-                    return; // Block the cookie
-                }
-                
-                // Allow the cookie
-                return originalDescriptor.set.call(document, value);
-            },
-            configurable: true
-        });
-    }
-
-    /* ===================== CONSENT CHANGE HANDLER ===================== */
-    function setupConsentChangeHandler() {
-        console.log("🔄 Setting up consent change handler...");
-        
-        // Listen for consent updates from your main script
-        document.addEventListener('consentUpdated', function(e) {
-            console.log("🎯 Consent update event received:", e.detail);
-            
-            if (e.detail && e.detail.consentData) {
-                // Release queued scripts based on new consent
-                releaseQueuedScripts(e.detail.consentData);
-                
-                // Reapply cookie interception with new consent
-                setTimeout(setupCookieInterception, 100);
-            }
-        });
-        
-        // Also monitor cookie changes as backup
-        let lastCookie = getCookie(CONSENT_COOKIE);
-        setInterval(() => {
-            const currentCookie = getCookie(CONSENT_COOKIE);
-            if (currentCookie !== lastCookie) {
-                console.log("🔄 Cookie consent changed");
-                lastCookie = currentCookie;
-                
-                try {
-                    const consentData = JSON.parse(currentCookie);
-                    releaseQueuedScripts(consentData);
-                    setTimeout(setupCookieInterception, 100);
-                } catch (e) {
-                    console.warn("Could not parse updated consent cookie");
-                }
-            }
-        }, 1000);
-    }
-
-    /* ===================== FIX PAGE RELOAD ISSUE ===================== */
-    function fixReloadIssues() {
-        // This prevents the "banner appears again" issue
-        const consentData = getCurrentConsent();
-        
-        if (consentData && consentData.status) {
-            console.log("✅ Valid consent found, hiding banner on reload");
-            
-            // Hide the banner if it exists
-            setTimeout(() => {
-                const banner = document.getElementById('cookieConsentBanner');
-                if (banner) {
-                    banner.style.display = 'none';
-                    console.log("🎭 Banner hidden on reload");
-                }
-                
-                // Ensure floating button is shown
-                const floatingBtn = document.getElementById('cookieFloatingButton');
-                if (floatingBtn && consentData.status !== 'rejected') {
-                    floatingBtn.style.display = 'flex';
-                    setTimeout(() => {
-                        floatingBtn.classList.add('show');
-                    }, 100);
-                }
-            }, 500);
-        }
-    }
-
-    /* ===================== MAIN INITIALIZATION ===================== */
-    function initializeTwoStageBlocker() {
-        console.log("🚀 Initializing two-stage cookie blocker");
-        
-        // FIX FIRST: Handle reload issues
-        fixReloadIssues();
-        
-        // STEP 1: Gentle script queuing (not blocking)
-        setupInitialScriptBlocking();
-        
-        // STEP 2: Smart cookie interception
-        setupCookieInterception();
-        
-        // STEP 3: Handle consent changes
-        setupConsentChangeHandler();
-        
-        console.log("✅ Two-stage blocker initialized successfully");
-    }
-
-    // Start with small delay to ensure other scripts are loaded
-    setTimeout(initializeTwoStageBlocker, 50);
-
-})();
-
-// ===================== ADD THIS TO YOUR MAIN SCRIPT =====================
-// Add this function to fire when consent is given in your main script
-function fireConsentUpdatedEvent(consentData) {
-    console.log("🎯 Firing consent update event");
-    
-    const event = new CustomEvent('consentUpdated', {
-        detail: {
-            consentData: consentData,
-            timestamp: new Date().toISOString()
-        }
-    });
-    
-    document.dispatchEvent(event);
-}
-
-// ===================== UPDATE YOUR saveCustomSettings() FUNCTION =====================
-// In your saveCustomSettings() function, ADD THIS LINE after setting the cookie:
-// fireConsentUpdatedEvent(consentData);
-
-// ===================== UPDATE YOUR acceptAllCookies() FUNCTION =====================
-// In your acceptAllCookies() function, ADD THIS LINE after setting the cookie:
-// fireConsentUpdatedEvent(consentData);
-
-
-
-
-
-
-
-
 
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
@@ -4569,9 +4270,12 @@ function hideFloatingButton() {
 
 // Cookie consent functions
 function acceptAllCookies() {
-    // Add this line to initialize Clarity
+     // Add this line to initialize Clarity
     initializeClarity(true);
     sendClarityConsentSignal(true);
+    
+    // ADD THIS LINE: Disable blocking when consent is given
+    applyCookieBlocking(true);
     
     const consentData = {
         status: 'accepted',
@@ -4609,25 +4313,21 @@ function acceptAllCookies() {
             'functionality_storage': 'granted',
             'security_storage': 'granted'
         },
-        'gcs': 'G111',
+        'gcs': 'G111', // Explicit GCS signal
         'consent_status': 'accepted',
         'consent_categories': consentData.categories,
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
-    
-    // RELOAD THE PAGE TO RELEASE BLOCKED COOKIES
-    setTimeout(() => {
-        window.location.reload();
-    }, 500);
 }
-
-
 
 function rejectAllCookies() {
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
     sendClarityConsentSignal(false);
+    
+    // ADD THIS LINE: Enable blocking when consent is rejected
+    applyCookieBlocking(false);
     
     const consentData = {
         status: 'rejected',
@@ -4662,42 +4362,37 @@ function rejectAllCookies() {
             'functionality_storage': 'denied',
             'security_storage': 'granted'
         },
-        'gcs': 'G100',
+        'gcs': 'G100', // Explicit GCS signal
         'consent_status': 'rejected',
         'consent_categories': consentData.categories,
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
-    
-    // RELOAD THE PAGE TO ENSURE COOKIES ARE BLOCKED
-    setTimeout(() => {
-        window.location.reload();
-    }, 500);
 }
-
-
-
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
-    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
-    
-    // Initialize or stop Clarity based on consent
+     // Initialize or stop Clarity based on consent
     initializeClarity(analyticsChecked);
     sendClarityConsentSignal(analyticsChecked);
+    
+    // ADD THIS LINE: Enable/disable blocking based on consent
+    applyCookieBlocking(analyticsChecked || advertisingChecked);
+    
+    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
     
     let gcsSignal;
     if (analyticsChecked && advertisingChecked) {
-        gcsSignal = 'G111';
+        gcsSignal = 'G111'; // Both granted
     } else if (!analyticsChecked && !advertisingChecked) {
-        gcsSignal = 'G100';
+        gcsSignal = 'G100'; // Both denied
     } else if (analyticsChecked && !advertisingChecked) {
-        gcsSignal = 'G101';
+        gcsSignal = 'G101'; // Analytics granted, ads denied
     } else if (!analyticsChecked && advertisingChecked) {
-        gcsSignal = 'G110';
+        gcsSignal = 'G110'; // Ads granted, analytics denied
     }
 
     const consentData = {
@@ -4745,7 +4440,7 @@ function saveCustomSettings() {
                 'analytics_storage': 'granted',
                 'ad_storage': 'denied'
             },
-            'gcs': 'G101',
+            'gcs': 'G101', // Explicit GCS signal
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
@@ -4758,40 +4453,25 @@ function saveCustomSettings() {
                 'ad_storage': 'granted',
                 'analytics_storage': 'denied'
             },
-            'gcs': 'G110',
+            'gcs': 'G110', // Explicit GCS signal
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
             'location_data': locationData
         });
     } else {
+        // For all other cases (both accepted or both rejected)
         window.dataLayer.push({
             'event': 'cookie_consent_custom',
             'consent_mode': consentStates,
-            'gcs': gcsSignal,
+            'gcs': gcsSignal, // Explicit GCS signal
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
             'location_data': locationData
         });
     }
-    
-    // RELOAD THE PAGE TO APPLY CHANGES
-    setTimeout(() => {
-        window.location.reload();
-    }, 500);
 }
-
-
-
-
-
-
-
-
-
-
-
 // Helper functions
 function clearNonEssentialCookies() {
     const cookies = document.cookie.split(';');
@@ -5122,16 +4802,16 @@ function loadPerformanceCookies() {
 }
 
 // Main execution flow
+// Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
     // Ensure location data is loaded first
     try {
         if (!sessionStorage.getItem('locationData')) {
             console.log('Fetching fresh location data...');
-            locationData = await fetchLocationData(); // This will now push to dataLayer
+            locationData = await fetchLocationData();
         } else {
             console.log('Using cached location data');
             locationData = JSON.parse(sessionStorage.getItem('locationData'));
-            // Push cached data to dataLayer
             pushGeoDataToDataLayer(locationData);
         }
         
@@ -5140,13 +4820,40 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Failed to load location data:', e);
     }
 
-      // Check existing consent for Clarity compliance
+    // ============ SIMPLE BLOCKING CHECK ============ //
+    // Check existing consent and apply blocking
+    const consentCookie = getCookie('cookie_consent');
+    let shouldBlock = true; // Default: block everything
+    
+    if (consentCookie) {
+        try {
+            const consentData = JSON.parse(consentCookie);
+            // Only allow if user accepted ALL cookies
+            if (consentData.status === 'accepted') {
+                shouldBlock = false; // Don't block
+            }
+            // For custom settings, check if analytics or advertising are allowed
+            else if (consentData.status === 'custom') {
+                if (consentData.categories.analytics || consentData.categories.advertising) {
+                    shouldBlock = false; // Don't block if any tracking is allowed
+                }
+            }
+        } catch (e) {
+            // If cookie is broken, keep blocking
+            console.log('Invalid consent cookie, keeping blocking ON');
+        }
+    }
+    
+    // Apply the blocking based on our check
+    applyCookieBlocking(!shouldBlock); // True = allow, False = block
+    console.log('Blocking status:', shouldBlock ? 'ACTIVE (blocking)' : 'INACTIVE (allowing)');
+    // ============ END BLOCKING CHECK ============ //
+
+    // Check existing consent for Clarity compliance
     checkExistingClarityConsent();
 
-  
     // Store query parameters on page load
     storeQueryParams();
-   
 
     // Check existing consent on page load and apply to Clarity
     const existingConsent = getClarityConsentState();
@@ -5154,14 +4861,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         ensureClarityConsentSignal(existingConsent);
     }
 
-
-
-
-
-
-
-  
- // Check if domain is allowed
+    // Check if domain is allowed
     if (!isDomainAllowed()) {
         console.log('Cookie consent banner not shown - domain not allowed');
         return;
@@ -5178,7 +4878,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Fetch location data asynchronously
     await fetchLocationData();
     
-      // Check geo-targeting before proceeding
+    // Check geo-targeting before proceeding
     const geoAllowed = checkGeoTargeting(locationData);
     if (!geoAllowed) {
         console.log('Cookie consent banner not shown - geo-targeting restriction');
@@ -5264,4 +4964,4 @@ if (typeof window !== 'undefined') {
         showAnalytics: showAnalyticsDashboard,
         config: config
     };
-  }
+}
