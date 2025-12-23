@@ -1,16 +1,135 @@
+/* ============================================================
+   COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
+   This blocks all cookies and trackers BEFORE consent is given
+============================================================ */
+(function () {
+    'use strict';
+    
+    /* ===================== CONFIGURATION ===================== */
+    const CONSENT_KEY = "__user_cookie_consent__";
+    const HAS_CONSENT = localStorage.getItem(CONSENT_KEY) === "granted";
+    
+    /* ===================== BLOCKING SETTINGS ===================== */
+    // These are the defaults - you can customize these later
+    const BLOCKED_DOMAINS = [
+        "connect.facebook.net", "facebook.com/tr",
+        "googletagmanager.com", "google-analytics.com",
+        "googleadservices.com", "doubleclick.net",
+        "analytics.tiktok.com", "ads.tiktok.com",
+        "snap.licdn.com", "analytics.twitter.com",
+        "clarity.ms", "bat.bing.com",
+        "hotjar.com", "segment.com", "cdn.segment.com",
+        "snapchat.com", "pinterest.com"
+    ];
+    
+    const BLOCKED_COOKIES = [
+        "_fbp", "_fbc", "_ga", "_gid", "_gat", "_gcl_au",
+        "_clck", "_clsk", "IDE", "ANID", "test_cookie"
+    ];
+    
+    /* ============================================================
+       EXIT IF CONSENT IS ALREADY GIVEN
+    ============================================================ */
+    if (HAS_CONSENT) {
+        console.info("✅ Consent found – tracking allowed");
+        return;
+    }
+    
+    /* ===================== HARD BLOCKING ===================== */
+    
+    // 1. Block script loading from tracking domains
+    const _createElement = document.createElement;
+    document.createElement = function (tag) {
+        const el = _createElement.call(document, tag);
+        if (tag.toLowerCase() === "script") {
+            Object.defineProperty(el, "src", {
+                set(url) {
+                    if (BLOCKED_DOMAINS.some(d => url && url.includes(d))) {
+                        console.log("🛡️ Blocked script:", url);
+                        return;
+                    }
+                    el.setAttribute("src", url);
+                }
+            });
+        }
+        return el;
+    };
+    
+    // 2. Block fetch requests to tracking domains
+    const _fetch = window.fetch;
+    window.fetch = function () {
+        const url = arguments[0];
+        if (url && BLOCKED_DOMAINS.some(d => url.includes && url.includes(d))) {
+            console.log("🛡️ Blocked fetch:", url);
+            return new Promise(() => {});
+        }
+        return _fetch.apply(this, arguments);
+    };
+    
+    // 3. Block XHR requests to tracking domains
+    const _open = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url) {
+        if (url && BLOCKED_DOMAINS.some(d => url.includes(d))) {
+            console.log("🛡️ Blocked XHR:", url);
+            return;
+        }
+        return _open.apply(this, arguments);
+    };
+    
+    // 4. Remove inline trackers
+    function removeInlineTrackers() {
+        document.querySelectorAll("script:not([src])").forEach(s => {
+            if (/fbq|gtag|dataLayer|ttq|analytics|clarity|hotjar/i.test(s.innerText)) {
+                console.log("🛡️ Removed inline tracker script");
+                s.remove();
+            }
+        });
+    }
+    
+    removeInlineTrackers();
+    new MutationObserver(removeInlineTrackers)
+        .observe(document.documentElement, { childList: true, subtree: true });
+    
+    // 5. Delete cookies aggressively
+    function clearBlockedCookies() {
+        BLOCKED_COOKIES.forEach(cookieName => {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        });
+    }
+    
+    clearBlockedCookies();
+    setInterval(clearBlockedCookies, 1000);
+    
+    console.info("🛡️ Privacy Firewall ACTIVE – waiting for cookie consent");
+    
+    /* ============================================================
+       HOOK INTO YOUR CUSTOM COOKIE BANNER CONSENT SYSTEM
+    ============================================================ */
+    
+    // This function will be called when user gives consent in YOUR banner
+    window.enableTracking = function() {
+        localStorage.setItem(CONSENT_KEY, "granted");
+        console.log("✅ Tracking enabled via custom banner consent");
+        location.reload();
+    };
+    
+    // Listen for consent events from your custom banner
+    document.addEventListener('cookieConsentGranted', function(e) {
+        if (e.detail && e.detail.consent === "granted") {
+            window.enableTracking();
+        }
+    });
+    
+})();
 
+
+
+// YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
 /**
  * Microsoft Clarity Configuration
  * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
  * for visitors from EEA, UK, and Switzerland. This configuration ensures compliance.
- */
-
-
-/**
-you can change the cookie category description text by this class. like you can change the essential cookies description text size.
-  .broadcookiedes {
-      font-size: 15px;
-    } 
  */
 
 
@@ -77,118 +196,7 @@ function isEEAVisitor() {
 }
 
 
-// ============== COOKIE BLOCKING FUNCTION ============== //
-function applyCookieBlocking(consentGranted) {
-    // If consent is granted, do nothing (allow all cookies)
-    if (consentGranted) {
-        console.info("✅ Consent found – tracking allowed");
-        return;
-    }
-    
-    // Use config for blocked domains and cookies
-    // Check if config.blockingConfig exists, otherwise use defaults
-    let BLOCKED_DOMAINS = [
-        "connect.facebook.net","facebook.com/tr",
-        "googletagmanager.com","google-analytics.com",
-        "googleadservices.com","doubleclick.net",
-        "analytics.tiktok.com","ads.tiktok.com",
-        "snap.licdn.com","analytics.twitter.com",
-        "clarity.ms","bat.bing.com",
-        "hotjar.com","segment.com","cdn.segment.com",
-        "snapchat.com","pinterest.com"
-    ];
-    
-    let BLOCKED_COOKIES = [
-        "_fbp","_fbc","_ga","_gid","_gat","_gcl_au",
-        "_clck","_clsk","IDE","ANID","test_cookie"
-    ];
-    
-    // If blockingConfig exists in config, use it
-    if (config.blockingConfig) {
-        if (config.blockingConfig.blockedDomains) {
-            BLOCKED_DOMAINS = [
-                ...config.blockingConfig.blockedDomains,
-                ...(config.blockingConfig.customBlockedDomains || [])
-            ];
-        }
-        
-        if (config.blockingConfig.blockedCookies) {
-            BLOCKED_COOKIES = [
-                ...config.blockingConfig.blockedCookies,
-                ...(config.blockingConfig.customBlockedCookies || [])
-            ];
-        }
-        
-        // Apply whitelist filtering
-        if (config.blockingConfig.whitelistDomains && config.blockingConfig.whitelistDomains.length > 0) {
-            BLOCKED_DOMAINS = BLOCKED_DOMAINS.filter(domain => 
-                !config.blockingConfig.whitelistDomains.includes(domain)
-            );
-        }
-        
-        if (config.blockingConfig.whitelistCookies && config.blockingConfig.whitelistCookies.length > 0) {
-            BLOCKED_COOKIES = BLOCKED_COOKIES.filter(cookie => 
-                !config.blockingConfig.whitelistCookies.includes(cookie)
-            );
-        }
-    }
-    
-    console.info("🛡️ Privacy Firewall ACTIVE – blocking:", BLOCKED_DOMAINS.length, "domains and", BLOCKED_COOKIES.length, "cookies");
-    
-    /* ===================== HARD BLOCK ===================== */
-    
-    /* Block script loading */
-    const _createElement = document.createElement;
-    document.createElement = function (tag) {
-        const el = _createElement.call(document, tag);
-        if (tag.toLowerCase() === "script") {
-            Object.defineProperty(el, "src", {
-                set(url) {
-                    if (BLOCKED_DOMAINS.some(d => url && url.includes(d))) return;
-                    el.setAttribute("src", url);
-                }
-            });
-        }
-        return el;
-    };
-    
-    /* Block fetch */
-    const _fetch = window.fetch;
-    window.fetch = function () {
-        if (BLOCKED_DOMAINS.some(d => arguments[0]?.includes(d)))
-            return new Promise(()=>{});
-        return _fetch.apply(this, arguments);
-    };
-    
-    /* Block XHR */
-    const _open = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (m, url) {
-        if (BLOCKED_DOMAINS.some(d => url && url.includes(d))) return;
-        return _open.apply(this, arguments);
-    };
-    
-    /* Remove inline trackers */
-    function removeInlineTrackers() {
-        document.querySelectorAll("script:not([src])").forEach(s => {
-            if (/fbq|gtag|dataLayer|ttq|analytics|clarity|hotjar/i.test(s.innerText)) {
-                s.remove();
-            }
-        });
-    }
-    removeInlineTrackers();
-    new MutationObserver(removeInlineTrackers)
-        .observe(document.documentElement,{childList:true,subtree:true});
-    
-    /* Delete cookies aggressively */
-    function clearCookies() {
-        BLOCKED_COOKIES.forEach(c => {
-            document.cookie = c + "=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/";
-        });
-    }
-    clearCookies();
-    setInterval(clearCookies, 1000);
-}
-// ============== END BLOCKING FUNCTION ============== //
+
 
 
 const config = {
@@ -268,39 +276,7 @@ clarityConfig: {
         enforceInEEA: true,        // Enforce consent mode in EEA countries
         msd: window.location.hostname // Add this line for Microsoft Domain handling
     },
-
-
-
-    // Cookie Blocking Control Configuration
-    blockingConfig: {
-        enabled: true,
-        blockedDomains: [
-            "connect.facebook.net","facebook.com/tr",
-            "googletagmanager.com","google-analytics.com",
-            "googleadservices.com","doubleclick.net",
-            "analytics.tiktok.com","ads.tiktok.com",
-            "snap.licdn.com","analytics.twitter.com",
-            "clarity.ms","bat.bing.com",
-            "hotjar.com","segment.com","cdn.segment.com",
-            "snapchat.com","pinterest.com"
-        ],
-        blockedCookies: [
-            "_fbp","_fbc","_ga","_gid","_gat","_gcl_au",
-            "_clck","_clsk","IDE","ANID","test_cookie"
-        ],
-        // Add your custom domains/cookies here:
-        customBlockedDomains: [],  // Add domains like "example-tracker.com"
-        customBlockedCookies: [],  // Add cookies like "my_custom_tracker"
-        // Whitelist (never block these)
-        whitelistDomains: [],      // Add domains to always allow
-        whitelistCookies: []       // Add cookies to always allow
-    },
-
-
-
-
-
-  
+    
     // Behavior configuration
     behavior: {
         autoShow: true,
@@ -4270,16 +4246,17 @@ function hideFloatingButton() {
 
 // Cookie consent functions
 function acceptAllCookies() {
+
+   // ADD THIS LINE:
+    if (typeof window.enableTracking === 'function') window.enableTracking();
+
      // Add this line to initialize Clarity
     initializeClarity(true);
-    sendClarityConsentSignal(true);
-    
-    // ADD THIS LINE: Disable blocking when consent is given
-    applyCookieBlocking(true);
+  sendClarityConsentSignal(true); // Add this line
     
     const consentData = {
         status: 'accepted',
-        gcs: 'G111',
+        gcs: 'G111', // Explicit GCS signal for all granted
         categories: {
             functional: true,
             analytics: true,
@@ -4322,16 +4299,17 @@ function acceptAllCookies() {
 }
 
 function rejectAllCookies() {
+
+  // NO NEED TO CALL enableTracking() here since we're rejecting
+
+  
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
-    sendClarityConsentSignal(false);
-    
-    // ADD THIS LINE: Enable blocking when consent is rejected
-    applyCookieBlocking(false);
+    sendClarityConsentSignal(false); // Add this line
     
     const consentData = {
         status: 'rejected',
-        gcs: 'G100',
+        gcs: 'G100', // Explicit GCS signal for all denied
         categories: {
             functional: false,
             analytics: false,
@@ -4372,14 +4350,20 @@ function rejectAllCookies() {
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
+    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
+
+   
+    // ADD THESE LINES:
+    // Only enable tracking if user accepts analytics OR advertising
+    if ((analyticsChecked || advertisingChecked) && typeof window.enableTracking === 'function') {
+        window.enableTracking();
+    }
+
+  
      // Initialize or stop Clarity based on consent
     initializeClarity(analyticsChecked);
-    sendClarityConsentSignal(analyticsChecked);
-    
-    // ADD THIS LINE: Enable/disable blocking based on consent
-    applyCookieBlocking(analyticsChecked || advertisingChecked);
-    
-    const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
+    sendClarityConsentSignal(analyticsChecked); // Add this line
+  
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -4802,16 +4786,16 @@ function loadPerformanceCookies() {
 }
 
 // Main execution flow
-// Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
     // Ensure location data is loaded first
     try {
         if (!sessionStorage.getItem('locationData')) {
             console.log('Fetching fresh location data...');
-            locationData = await fetchLocationData();
+            locationData = await fetchLocationData(); // This will now push to dataLayer
         } else {
             console.log('Using cached location data');
             locationData = JSON.parse(sessionStorage.getItem('locationData'));
+            // Push cached data to dataLayer
             pushGeoDataToDataLayer(locationData);
         }
         
@@ -4820,40 +4804,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Failed to load location data:', e);
     }
 
-    // ============ SIMPLE BLOCKING CHECK ============ //
-    // Check existing consent and apply blocking
-    const consentCookie = getCookie('cookie_consent');
-    let shouldBlock = true; // Default: block everything
-    
-    if (consentCookie) {
-        try {
-            const consentData = JSON.parse(consentCookie);
-            // Only allow if user accepted ALL cookies
-            if (consentData.status === 'accepted') {
-                shouldBlock = false; // Don't block
-            }
-            // For custom settings, check if analytics or advertising are allowed
-            else if (consentData.status === 'custom') {
-                if (consentData.categories.analytics || consentData.categories.advertising) {
-                    shouldBlock = false; // Don't block if any tracking is allowed
-                }
-            }
-        } catch (e) {
-            // If cookie is broken, keep blocking
-            console.log('Invalid consent cookie, keeping blocking ON');
-        }
-    }
-    
-    // Apply the blocking based on our check
-    applyCookieBlocking(!shouldBlock); // True = allow, False = block
-    console.log('Blocking status:', shouldBlock ? 'ACTIVE (blocking)' : 'INACTIVE (allowing)');
-    // ============ END BLOCKING CHECK ============ //
-
-    // Check existing consent for Clarity compliance
+      // Check existing consent for Clarity compliance
     checkExistingClarityConsent();
 
+  
     // Store query parameters on page load
     storeQueryParams();
+   
 
     // Check existing consent on page load and apply to Clarity
     const existingConsent = getClarityConsentState();
@@ -4861,7 +4818,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         ensureClarityConsentSignal(existingConsent);
     }
 
-    // Check if domain is allowed
+
+
+
+
+
+
+  
+ // Check if domain is allowed
     if (!isDomainAllowed()) {
         console.log('Cookie consent banner not shown - domain not allowed');
         return;
@@ -4878,7 +4842,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Fetch location data asynchronously
     await fetchLocationData();
     
-    // Check geo-targeting before proceeding
+      // Check geo-targeting before proceeding
     const geoAllowed = checkGeoTargeting(locationData);
     if (!geoAllowed) {
         console.log('Cookie consent banner not shown - geo-targeting restriction');
@@ -4964,4 +4928,76 @@ if (typeof window !== 'undefined') {
         showAnalytics: showAnalyticsDashboard,
         config: config
     };
+
+
+
+
+/* ============================================================
+   ADMIN CONTROL FUNCTIONS
+   You can call these from browser console to control blocking
+============================================================ */
+
+// 1. Function to temporarily disable blocking (for testing)
+window.disableBlocking = function() {
+    localStorage.setItem("__user_cookie_consent__", "granted");
+    console.log("⚠️ Blocking temporarily disabled. Refresh page to see changes.");
+};
+
+// 2. Function to enable blocking
+window.enableBlocking = function() {
+    localStorage.removeItem("__user_cookie_consent__");
+    console.log("✅ Blocking enabled. Refresh page to see changes.");
+};
+
+// 3. Function to add URLs to block
+window.addBlockedDomain = function(domain) {
+    if (!window.BLOCKED_DOMAINS) window.BLOCKED_DOMAINS = BLOCKED_DOMAINS || [];
+    if (!window.BLOCKED_DOMAINS.includes(domain)) {
+        window.BLOCKED_DOMAINS.push(domain);
+        console.log(`✅ Added ${domain} to blocked domains`);
+    }
+};
+
+// 4. Function to remove URLs from blocklist
+window.removeBlockedDomain = function(domain) {
+    if (!window.BLOCKED_DOMAINS) window.BLOCKED_DOMAINS = BLOCKED_DOMAINS || [];
+    const index = window.BLOCKED_DOMAINS.indexOf(domain);
+    if (index > -1) {
+        window.BLOCKED_DOMAINS.splice(index, 1);
+        console.log(`✅ Removed ${domain} from blocked domains`);
+    }
+};
+
+// 5. Function to add cookies to block
+window.addBlockedCookie = function(cookieName) {
+    if (!window.BLOCKED_COOKIES) window.BLOCKED_COOKIES = BLOCKED_COOKIES || [];
+    if (!window.BLOCKED_COOKIES.includes(cookieName)) {
+        window.BLOCKED_COOKIES.push(cookieName);
+        console.log(`✅ Added ${cookieName} to blocked cookies`);
+    }
+};
+
+// 6. Function to remove cookies from blocklist
+window.removeBlockedCookie = function(cookieName) {
+    if (!window.BLOCKED_COOKIES) window.BLOCKED_COOKIES = BLOCKED_COOKIES || [];
+    const index = window.BLOCKED_COOKIES.indexOf(cookieName);
+    if (index > -1) {
+        window.BLOCKED_COOKIES.splice(index, 1);
+        console.log(`✅ Removed ${cookieName} from blocked cookies`);
+    }
+};
+
+// 7. View current blocking settings
+window.showBlockingSettings = function() {
+    console.log("🛡️ Current Blocking Settings:");
+    console.log("Blocked Domains:", window.BLOCKED_DOMAINS || BLOCKED_DOMAINS);
+    console.log("Blocked Cookies:", window.BLOCKED_COOKIES || BLOCKED_COOKIES);
+    console.log("Consent Status:", localStorage.getItem("__user_cookie_consent__"));
+};
+
+
+
+
+
+  
 }
