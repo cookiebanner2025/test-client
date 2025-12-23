@@ -4457,6 +4457,9 @@ function acceptAllCookies() {
     initializeClarity(true);
   sendClarityConsentSignal(true); // Add this line
     
+    // NEW: Update localStorage for the blocking script
+    localStorage.setItem("__user_cookie_consent__", "granted");
+    
     const consentData = {
         status: 'accepted',
         gcs: 'G111', // Explicit GCS signal for all granted
@@ -4501,10 +4504,18 @@ function acceptAllCookies() {
     });
 }
 
+
 function rejectAllCookies() {
-    // Send signals to stop tracking
+
+    // ADD THIS LINE TO RELOAD THE PAGE:
+    const shouldReload = getCookie('cookie_consent') !== null;
+    
+    // Clear the consent from localStorage (for the blocking script)
+    localStorage.removeItem("__user_cookie_consent__");
+  
+    // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
-    sendClarityConsentSignal(false);
+    sendClarityConsentSignal(false); // Add this line
     
     const consentData = {
         status: 'rejected',
@@ -4521,15 +4532,7 @@ function rejectAllCookies() {
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
-    
-    // IMPORTANT: Clear all non-essential cookies
     clearNonEssentialCookies();
-    
-    // ADD THIS: Force delete all tracking cookies immediately
-    clearAllTrackingCookies();
-    
-    // ADD THIS: Remove localStorage consent to reactivate blocking
-    localStorage.removeItem("__user_cookie_consent__");
     
     if (config.analytics.enabled) {
         updateConsentStats('rejected');
@@ -4554,31 +4557,43 @@ function rejectAllCookies() {
         'location_data': locationData
     });
     
-    // ADD THIS: Show confirmation message
-    console.log("🛡️ All tracking cookies have been blocked. Reloading page to ensure complete blocking...");
-    
-    // ADD THIS: Reload page after short delay to activate blocking
-    setTimeout(() => {
-        window.location.reload();
-    }, 1000);
+    // NEW: RELOAD THE PAGE IF COOKIES WERE PREVIOUSLY ACCEPTED
+    if (shouldReload) {
+        console.log("🔄 Reloading page to re-activate cookie blocking...");
+        setTimeout(() => {
+            window.location.reload();
+        }, 500); // Small delay to ensure cookies are saved
+    }
 }
+
 
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
 
-    // ADD THIS: Only enable tracking if user accepts analytics OR advertising
+   
+    // ADD THESE LINES:
+    // Only enable tracking if user accepts analytics OR advertising
     if ((analyticsChecked || advertisingChecked) && typeof window.enableTracking === 'function') {
         window.enableTracking();
     }
 
-    // Initialize or stop Clarity based on consent
+
+       // NEW: Check if we need to reload (when switching from accepted to rejected)
+    const previousConsent = getCookie('cookie_consent');
+    const shouldReload = previousConsent !== null && 
+                        (!analyticsChecked && !advertisingChecked);
+
+   
+  
+     // Initialize or stop Clarity based on consent
     initializeClarity(analyticsChecked);
     sendClarityConsentSignal(analyticsChecked); // Add this line
-
+  
+    
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
-
+    
     let gcsSignal;
     if (analyticsChecked && advertisingChecked) {
         gcsSignal = 'G111'; // Both granted
@@ -4598,55 +4613,25 @@ function saveCustomSettings() {
             analytics: analyticsChecked,
             performance: document.querySelector('input[data-category="performance"]').checked,
             advertising: advertisingChecked,
-            uncategorized: document.querySelector('input[data-category="uncategorized"]') ?
+            uncategorized: document.querySelector('input[data-category="uncategorized"]') ? 
                 document.querySelector('input[data-category="uncategorized"]').checked : false
         },
         timestamp: new Date().getTime()
     };
-
+    
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     loadCookiesAccordingToConsent(consentData);
-
-    // ====== REPLACE THIS SECTION ======
-    // OLD CODE:
-    // if (!consentData.categories.analytics) clearCategoryCookies('analytics');
-    // if (!consentData.categories.performance) clearCategoryCookies('performance');
-    // if (!consentData.categories.advertising) clearCategoryCookies('advertising');
-    // if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
     
-    // NEW CODE:
-    // Check if user is rejecting any tracking categories
-    const isRejectingTracking = !consentData.categories.analytics ||
-        !consentData.categories.advertising ||
-        !consentData.categories.performance ||
-        !consentData.categories.uncategorized;
-
-    if (isRejectingTracking) {
-        // Clear the cookies for rejected categories
-        if (!consentData.categories.analytics) {
-            clearCategoryCookies('analytics');
-            clearAllTrackingCookies(); // ADD THIS: Force clear all tracking cookies
-        }
-        if (!consentData.categories.performance) clearCategoryCookies('performance');
-        if (!consentData.categories.advertising) {
-            clearCategoryCookies('advertising');
-            clearAllTrackingCookies(); // ADD THIS: Force clear all tracking cookies
-        }
-        if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
-
-        // ADD THIS: Remove localStorage consent to reactivate blocking for tracking cookies
-        localStorage.removeItem("__user_cookie_consent__");
-        
-        // ADD THIS: Show message
-        console.log("🛡️ Tracking cookies have been blocked.");
-    }
-    // ====== END OF REPLACEMENT ======
-
+    if (!consentData.categories.analytics) clearCategoryCookies('analytics');
+    if (!consentData.categories.performance) clearCategoryCookies('performance');
+    if (!consentData.categories.advertising) clearCategoryCookies('advertising');
+    if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
+    
     if (config.analytics.enabled) {
         updateConsentStats('custom');
     }
-
+    
     const consentStates = {
         'ad_storage': consentData.categories.advertising ? 'granted' : 'denied',
         'analytics_storage': consentData.categories.analytics ? 'granted' : 'denied',
@@ -4656,7 +4641,7 @@ function saveCustomSettings() {
         'functionality_storage': consentData.categories.functional ? 'granted' : 'denied',
         'security_storage': 'granted'
     };
-
+    
     // Fire specific events based on consent choices with GCS signals
     if (analyticsChecked && !advertisingChecked) {
         window.dataLayer.push({
@@ -4696,6 +4681,16 @@ function saveCustomSettings() {
             'location_data': locationData
         });
     }
+
+
+
+       // NEW: RELOAD PAGE IF USER REJECTED ALL COOKIES AFTER PREVIOUSLY ACCEPTING
+    if (shouldReload) {
+        console.log("🔄 Reloading page to re-activate cookie blocking...");
+        setTimeout(() => {
+            window.location.reload();
+        }, 500); // Small delay to ensure cookies are saved
+    }
 }
 // Helper functions
 function clearNonEssentialCookies() {
@@ -4718,46 +4713,7 @@ function clearNonEssentialCookies() {
     });
 }
 
-function clearAllTrackingCookies() {
-    console.log("🛡️ Force clearing all tracking cookies...");
-    
-    // Get all cookies
-    const cookies = document.cookie.split(';');
-    
-    cookies.forEach(cookie => {
-        const [nameValue] = cookie.trim().split('=');
-        const name = nameValue.trim();
-        
-        if (!name) return;
-        
-        // Check if it's an essential cookie (don't delete these)
-        const isEssential = ESSENTIAL_COOKIES.some(essentialCookie => 
-            name.startsWith(essentialCookie) || essentialCookie.startsWith(name)
-        );
-        
-        // Check if it's a tracking cookie (block these)
-        const isTracking = BLOCKED_COOKIES.some(trackingCookie => 
-            name.startsWith(trackingCookie) || trackingCookie.startsWith(name)
-        );
-        
-        // Delete if it's tracking AND not essential
-        if (isTracking && !isEssential) {
-            console.log("🗑️ Deleting tracking cookie:", name);
-            
-            // Delete from current domain
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-            
-            // Also try to delete from subdomains
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname};`;
-            
-            // Try common variations
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
-        }
-    });
-    
-    // Also run the regular clearBlockedCookies function
-    clearBlockedCookies();
-}
+
 
 
 // Check if current URL matches any of the specified patterns
