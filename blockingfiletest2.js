@@ -8,24 +8,189 @@
     /* ===================== CONFIGURATION ===================== */
     const CONSENT_KEY = "__user_cookie_consent__";
     const HAS_CONSENT = localStorage.getItem(CONSENT_KEY) === "granted";
+
+   /* ===================== ESSENTIAL COOKIES ===================== */
+// These cookies will NEVER be blocked - they're essential for website functionality
+const ESSENTIAL_COOKIES = [
+    // Session/authentication cookies
+    "PHPSESSID", "JSESSIONID", "ASP.NET_SessionId",
+    "wordpress_logged_in_", "wordpress_sec_", "wp-settings-",
+    "wp-settings-time-", "wordpress_test_cookie",
+    
+    // Security/load balancing
+    "AWSALB", "AWSALBCORS", "__cfduid", "__cf_bm",
+    "ARRAffinity", "ARRAffinitySameSite",
+    
+    // Language/region preferences
+    "locale", "lang", "country", "currency",
+    
+    // Shopping cart/e-commerce
+    "cart_token", "cart_items", "checkout_token",
+    "woocommerce_cart_hash", "woocommerce_items_in_cart",
+    
+    // Form/anti-spam
+    "csrftoken", "XSRF-TOKEN", "_csrf",
+    
+    // Your consent cookie
+    "cookie_consent", "__user_cookie_consent__"
+];
+
+const ESSENTIAL_DOMAINS = [
+    // Your own domains
+    window.location.hostname,
+    
+    // CDNs for essential resources
+    "cdnjs.cloudflare.com", "ajax.googleapis.com",
+    "fonts.googleapis.com", "fonts.gstatic.com",
+    
+    // Payment processors (if essential)
+    "stripe.com", "paypal.com",
+    
+    // Essential APIs
+    "maps.googleapis.com"
+];
+
+   
     
     /* ===================== BLOCKING SETTINGS ===================== */
     // These are the defaults - you can customize these later
-    const BLOCKED_DOMAINS = [
-        "connect.facebook.net", "facebook.com/tr",
-        "googletagmanager.com", "google-analytics.com",
-        "googleadservices.com", "doubleclick.net",
-        "analytics.tiktok.com", "ads.tiktok.com",
-        "snap.licdn.com", "analytics.twitter.com",
-        "clarity.ms", "bat.bing.com",
-        "hotjar.com", "segment.com", "cdn.segment.com",
-        "snapchat.com", "pinterest.com"
-    ];
+const BLOCKED_DOMAINS = [
+    // Google
+    "connect.facebook.net", "facebook.com/tr",
+    "googletagmanager.com", "google-analytics.com",
+    "googleadservices.com", "doubleclick.net",
+    "google.com/ads", "google-analytics.com",
+    "www.googleadservices.com", "www.googletagmanager.com",
+    
+    // Facebook/Meta
+    "facebook.com", "fbcdn.net", "fbsbx.com",
+    
+    // Microsoft
+    "clarity.ms", "bat.bing.com", "bing.com",
+    
+    // TikTok
+    "analytics.tiktok.com", "ads.tiktok.com", "tiktok.com",
+    
+    // LinkedIn
+    "snap.licdn.com", "linkedin.com",
+    
+    // Twitter/X
+    "analytics.twitter.com", "twitter.com", "x.com",
+    
+    // Snapchat
+    "snapchat.com", "sc-static.net",
+    
+    // Pinterest
+    "pinterest.com", "pinimg.com",
+    
+    // Other analytics
+    "hotjar.com", "segment.com", "cdn.segment.com",
+    "amplitude.com", "mixpanel.com", "heap.io",
+    "crazyegg.com", "mouseflow.com", "fullstory.com",
+    "logrocket.com", "sentry.io",
+    
+    // Advertising networks
+    "criteo.com", "taboola.com", "outbrain.com",
+    "amazon-adsystem.com", "rubiconproject.com",
+    "pubmatic.com", "openx.net", "indexww.com",
+    "adsrvr.org", "simpli.fi",
+    
+    // Video platforms
+    "vimeo.com", "youtube.com", "youtu.be",
+    "dailymotion.com",
+    
+    // Chat/Support
+    "intercom.io", "intercomcdn.com",
+    "drift.com", "driftcdn.com",
+    "zendesk.com", "zdassets.com",
+    
+    // Other trackers
+    "scorecardresearch.com", "quantserve.com",
+    "go-mpulse.net", "newrelic.com",
+    "optimizely.com", "uservoice.com"
+];
     
     const BLOCKED_COOKIES = [
-        "_fbp", "_fbc", "_ga", "_gid", "_gat", "_gcl_au",
-        "_clck", "_clsk", "IDE", "ANID", "test_cookie"
-    ];
+    // Google Analytics & Ads
+    "_ga", "_gid", "_gat", "_gcl_au", "_gcl_aw", "_gcl_dc",
+    "_gac_", "_gcl_gb", "_gcl_gf", "_gcl_ha",
+    "IDE", "ANID", "test_cookie", "NID", "DSID", "FPLC",
+    "1P_JAR", "CONSENT", "AEC", "__Secure-3PAPISID",
+    "__Secure-3PSID", "__Secure-3PSIDCC",
+    
+    // Facebook/Meta
+    "_fbp", "_fbc", "fr", "xs", "c_user", "datr", "sb",
+    "dpr", "wd", "presence", "act", "lu", "m_user",
+    
+    // Microsoft
+    "_clck", "_clsk", "_uetvid", "_uetsid", "_uetmsclkid",
+    "MUID", "MUIDB", "ANONCHK", "SM", "MR", "MSCC",
+    
+    // TikTok
+    "_ttp", "ttclid", "tt_sessionid", "tt_medium", "tt_campaign",
+    
+    // LinkedIn
+    "lidc", "bcookie", "li_sugr", "bscookie", "UserMatchHistory",
+    "lang", "li_at",
+    
+    // Twitter
+    "personalization_id", "guest_id", "ct0", "auth_token",
+    "twid", "remember_checked_on",
+    
+    // Snapchat
+    "sc_at", "_scid", "_sctr", "snap_ga",
+    
+    // Pinterest
+    "_pinterest_ct_ua", "_pinterest_sess", "cm_sub",
+    "_pin_unauth", "_auth", "_pinterest_referrer",
+    
+    // Adobe
+    "s_cc", "s_sq", "AMCV_", "demdex",
+    
+    // HubSpot
+    "hubspotutk", "__hssc", "__hssrc", "__hstc",
+    
+    // Hotjar
+    "_hjid", "_hjIncludedInPageviewSample",
+    "_hjClosedSurveyInvites", "_hjDonePolls",
+    "_hjMinimizedPolls", "_hjShownFeedbackMessage",
+    
+    // Shopify
+    "_shopify_y", "_shopify_s", "_shopify_sa_p",
+    "_shopify_fs", "_shopify_uniq",
+    
+    // Other platforms
+    "ajs_anonymous_id", "ajs_user_id",            // Segment
+    "_sp_id", "_sp_ses",                          // Snowplow
+    "_pk_id", "_pk_ses",                          // Matomo
+    "mf_", "mf_user",                             // Mouseflow
+    "_fsuid", "_fssid",                           // FullStory
+    "is_returning", "ce_need_secure",             // Crazy Egg
+    "visitor_id", "visitor_id-hash",              // Pardot
+    "_mkto_trk",                                  // Marketo
+    "ELOQUA", "ELQSTATUS",                        // Eloqua
+    "tdid", "tdcpm",                              // The Trade Desk
+    "criteo", "uid",                              // Criteo
+    "__adroll", "__ar_v4",                        // AdRoll
+    "ad-id", "ad-privacy",                        // Amazon
+    "yandexuid", "ymex", "_ym_uid", "_ym_d",      // Yandex
+    "obuid", "obcl", "outbrain_cid",              // Outbrain
+    "t_gid", "t_sessionid", "taboola_usg",        // Taboola
+    "TUUID", "TUUID_TIMESTAMP",                   // Verizon
+    "d", "qc_shared",                             // Quantcast
+    "_cc_cc", "_cc_id",                           // LiveRamp
+    "sadb", "sadr",                               // StackAdapt
+    "mmapi", "mmdata",                            // MediaMath
+    "m-b", "m-b", "m-uid",                        // Quora
+    
+    // Consent managers
+    "OptanonAlertBoxClosed", "OptanonConsent",    // OneTrust
+    "CookieConsent", "cookietest",                // Cookiebot
+    "uc_user_interaction", "uc_user_interaction_ts", // Usercentrics
+    
+    // IAB TCF
+    "euconsent-v2", "eupubconsent-v2"
+];
     
     /* ============================================================
        EXIT IF CONSENT IS ALREADY GIVEN
@@ -38,43 +203,73 @@
     /* ===================== HARD BLOCKING ===================== */
     
     // 1. Block script loading from tracking domains
-    const _createElement = document.createElement;
-    document.createElement = function (tag) {
-        const el = _createElement.call(document, tag);
-        if (tag.toLowerCase() === "script") {
-            Object.defineProperty(el, "src", {
-                set(url) {
-                    if (BLOCKED_DOMAINS.some(d => url && url.includes(d))) {
-                        console.log("🛡️ Blocked script:", url);
-                        return;
-                    }
-                    el.setAttribute("src", url);
+// 1. Block script loading from tracking domains
+const _createElement = document.createElement;
+document.createElement = function (tag) {
+    const el = _createElement.call(document, tag);
+    if (tag.toLowerCase() === "script") {
+        Object.defineProperty(el, "src", {
+            set(url) {
+                // Check if this domain is essential (should NOT be blocked)
+                const isEssentialDomain = ESSENTIAL_DOMAINS.some(d => 
+                    url && url.includes(d)
+                );
+                
+                // Check if this domain should be blocked
+                const shouldBlock = !isEssentialDomain && 
+                    BLOCKED_DOMAINS.some(d => url && url.includes(d));
+                
+                if (shouldBlock) {
+                    console.log("🛡️ Blocked script:", url);
+                    return;
                 }
-            });
-        }
-        return el;
-    };
+                el.setAttribute("src", url);
+            }
+        });
+    }
+    return el;
+};
     
     // 2. Block fetch requests to tracking domains
-    const _fetch = window.fetch;
-    window.fetch = function () {
-        const url = arguments[0];
-        if (url && BLOCKED_DOMAINS.some(d => url.includes && url.includes(d))) {
-            console.log("🛡️ Blocked fetch:", url);
-            return new Promise(() => {});
-        }
-        return _fetch.apply(this, arguments);
-    };
+// 2. Block fetch requests to tracking domains
+const _fetch = window.fetch;
+window.fetch = function () {
+    const url = arguments[0];
     
-    // 3. Block XHR requests to tracking domains
-    const _open = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (method, url) {
-        if (url && BLOCKED_DOMAINS.some(d => url.includes(d))) {
-            console.log("🛡️ Blocked XHR:", url);
-            return;
-        }
-        return _open.apply(this, arguments);
-    };
+    // Check if this is an essential domain
+    const isEssentialDomain = url && ESSENTIAL_DOMAINS.some(d => 
+        url.includes && url.includes(d)
+    );
+    
+    // Only block if NOT essential AND in blocked list
+    const shouldBlock = url && !isEssentialDomain && 
+        BLOCKED_DOMAINS.some(d => url.includes && url.includes(d));
+    
+    if (shouldBlock) {
+        console.log("🛡️ Blocked fetch:", url);
+        return new Promise(() => {});
+    }
+    return _fetch.apply(this, arguments);
+};
+
+// 3. Block XHR requests to tracking domains
+const _open = XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open = function (method, url) {
+    // Check if this is an essential domain
+    const isEssentialDomain = url && ESSENTIAL_DOMAINS.some(d => 
+        url.includes(d)
+    );
+    
+    // Only block if NOT essential AND in blocked list
+    const shouldBlock = url && !isEssentialDomain && 
+        BLOCKED_DOMAINS.some(d => url.includes(d));
+    
+    if (shouldBlock) {
+        console.log("🛡️ Blocked XHR:", url);
+        return;
+    }
+    return _open.apply(this, arguments);
+};
     
     // 4. Remove inline trackers
     function removeInlineTrackers() {
@@ -91,12 +286,20 @@
         .observe(document.documentElement, { childList: true, subtree: true });
     
     // 5. Delete cookies aggressively
-    function clearBlockedCookies() {
-        BLOCKED_COOKIES.forEach(cookieName => {
+   function clearBlockedCookies() {
+    // Only block cookies that are NOT in the essential list
+    BLOCKED_COOKIES.forEach(cookieName => {
+        // Check if this cookie is NOT essential
+        const isEssential = ESSENTIAL_COOKIES.some(essentialCookie => 
+            cookieName.includes(essentialCookie) || essentialCookie.includes(cookieName)
+        );
+        
+        if (!isEssential) {
             document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
             document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-        });
-    }
+        }
+    });
+}
     
     clearBlockedCookies();
     setInterval(clearBlockedCookies, 1000);
