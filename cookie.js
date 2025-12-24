@@ -83,7 +83,7 @@
      
     /* ===================== CONFIGURATION ===================== */
     // ADD THIS NEW LINE HERE:
-    const BLOCKING_ENABLED = true; // Set to false to turn OFF blocking
+    const BLOCKING_ENABLED = false; // Set to false to turn OFF blocking
     
 
    
