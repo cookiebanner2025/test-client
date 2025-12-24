@@ -1,4 +1,10 @@
-
+/* ============================================================
+   GLOBAL SETTINGS - CONTROLS FOR BOTH SCRIPTS
+============================================================ */
+window.COOKIE_SETTINGS = {
+    BLOCKING_ENABLED: false,    // Set to false to turn OFF blocking
+    RELOAD_ENABLED: false       // Set to false to turn OFF page reloads
+};
 /* ============================================================
    ULTRA-EARLY DEFAULT CONSENT SETTING
    This MUST run before any tags can read consent state
@@ -81,11 +87,9 @@
 
      
     /* ===================== CONFIGURATION ===================== */
-    // ADD THIS NEW LINE HERE:
-    const BLOCKING_ENABLED = false; // Set to false to turn OFF blocking
-    
-   // ADD THIS NEW LINE RIGHT AFTER:
-   const RELOAD_ENABLED = false; // Set to false to turn OFF page reloads
+   // Use global settings
+    const BLOCKING_ENABLED = window.COOKIE_SETTINGS.BLOCKING_ENABLED;
+    const RELOAD_ENABLED = window.COOKIE_SETTINGS.RELOAD_ENABLED;
    
     const CONSENT_KEY = "__user_cookie_consent__";
     const CATEGORIES_KEY = "__user_cookie_categories__";
@@ -488,8 +492,8 @@
             performance: true
         }));
         
-      // Only reload if reload feature is enabled
-if (RELOAD_ENABLED) {
+// Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     setTimeout(() => {
         window.location.reload();
     }, 300);
@@ -518,8 +522,8 @@ if (RELOAD_ENABLED) {
             localStorage.setItem(CONSENT_KEY, "partial");
         }
         
-        // Only reload if reload feature is enabled
-if (RELOAD_ENABLED) {
+// Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     setTimeout(() => {
         window.location.reload();
     }, 300);
@@ -536,8 +540,8 @@ if (RELOAD_ENABLED) {
         localStorage.removeItem(CONSENT_KEY);
         localStorage.removeItem(CATEGORIES_KEY);
         
-        // Only reload if reload feature is enabled
-if (RELOAD_ENABLED) {
+// Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     setTimeout(() => {
         window.location.reload();
     }, 300);
@@ -4816,10 +4820,14 @@ function acceptAllCookies() {
             performance: true
         }));
         
-        // Force reload
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
+       // Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes saved without refresh");
+}
     }
     
     // Your existing code continues...
@@ -4883,10 +4891,14 @@ function rejectAllCookies() {
         localStorage.removeItem("__user_cookie_consent__");
         localStorage.removeItem("__user_cookie_categories__");
         
-        // Force reload
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
+     // Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes saved without refresh");
+}
     }
     
     // Your existing code continues...
@@ -4969,10 +4981,14 @@ function saveCustomSettings() {
         const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
         localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
         
-        // Force reload
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
+      // Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes saved without refresh");
+}
     }
     
     // Continue with your existing analytics code...
