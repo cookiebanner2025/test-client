@@ -1,3 +1,4 @@
+
 /* ============================================================
    ULTRA-EARLY DEFAULT CONSENT SETTING
    This MUST run before any tags can read consent state
@@ -77,8 +78,15 @@
 ============================================================ */
 (function () {
     'use strict';
-    
+
+
+     
     /* ===================== CONFIGURATION ===================== */
+    // ADD THIS NEW LINE HERE:
+    const BLOCKING_ENABLED = true; // Set to false to turn OFF blocking
+    
+
+   
     const CONSENT_KEY = "__user_cookie_consent__";
     const CATEGORIES_KEY = "__user_cookie_categories__";
     
@@ -96,7 +104,23 @@
         console.info("✅ Full consent granted – all tracking allowed");
         return; // Exit the blocking script
     }
-    
+
+
+
+           /* ===================== BLOCKING ON/OFF SWITCH ===================== */
+    // ADD THESE NEW LINES HERE:
+    // If blocking is disabled, exit the entire script
+    if (!BLOCKING_ENABLED) {
+        console.log("🟡 Blocking feature is OFF - all tracking allowed");
+        return; // Exit without blocking anything
+    }
+
+   
+    // If user gave FULL consent, don't block anything
+    if (storedConsent === "granted") {
+        console.info("✅ Full consent granted – all tracking allowed");
+        return; // Exit the blocking script
+    }
     // If user gave PARTIAL consent (custom categories), we'll block selectively
     // If no consent at all, block everything
     
@@ -107,9 +131,7 @@
     const ANALYTICS_DATA = {
         domains: [
             // Google Analytics
-            // Google Analytics
-            "google-analytics.com", "www.google-analytics.com", "googletagmanager.com",
-            "www.googletagmanager.com", "analytics.google.com",
+          "google-analytics.com", "www.google-analytics.com", "analytics.google.com",
             // Microsoft Clarity
             "clarity.ms", "www.clarity.ms",
             // Hotjar
