@@ -86,7 +86,7 @@
     const BLOCKING_ENABLED = false; // Set to false to turn OFF blocking
     
    // ADD THIS NEW LINE RIGHT AFTER:
-   const RELOAD_ENABLED = true; // Set to false to turn OFF page reloads
+   const RELOAD_ENABLED = false; // Set to false to turn OFF page reloads
    
     const CONSENT_KEY = "__user_cookie_consent__";
     const CATEGORIES_KEY = "__user_cookie_categories__";
