@@ -6,95 +6,25 @@
     'use strict';
     
     /* ===================== CONFIGURATION ===================== */
-   const CONSENT_KEY = "cookie_consent";
-const CONSENT_DATA = localStorage.getItem(CONSENT_KEY);
-const HAS_CONSENT = CONSENT_DATA ? JSON.parse(CONSENT_DATA).categories : null;
+    const CONSENT_KEY = "__user_cookie_consent__";
+    // Check for both old and new consent formats
+const CONSENT_STRING = localStorage.getItem(CONSENT_KEY);
+let HAS_CONSENT = false;
 
-
-   // Map cookie categories to blocked items
-const CATEGORY_MAPPING = {
-    'analytics': [
-        // Analytics cookies
-        "_ga", "_gid", "_gat", "_gcl_au", "_gcl_aw", "_gcl_dc",
-        "_gac_", "_gcl_gb", "_gcl_gf", "_gcl_ha",
-        
-        // Microsoft Analytics
-        "_clck", "_clsk", "_uetvid", "_uetsid", "_uetmsclkid",
-        "MUID", "MUIDB", "ANONCHK", "SM", "MR", "MSCC",
-        
-        // Hotjar
-        "_hjid", "_hjIncludedInPageviewSample",
-        "_hjClosedSurveyInvites", "_hjDonePolls",
-        "_hjMinimizedPolls", "_hjShownFeedbackMessage",
-        
-        // Adobe Analytics
-        "s_cc", "s_sq", "AMCV_", "demdex",
-        
-        // HubSpot
-        "hubspotutk", "__hssc", "__hssrc", "__hstc",
-        
-        // Other analytics platforms
-        "ajs_anonymous_id", "ajs_user_id",
-        "_sp_id", "_sp_ses",
-        "_pk_id", "_pk_ses",
-        "mf_", "mf_user",
-        "_fsuid", "_fssid"
-    ],
-    
-    'marketing': [
-        // Google Ads
-        "_gcl", "gclid", "IDE", "NID", "_gat_gtag",
-        "DSID", "FPLC", "1P_JAR", "CONSENT",
-        
-        // Facebook/Meta Ads
-        "_fbp", "_fbc", "fr", "xs", "c_user", "datr", "sb",
-        "dpr", "wd", "presence", "act", "lu", "m_user",
-        
-        // TikTok Ads
-        "_ttp", "ttclid", "tt_sessionid", "tt_medium", "tt_campaign",
-        
-        // LinkedIn Ads
-        "lidc", "bcookie", "li_sugr", "bscookie", "UserMatchHistory",
-        
-        // Twitter Ads
-        "personalization_id", "guest_id", "ct0", "auth_token",
-        "twid", "remember_checked_on",
-        
-        // Snapchat Ads
-        "sc_at", "_scid", "_sctr", "snap_ga",
-        
-        // Pinterest Ads
-        "_pinterest_ct_ua", "_pinterest_sess", "cm_sub",
-        "_pin_unauth", "_auth", "_pinterest_referrer"
-    ]
-};
-
-// Map domains to categories
-const DOMAIN_CATEGORY_MAPPING = {
-    'analytics': [
-        "google-analytics.com", "googletagmanager.com",
-        "clarity.ms", "hotjar.com",
-        "segment.com", "cdn.segment.com",
-        "amplitude.com", "mixpanel.com", "heap.io",
-        "newrelic.com", "optimizely.com"
-    ],
-    
-    'marketing': [
-        "googleadservices.com", "doubleclick.net",
-        "facebook.com/tr", "connect.facebook.net",
-        "analytics.tiktok.com", "ads.tiktok.com",
-        "snap.licdn.com", "linkedin.com",
-        "analytics.twitter.com", "twitter.com", "x.com",
-        "snapchat.com", "sc-static.net",
-        "pinterest.com", "pinimg.com",
-        "criteo.com", "taboola.com", "outbrain.com",
-        "amazon-adsystem.com", "rubiconproject.com",
-        "pubmatic.com", "openx.net", "indexww.com"
-    ]
-};
-
-
-   
+if (CONSENT_STRING === "granted") {
+    HAS_CONSENT = true;
+} else if (CONSENT_STRING) {
+    try {
+        // Try to parse as JSON for detailed consent
+        const consentData = JSON.parse(CONSENT_STRING);
+        HAS_CONSENT = consentData.status === "granted" || 
+                      (consentData.categories && 
+                       (consentData.categories.analytics || 
+                        consentData.categories.advertising));
+    } catch (e) {
+        HAS_CONSENT = false;
+    }
+}
 
    /* ===================== ESSENTIAL COOKIES ===================== */
 // These cookies will NEVER be blocked - they're essential for website functionality
@@ -282,84 +212,34 @@ const BLOCKED_DOMAINS = [
     /* ============================================================
        EXIT IF CONSENT IS ALREADY GIVEN
     ============================================================ */
- if (CONSENT_DATA) {
-    const consent = JSON.parse(CONSENT_DATA);
-    console.info("✅ Consent found – applying granular cookie blocking");
+    if (HAS_CONSENT) {
+        console.info("✅ Consent found – tracking allowed");
+        return;
+    }
     
-    // Don't return here - we need to check granular permissions
-    // We'll handle this in the blocking functions below
-}
     /* ===================== HARD BLOCKING ===================== */
     
-// 1. Block script loading from tracking domains (GRANULAR VERSION)
+    // 1. Block script loading from tracking domains
+// 1. Block script loading from tracking domains
 const _createElement = document.createElement;
 document.createElement = function (tag) {
     const el = _createElement.call(document, tag);
     if (tag.toLowerCase() === "script") {
         Object.defineProperty(el, "src", {
             set(url) {
-                if (!url) return;
-                
-                // Check if this domain is essential (should NEVER be blocked)
+                // Check if this domain is essential (should NOT be blocked)
                 const isEssentialDomain = ESSENTIAL_DOMAINS.some(d => 
-                    url.includes(d)
+                    url && url.includes(d)
                 );
                 
-                if (isEssentialDomain) {
-                    el.setAttribute("src", url);
+                // Check if this domain should be blocked
+                const shouldBlock = !isEssentialDomain && 
+                    BLOCKED_DOMAINS.some(d => url && url.includes(d));
+                
+                if (shouldBlock) {
+                    console.log("🛡️ Blocked script:", url);
                     return;
                 }
-                
-                // Check if user has given consent
-                if (CONSENT_DATA) {
-                    const consent = JSON.parse(CONSENT_DATA);
-                    const categories = consent.categories || {};
-                    
-                    // Check which domains should be blocked based on user's consent
-                    let shouldBlock = true;
-                    
-                    // Check each category
-                    for (const [category, categoryDomains] of Object.entries(DOMAIN_CATEGORY_MAPPING)) {
-                        const isCategoryDomain = categoryDomains.some(d => 
-                            url.includes(d)
-                        );
-                        
-                        if (isCategoryDomain) {
-                            // If domain belongs to this category, check if user allowed it
-                            if (categories[category]) {
-                                shouldBlock = false; // User allowed this category
-                                el.setAttribute("src", url);
-                                return;
-                            } else {
-                                shouldBlock = true; // User denied this category
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // Check if it's in the general blocked list (not categorized)
-                    if (shouldBlock) {
-                        const isGeneralBlocked = BLOCKED_DOMAINS.some(d => 
-                            url.includes(d)
-                        );
-                        
-                        if (isGeneralBlocked) {
-                            console.log("🛡️ Blocked script (user denied category):", url);
-                            return;
-                        }
-                    }
-                } else {
-                    // No consent given yet - block everything
-                    const shouldBlock = BLOCKED_DOMAINS.some(d => 
-                        url.includes(d)
-                    );
-                    
-                    if (shouldBlock) {
-                        console.log("🛡️ Blocked script (no consent):", url);
-                        return;
-                    }
-                }
-                
                 el.setAttribute("src", url);
             }
         });
@@ -367,137 +247,44 @@ document.createElement = function (tag) {
     return el;
 };
     
-// 2. Block fetch requests to tracking domains (GRANULAR VERSION)
+    // 2. Block fetch requests to tracking domains
+// 2. Block fetch requests to tracking domains
 const _fetch = window.fetch;
 window.fetch = function () {
     const url = arguments[0];
     
-    if (!url) return _fetch.apply(this, arguments);
-    
-    // Check if this is an essential domain (should NEVER be blocked)
-    const isEssentialDomain = ESSENTIAL_DOMAINS.some(d => 
+    // Check if this is an essential domain
+    const isEssentialDomain = url && ESSENTIAL_DOMAINS.some(d => 
         url.includes && url.includes(d)
     );
     
-    if (isEssentialDomain) {
-        return _fetch.apply(this, arguments);
-    }
+    // Only block if NOT essential AND in blocked list
+    const shouldBlock = url && !isEssentialDomain && 
+        BLOCKED_DOMAINS.some(d => url.includes && url.includes(d));
     
-    // Check if user has given consent
-    if (CONSENT_DATA) {
-        const consent = JSON.parse(CONSENT_DATA);
-        const categories = consent.categories || {};
-        
-        // Check which domains should be blocked based on user's consent
-        let shouldBlock = true;
-        
-        // Check each category
-        for (const [category, categoryDomains] of Object.entries(DOMAIN_CATEGORY_MAPPING)) {
-            const isCategoryDomain = categoryDomains.some(d => 
-                url.includes && url.includes(d)
-            );
-            
-            if (isCategoryDomain) {
-                // If domain belongs to this category, check if user allowed it
-                if (categories[category]) {
-                    shouldBlock = false; // User allowed this category
-                    break;
-                } else {
-                    shouldBlock = true; // User denied this category
-                    break;
-                }
-            }
-        }
-        
-        // Check if it's in the general blocked list (not categorized)
-        if (shouldBlock) {
-            const isGeneralBlocked = BLOCKED_DOMAINS.some(d => 
-                url.includes && url.includes(d)
-            );
-            
-            if (isGeneralBlocked) {
-                console.log("🛡️ Blocked fetch (user denied category):", url);
-                return new Promise(() => {});
-            }
-        }
-    } else {
-        // No consent given yet - block everything
-        const shouldBlock = BLOCKED_DOMAINS.some(d => 
-            url.includes && url.includes(d)
-        );
-        
-        if (shouldBlock) {
-            console.log("🛡️ Blocked fetch (no consent):", url);
-            return new Promise(() => {});
-        }
+    if (shouldBlock) {
+        console.log("🛡️ Blocked fetch:", url);
+        return new Promise(() => {});
     }
-    
     return _fetch.apply(this, arguments);
 };
 
-// 3. Block XHR requests to tracking domains (GRANULAR VERSION)
+// 3. Block XHR requests to tracking domains
 const _open = XMLHttpRequest.prototype.open;
 XMLHttpRequest.prototype.open = function (method, url) {
-    if (!url) return _open.apply(this, arguments);
-    
-    // Check if this is an essential domain (should NEVER be blocked)
-    const isEssentialDomain = ESSENTIAL_DOMAINS.some(d => 
+    // Check if this is an essential domain
+    const isEssentialDomain = url && ESSENTIAL_DOMAINS.some(d => 
         url.includes(d)
     );
     
-    if (isEssentialDomain) {
-        return _open.apply(this, arguments);
-    }
+    // Only block if NOT essential AND in blocked list
+    const shouldBlock = url && !isEssentialDomain && 
+        BLOCKED_DOMAINS.some(d => url.includes(d));
     
-    // Check if user has given consent
-    if (CONSENT_DATA) {
-        const consent = JSON.parse(CONSENT_DATA);
-        const categories = consent.categories || {};
-        
-        // Check which domains should be blocked based on user's consent
-        let shouldBlock = true;
-        
-        // Check each category
-        for (const [category, categoryDomains] of Object.entries(DOMAIN_CATEGORY_MAPPING)) {
-            const isCategoryDomain = categoryDomains.some(d => 
-                url.includes(d)
-            );
-            
-            if (isCategoryDomain) {
-                // If domain belongs to this category, check if user allowed it
-                if (categories[category]) {
-                    shouldBlock = false; // User allowed this category
-                    break;
-                } else {
-                    shouldBlock = true; // User denied this category
-                    break;
-                }
-            }
-        }
-        
-        // Check if it's in the general blocked list (not categorized)
-        if (shouldBlock) {
-            const isGeneralBlocked = BLOCKED_DOMAINS.some(d => 
-                url.includes(d)
-            );
-            
-            if (isGeneralBlocked) {
-                console.log("🛡️ Blocked XHR (user denied category):", url);
-                return;
-            }
-        }
-    } else {
-        // No consent given yet - block everything
-        const shouldBlock = BLOCKED_DOMAINS.some(d => 
-            url.includes(d)
-        );
-        
-        if (shouldBlock) {
-            console.log("🛡️ Blocked XHR (no consent):", url);
-            return;
-        }
+    if (shouldBlock) {
+        console.log("🛡️ Blocked XHR:", url);
+        return;
     }
-    
     return _open.apply(this, arguments);
 };
     
@@ -515,62 +302,21 @@ XMLHttpRequest.prototype.open = function (method, url) {
     new MutationObserver(removeInlineTrackers)
         .observe(document.documentElement, { childList: true, subtree: true });
     
-function clearBlockedCookies() {
-    // Check if user has given consent
-    if (CONSENT_DATA) {
-        const consent = JSON.parse(CONSENT_DATA);
-        const categories = consent.categories || {};
+    // 5. Delete cookies aggressively
+   function clearBlockedCookies() {
+    // Only block cookies that are NOT in the essential list
+    BLOCKED_COOKIES.forEach(cookieName => {
+        // Check if this cookie is NOT essential
+        const isEssential = ESSENTIAL_COOKIES.some(essentialCookie => 
+            cookieName.includes(essentialCookie) || essentialCookie.includes(cookieName)
+        );
         
-        BLOCKED_COOKIES.forEach(cookieName => {
-            // Check if this cookie is essential (should NEVER be deleted)
-            const isEssential = ESSENTIAL_COOKIES.some(essentialCookie => 
-                cookieName.includes(essentialCookie) || essentialCookie.includes(cookieName)
-            );
-            
-            if (isEssential) {
-                return; // Skip essential cookies
-            }
-            
-            // Check which category this cookie belongs to
-            let shouldDelete = true;
-            
-            for (const [category, categoryCookies] of Object.entries(CATEGORY_MAPPING)) {
-                const isCategoryCookie = categoryCookies.some(cookie => 
-                    cookieName.includes(cookie) || cookie.includes(cookieName)
-                );
-                
-                if (isCategoryCookie) {
-                    // If cookie belongs to this category, check if user allowed it
-                    if (categories[category]) {
-                        shouldDelete = false; // User allowed this category, don't delete
-                        break;
-                    } else {
-                        shouldDelete = true; // User denied this category, delete it
-                        break;
-                    }
-                }
-            }
-            
-            if (shouldDelete) {
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-                console.log("🛡️ Deleted blocked cookie:", cookieName);
-            }
-        });
-    } else {
-        // No consent given yet - delete all non-essential cookies
-        BLOCKED_COOKIES.forEach(cookieName => {
-            const isEssential = ESSENTIAL_COOKIES.some(essentialCookie => 
-                cookieName.includes(essentialCookie) || essentialCookie.includes(cookieName)
-            );
-            
-            if (!isEssential) {
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-            }
-        });
-    }
-}}
+        if (!isEssential) {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        }
+    });
+}
     
     clearBlockedCookies();
     setInterval(clearBlockedCookies, 1000);
@@ -582,53 +328,18 @@ function clearBlockedCookies() {
     ============================================================ */
     
     // This function will be called when user gives consent in YOUR banner
-   // This function will be called when user gives consent in YOUR banner
-window.enableTracking = function() {
-    // Get current consent data from cookie
-    const consentCookie = getCookie('cookie_consent');
-    
-    if (consentCookie) {
-        try {
-            const consentData = JSON.parse(consentCookie);
-            // Store in localStorage for the firewall to use
-            localStorage.setItem(CONSENT_KEY, JSON.stringify(consentData));
-            console.log("✅ Granular tracking enabled via custom banner consent");
-            
-            // DON'T reload the page - we want to block/unblock without refresh
-            applyGranularBlocking(consentData);
-        } catch (e) {
-            console.error("Error parsing consent data:", e);
-        }
-    }
-};
-
-// New function to apply granular blocking without page reload
-function applyGranularBlocking(consentData) {
-    console.log("🔄 Applying granular cookie blocking without page reload");
-    
-    // Re-apply cookie clearing with new consent settings
-    clearBlockedCookies();
-    
-    // Re-apply inline tracker removal
-    removeInlineTrackers();
-    
-    console.log("✅ Granular blocking applied. Analytics:", consentData.categories.analytics, 
-                "Marketing:", consentData.categories.advertising);
-    
-    // Trigger a custom event that your scripts can listen to
-    const event = new CustomEvent('granularConsentApplied', {
-        detail: { consent: consentData }
-    });
-    document.dispatchEvent(event);
-}
+    window.enableTracking = function() {
+        localStorage.setItem(CONSENT_KEY, "granted");
+        console.log("✅ Tracking enabled via custom banner consent");
+        location.reload();
+    };
     
     // Listen for consent events from your custom banner
-   // Listen for consent events from your custom banner
-document.addEventListener('cookieConsentGranted', function(e) {
-    if (e.detail && e.detail.consent) {
-        window.enableTracking();
-    }
-});
+    document.addEventListener('cookieConsentGranted', function(e) {
+        if (e.detail && e.detail.consent === "granted") {
+            window.enableTracking();
+        }
+    });
     
 })();
 
@@ -4753,18 +4464,13 @@ function hideFloatingButton() {
     }, 300);
 }
 
-// Cookie consent functions
 function acceptAllCookies() {
-
-   // ADD THIS LINE:
-    if (typeof window.enableTracking === 'function') window.enableTracking();
-
-     // Add this line to initialize Clarity
-    initializeClarity(true);
-  sendClarityConsentSignal(true); // Add this line
-    
-    // NEW: Update localStorage for the blocking script
+    // Store consent in localStorage for the blocking script
     localStorage.setItem("__user_cookie_consent__", "granted");
+    
+    // Add this line to initialize Clarity
+    initializeClarity(true);
+    sendClarityConsentSignal(true);
     
     const consentData = {
         status: 'accepted',
@@ -4784,7 +4490,12 @@ function acceptAllCookies() {
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
-    loadCookiesAccordingToConsent(consentData);
+    
+    // Load ALL cookies since all categories are accepted
+    loadAnalyticsCookies();
+    loadAdvertisingCookies();
+    loadPerformanceCookies();
+    loadUncategorizedCookies();
     
     if (config.analytics.enabled) {
         updateConsentStats('accepted');
@@ -4809,7 +4520,6 @@ function acceptAllCookies() {
         'location_data': locationData
     });
 }
-
 
 function rejectAllCookies() {
 
@@ -4872,30 +4582,37 @@ function rejectAllCookies() {
     }
 }
 
-
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
+    const performanceChecked = document.querySelector('input[data-category="performance"]').checked;
+    const uncategorizedChecked = document.querySelector('input[data-category="uncategorized"]') ? 
+        document.querySelector('input[data-category="uncategorized"]').checked : false;
 
-   
-    // ADD THESE LINES:
-    // Only enable tracking if user accepts analytics OR advertising
-    if ((analyticsChecked || advertisingChecked) && typeof window.enableTracking === 'function') {
-        window.enableTracking();
-    }
-
-
-       // NEW: Check if we need to reload (when switching from accepted to rejected)
+    // NEW: Check if we need to reload (when switching from accepted to rejected)
     const previousConsent = getCookie('cookie_consent');
     const shouldReload = previousConsent !== null && 
-                        (!analyticsChecked && !advertisingChecked);
+                        (!analyticsChecked && !advertisingChecked && !performanceChecked && !uncategorizedChecked);
 
-   
-  
-     // Initialize or stop Clarity based on consent
+    // FIXED: Only enable tracking for the specific categories selected
+    let anyTrackingEnabled = false;
+    if ((analyticsChecked || advertisingChecked || performanceChecked || uncategorizedChecked) && 
+        typeof window.enableTracking === 'function') {
+        window.enableTracking();
+        anyTrackingEnabled = true;
+    }
+
+    // Initialize or stop Clarity based on analytics consent
     initializeClarity(analyticsChecked);
-    sendClarityConsentSignal(analyticsChecked); // Add this line
-  
+    sendClarityConsentSignal(analyticsChecked);
+    
+    // FIXED: Store consent in localStorage for the blocking script
+    // Only grant consent if ANY tracking category is selected
+    if (anyTrackingEnabled) {
+        localStorage.setItem("__user_cookie_consent__", "granted");
+    } else {
+        localStorage.removeItem("__user_cookie_consent__");
+    }
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -4917,22 +4634,40 @@ function saveCustomSettings() {
         categories: {
             functional: true,
             analytics: analyticsChecked,
-            performance: document.querySelector('input[data-category="performance"]').checked,
+            performance: performanceChecked,
             advertising: advertisingChecked,
-            uncategorized: document.querySelector('input[data-category="uncategorized"]') ? 
-                document.querySelector('input[data-category="uncategorized"]').checked : false
+            uncategorized: uncategorizedChecked
         },
         timestamp: new Date().getTime()
     };
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
-    loadCookiesAccordingToConsent(consentData);
     
-    if (!consentData.categories.analytics) clearCategoryCookies('analytics');
-    if (!consentData.categories.performance) clearCategoryCookies('performance');
-    if (!consentData.categories.advertising) clearCategoryCookies('advertising');
-    if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
+    // FIXED: Only load cookies for the selected categories
+    if (consentData.categories.analytics) {
+        loadAnalyticsCookies();
+    } else {
+        clearCategoryCookies('analytics');
+    }
+    
+    if (consentData.categories.advertising) {
+        loadAdvertisingCookies();
+    } else {
+        clearCategoryCookies('advertising');
+    }
+    
+    if (consentData.categories.performance) {
+        loadPerformanceCookies();
+    } else {
+        clearCategoryCookies('performance');
+    }
+    
+    if (consentData.categories.uncategorized) {
+        loadUncategorizedCookies();
+    } else {
+        clearCategoryCookies('uncategorized');
+    }
     
     if (config.analytics.enabled) {
         updateConsentStats('custom');
@@ -4987,6 +4722,15 @@ function saveCustomSettings() {
             'location_data': locationData
         });
     }
+
+    // NEW: RELOAD PAGE IF USER REJECTED ALL COOKIES AFTER PREVIOUSLY ACCEPTING
+    if (shouldReload) {
+        console.log("🔄 Reloading page to re-activate cookie blocking...");
+        setTimeout(() => {
+            window.location.reload();
+        }, 500); // Small delay to ensure cookies are saved
+    }
+}
 
 
 
@@ -5326,7 +5070,17 @@ function loadPerformanceCookies() {
     console.log('Loading performance cookies');
     // This would typically load performance optimization scripts
 }
+// Add these new helper functions
+function loadAnalyticsCookies() {
+    console.log('Loading analytics cookies');
+    // This would typically load analytics scripts like Google Analytics, etc.
+    // Implementation depends on your specific analytics setup
+}
 
+function loadUncategorizedCookies() {
+    console.log('Loading uncategorized cookies');
+    // This would load any uncategorized tracking scripts
+}
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
     // Ensure location data is loaded first
