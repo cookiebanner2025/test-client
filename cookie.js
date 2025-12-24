@@ -79,7 +79,6 @@
 (function () {
     'use strict';
 
-
      
     /* ===================== CONFIGURATION ===================== */
     // ADD THIS NEW LINE HERE:
