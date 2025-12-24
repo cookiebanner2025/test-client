@@ -39,8 +39,8 @@
     const ANALYTICS_DATA = {
         domains: [
             // Google Analytics
-            "google-analytics.com", "www.google-analytics.com",
-            "analytics.google.com",
+            "google-analytics.com", "www.google-analytics.com", "googletagmanager.com",
+            "www.googletagmanager.com", "analytics.google.com",
             // Microsoft Clarity
             "clarity.ms", "www.clarity.ms",
             // Hotjar
@@ -592,6 +592,7 @@ clarityConfig: {
     },
     
     // Behavior configuration
+    // Behavior configuration
     behavior: {
         autoShow: true,
         bannerDelay: 0, // Desktop delay (seconds)
@@ -599,11 +600,23 @@ clarityConfig: {
         rememberLanguage: true,
         acceptOnScroll: false,
         acceptOnContinue: false,
+        
+        // NEW: Restrict user interaction when banner is visible
+        restrictInteraction: {
+            enabled: true,          // Turn this ON/OFF
+            preventScroll: false,    // Turn scroll blocking ON/OFF
+            preventClick: true,     // Turn click blocking ON/OFF
+            blurBackground: true,   // Turn blur effect ON/OFF
+            blurDensity: '5px'      // Control blur intensity
+        },
+        
         showFloatingButton: true,
         showAdminButton: false,
         floatingButtonPosition: 'left',
         adminButtonPosition: 'left',
         bannerPosition: 'left',
+
+       
         bannerAnimation: {
             duration: 0.4,
             easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
@@ -3071,6 +3084,14 @@ function injectConsentHTML(detectedCookies, language = 'en') {
             </div>
         </div>
     </div>
+
+
+
+    
+    <!-- Blur overlay for restricting interaction -->
+    <div id="cookieBlurOverlay" class="cookie-blur-overlay"></div>
+
+
     
     <style>
     /* Main Banner Styles */
@@ -3267,6 +3288,36 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         opacity: 0;
         transition: opacity ${config.behavior.modalAnimation.duration}s ${config.behavior.modalAnimation.easing};
     }
+
+
+
+    /* Blur overlay for restricting interaction */
+    .cookie-blur-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        z-index: 9998;
+        display: none;
+        pointer-events: none; /* Allows clicks to pass through to banner */
+    }
+    
+    /* When restricting clicks, make overlay block clicks */
+    /* When restricting clicks, make overlay block clicks */
+    .cookie-blur-overlay.block-clicks {
+        pointer-events: auto;
+        cursor: default;  <-- CHANGED TO "default"
+    }
+    
+    /* When preventing scroll */
+    .no-scroll {
+        overflow: hidden !important;
+    }
+
+    
 
     .cookie-settings-modal.show {
         display: flex;
@@ -4486,7 +4537,11 @@ function showCookieBanner() {
         banner.classList.add('show');
     }, 10);
     bannerShown = true;
+    
+    // NEW: Enable interaction restrictions when banner shows
+    enableInteractionRestrictions();
 }
+
 
 function hideCookieBanner() {
     const banner = document.getElementById('cookieConsentBanner');
@@ -4495,6 +4550,9 @@ function hideCookieBanner() {
         banner.style.display = 'none';
     }, 400);
     bannerShown = false;
+    
+    // NEW: Disable interaction restrictions when banner hides
+    disableInteractionRestrictions();
 }
 
 function showCookieSettings() {
@@ -4557,6 +4615,102 @@ function hideFloatingButton() {
         button.style.display = 'none';
     }, 300);
 }
+
+
+// NEW: Enable/disable interaction restrictions
+function enableInteractionRestrictions() {
+    if (!config.behavior.restrictInteraction.enabled) return;
+    
+    const overlay = document.getElementById('cookieBlurOverlay');
+    
+    // Apply blur effect
+    if (config.behavior.restrictInteraction.blurBackground) {
+        overlay.style.backdropFilter = `blur(${config.behavior.restrictInteraction.blurDensity})`;
+        overlay.style.webkitBackdropFilter = `blur(${config.behavior.restrictInteraction.blurDensity})`;
+        overlay.style.display = 'block';
+    }
+    
+    // Prevent scrolling
+    if (config.behavior.restrictInteraction.preventScroll) {
+        document.body.classList.add('no-scroll');
+    }
+    
+    // Prevent clicking outside banner
+    if (config.behavior.restrictInteraction.preventClick) {
+        overlay.classList.add('block-clicks');
+        
+        // Only allow clicks on the banner
+        overlay.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }, true);
+    }
+}
+
+// NEW: Disable interaction restrictions
+function disableInteractionRestrictions() {
+    const overlay = document.getElementById('cookieBlurOverlay');
+    
+    // Remove blur effect
+    overlay.style.display = 'none';
+    
+    // Enable scrolling
+    document.body.classList.remove('no-scroll');
+    
+    // Enable clicking
+    overlay.classList.remove('block-clicks');
+    
+    // Remove click blocker
+    overlay.removeEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }, true);
+}
+
+// NEW: Toggle functions for manual control
+function toggleRestrictions(enable) {
+    if (enable) {
+        enableInteractionRestrictions();
+    } else {
+        disableInteractionRestrictions();
+    }
+}
+
+function toggleScrollRestriction(enable) {
+    config.behavior.restrictInteraction.preventScroll = enable;
+    if (enable) {
+        document.body.classList.add('no-scroll');
+    } else {
+        document.body.classList.remove('no-scroll');
+    }
+}
+
+function toggleClickRestriction(enable) {
+    config.behavior.restrictInteraction.preventClick = enable;
+    const overlay = document.getElementById('cookieBlurOverlay');
+    if (enable) {
+        overlay.classList.add('block-clicks');
+    } else {
+        overlay.classList.remove('block-clicks');
+    }
+}
+
+function toggleBlurEffect(enable) {
+    config.behavior.restrictInteraction.blurBackground = enable;
+    const overlay = document.getElementById('cookieBlurOverlay');
+    overlay.style.display = enable ? 'block' : 'none';
+}
+
+function setBlurDensity(density) {
+    config.behavior.restrictInteraction.blurDensity = density;
+    const overlay = document.getElementById('cookieBlurOverlay');
+    overlay.style.backdropFilter = `blur(${density})`;
+    overlay.style.webkitBackdropFilter = `blur(${density})`;
+}
+
+
+
+
 
 // Cookie consent functions
 function acceptAllCookies() {
@@ -4622,6 +4776,9 @@ function acceptAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+
+    // NEW: Disable interaction restrictions when user accepts
+    disableInteractionRestrictions();
     
     console.log("✅ All cookies accepted, page will reload");
 }
@@ -4686,6 +4843,9 @@ function rejectAllCookies() {
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+
+    // Add this at the end of rejectAllCookies function
+    disableInteractionRestrictions();
     
     console.log("✅ All cookies rejected, page will reload");
 }
@@ -4831,7 +4991,10 @@ function saveCustomSettings() {
             'location_data': locationData
         });
     }
-    
+   
+        // NEW: Disable interaction restrictions when user saves custom settings
+    disableInteractionRestrictions();
+   
     console.log("✅ Custom settings saved and page will reload");
 }
 
@@ -5308,7 +5471,13 @@ if (typeof window !== 'undefined') {
         saveSettings: saveCustomSettings,
         changeLanguage: changeLanguage,
         showAnalytics: showAnalyticsDashboard,
-        config: config
+        config: config,
+         // NEW: Control functions for restrictions
+        toggleRestrictions: toggleRestrictions,
+        toggleScrollRestriction: toggleScrollRestriction,
+        toggleClickRestriction: toggleClickRestriction,
+        toggleBlurEffect: toggleBlurEffect,
+        setBlurDensity: setBlurDensity
     };
 
 
@@ -5383,4 +5552,3 @@ window.showBlockingSettings = function() {
 
   
 }
-
