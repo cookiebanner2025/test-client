@@ -65,6 +65,7 @@
     console.log("✅ ULTRA-EARLY: Default consent set for Google & Microsoft at: " + new Date().toISOString());
 })();
 
+
 /* ============================================================
    COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
    This blocks all cookies and trackers BEFORE consent is given
