@@ -85,7 +85,8 @@
     // ADD THIS NEW LINE HERE:
     const BLOCKING_ENABLED = false; // Set to false to turn OFF blocking
     
-
+   // ADD THIS NEW LINE RIGHT AFTER:
+   const RELOAD_ENABLED = true; // Set to false to turn OFF page reloads
    
     const CONSENT_KEY = "__user_cookie_consent__";
     const CATEGORIES_KEY = "__user_cookie_categories__";
@@ -488,11 +489,18 @@
             performance: true
         }));
         
-        // Reload to apply changes
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
+      // Only reload if reload feature is enabled
+if (RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes applied without refresh");
+}
     };
+
+   
+   
     
     window.enableTrackingByCategory = function(categories) {
         console.log("✅ Enabling tracking for categories:", categories);
@@ -511,21 +519,32 @@
             localStorage.setItem(CONSENT_KEY, "partial");
         }
         
-        // ALWAYS RELOAD to apply new blocking rules
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
+        // Only reload if reload feature is enabled
+if (RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes applied without refresh");
+}
     };
+
+
+   
     
     window.disableAllTracking = function() {
         console.log("❌ Disabling ALL tracking");
         localStorage.removeItem(CONSENT_KEY);
         localStorage.removeItem(CATEGORIES_KEY);
         
-        // Reload to apply changes
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
+        // Only reload if reload feature is enabled
+if (RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes applied without refresh");
+}
     };
     
 })();
