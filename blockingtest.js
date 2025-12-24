@@ -1,4 +1,71 @@
 /* ============================================================
+   ULTRA-EARLY DEFAULT CONSENT SETTING
+   This MUST run before any tags can read consent state
+============================================================ */
+(function() {
+    'use strict';
+    
+    // Initialize dataLayer for Google Tag Manager
+    window.dataLayer = window.dataLayer || [];
+    
+    // Initialize gtag function
+    function gtag() { window.dataLayer.push(arguments); }
+    window.gtag = window.gtag || gtag;
+    
+    // ============ GOOGLE CONSENT DEFAULT ============
+    gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'analytics_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'personalization_storage': 'denied',
+        'functionality_storage': 'denied',
+        'security_storage': 'granted'
+    });
+    
+    // Push initial GCS signal (G100)
+    window.dataLayer.push({
+        'event': 'ultra_early_consent_state',
+        'consent_mode': {
+            'ad_storage': 'denied',
+            'analytics_storage': 'denied',
+            'ad_user_data': 'denied',
+            'ad_personalization': 'denied',
+            'personalization_storage': 'denied',
+            'functionality_storage': 'denied',
+            'security_storage': 'granted'
+        },
+        'gcs': 'G100',
+        'timestamp': new Date().toISOString(),
+        'note': 'Set at page load start'
+    });
+    
+    // ============ MICROSOFT UET CONSENT DEFAULT ============
+    // Initialize UET queue if not exists
+    window.uetq = window.uetq || [];
+    
+    // Set default UET consent (denied)
+    window.uetq.push('consent', 'default', {
+        'ad_storage': 'denied',
+        'data_processing': ['GDPR']
+    });
+    
+    // Push UET default event
+    window.dataLayer.push({
+        'event': 'ultra_early_uet_consent',
+        'uet_consent': {
+            'ad_storage': 'denied',
+            'status': 'default',
+            'src': 'ultra_early',
+            'asc': 'D'
+        },
+        'timestamp': new Date().toISOString()
+    });
+    
+    console.log("✅ ULTRA-EARLY: Default consent set for Google & Microsoft at: " + new Date().toISOString());
+})();
+
+/* ============================================================
    COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
    This blocks all cookies and trackers BEFORE consent is given
 ============================================================ */
@@ -39,7 +106,8 @@
     const ANALYTICS_DATA = {
         domains: [
             // Google Analytics
-            "google-analytics.com", "www.google-analytics.com", "analytics.google.com",
+            "google-analytics.com", "www.google-analytics.com", "googletagmanager.com",
+            "www.googletagmanager.com", "analytics.google.com",
             // Microsoft Clarity
             "clarity.ms", "www.clarity.ms",
             // Hotjar
@@ -437,6 +505,8 @@
     };
     
 })();
+
+// YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
 
 // YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
 /**
@@ -885,7 +955,7 @@ geoConfig: {
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
 // Initialize dataLayer for Google Tag Manager
-window.dataLayer = window.dataLayer || [];
+
 
 // Initialize UET queue with msd parameter if not already exists
 if (typeof window.uetq === 'undefined') {
@@ -907,34 +977,11 @@ if (typeof window.uetq === 'undefined') {
     }
 }
 
-function gtag() { dataLayer.push(arguments); }
 
-// Set default consent (deny all except security) AND initial GCS signal
-gtag('consent', 'default', {
-    'ad_storage': 'denied',
-    'analytics_storage': 'denied',
-    'ad_user_data': 'denied',
-    'ad_personalization': 'denied',
-    'personalization_storage': 'denied',
-    'functionality_storage': 'denied',
-    'security_storage': 'granted'
-});
 
-// Push initial GCS signal (G100) immediately after default consent
-window.dataLayer.push({
-    'event': 'initial_consent_state',
-    'consent_mode': {
-        'ad_storage': 'denied',
-        'analytics_storage': 'denied',
-        'ad_user_data': 'denied',
-        'ad_personalization': 'denied',
-        'personalization_storage': 'denied',
-        'functionality_storage': 'denied',
-        'security_storage': 'granted'
-    },
-    'gcs': 'G100', // Explicit initial GCS signal
-    'timestamp': new Date().toISOString()
-});
+
+
+
 
 // Set default UET consent
 function setDefaultUetConsent() {
