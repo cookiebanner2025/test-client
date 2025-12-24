@@ -382,10 +382,11 @@ function clearBlockedCookies() {
     
     // This function will be called when user gives consent in YOUR banner
     // This function will be called when user gives consent in YOUR banner
+// This function will be called when user gives consent
 window.enableTracking = function(categories = {}) {
-    console.log("🔄 enableTracking called with categories:", categories);
+    console.log("🔄 enableTracking called with:", categories);
     
-    // If no categories specified (accept all), set all to true
+    // If categories is empty, default to all true
     if (Object.keys(categories).length === 0) {
         categories = {
             analytics: true,
@@ -396,18 +397,30 @@ window.enableTracking = function(categories = {}) {
         };
     }
     
+    // Ensure all categories are defined
+    const defaultCategories = {
+        analytics: false,
+        marketing: false,
+        media: false,
+        functional: false,
+        performance: false
+    };
+    
+    const finalCategories = { ...defaultCategories, ...categories };
+    
     // Store the detailed consent in localStorage
     const consentData = {
         granted: true,
-        categories: categories,
+        categories: finalCategories,
         timestamp: new Date().getTime()
     };
     
     localStorage.setItem(CONSENT_KEY, JSON.stringify(consentData));
-    console.log("✅ Tracking enabled for categories:", categories);
+    console.log("✅ Tracking enabled for categories:", finalCategories);
     
     // Reload the page to apply new blocking rules
     setTimeout(() => {
+        console.log("🔄 Reloading page to apply new consent settings...");
         location.reload();
     }, 100);
 };
@@ -423,18 +436,40 @@ window.disableTracking = function() {
     
     // Listen for consent events from your custom banner
   // Listen for consent events from your custom banner
+// Listen for consent events from your custom banner
 document.addEventListener('cookieConsentGranted', function(e) {
-    if (e.detail) {
-        if (e.detail.consent === "granted") {
-            // Accept all
-            window.enableTracking();
-        } else if (e.detail.consent === "rejected") {
-            // Reject all
-            window.disableTracking();
-        } else if (e.detail.consent === "custom") {
-            // Custom selection - pass the selected categories
-            const categories = e.detail.categories || {};
-            window.enableTracking(categories);
+    console.log("📢 Blocking script received cookieConsentGranted event:", e.detail);
+    
+    if (e.detail && e.detail.consent === "granted") {
+        // Accept all - allow all categories
+        const allCategories = {
+            analytics: true,
+            marketing: true,
+            media: true,
+            functional: true,
+            performance: true
+        };
+        window.enableTracking(allCategories);
+    } else if (e.detail && e.detail.consent === "rejected") {
+        // Reject all
+        window.disableTracking();
+    } else if (e.detail && e.detail.consent === "custom") {
+        // Custom selection
+        console.log("Custom categories received:", e.detail.categories);
+        window.enableTracking(e.detail.categories || {});
+    }
+});
+
+// Also listen for page load to check for existing consent
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("🔄 Blocking script checking for existing consent...");
+    const consentStr = localStorage.getItem(CONSENT_KEY);
+    if (consentStr) {
+        try {
+            const consentData = JSON.parse(consentStr);
+            console.log("Found existing consent:", consentData);
+        } catch (e) {
+            console.log("No valid consent found");
         }
     }
 });
@@ -4705,6 +4740,8 @@ function rejectAllCookies() {
 
 
 function saveCustomSettings() {
+    console.log("💾 saveCustomSettings called");
+    
     // Get the selected categories from your toggle switches
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
@@ -4712,20 +4749,34 @@ function saveCustomSettings() {
     const uncategorizedChecked = document.querySelector('input[data-category="uncategorized"]') ? 
         document.querySelector('input[data-category="uncategorized"]').checked : false;
     
-    // ADD THIS: Send event to blocking script with specific categories
+    console.log("Toggle states:", {
+        analytics: analyticsChecked,
+        advertising: advertisingChecked,
+        performance: performanceChecked,
+        uncategorized: uncategorizedChecked
+    });
+    
+    // Create categories object for the blocking script
+    // IMPORTANT: Map "advertising" to "marketing" for the blocking script
+    const categories = {
+        analytics: analyticsChecked,
+        marketing: advertisingChecked, // This is the key! "marketing" not "advertising"
+        performance: performanceChecked,
+        functional: true, // Always allowed
+        media: true // Always allowed
+    };
+    
+    console.log("Sending categories to blocking script:", categories);
+    
+    // IMPORTANT: Dispatch the event FIRST, before doing anything else
     document.dispatchEvent(new CustomEvent('cookieConsentGranted', {
         detail: {
             consent: "custom",
-            categories: {
-                analytics: analyticsChecked,
-                marketing: advertisingChecked, // Note: "marketing" in blocking script = "advertising" in banner
-                performance: performanceChecked,
-                functional: true, // Always allowed
-                media: true // Always allowed
-            }
+            categories: categories
         }
     }));
     
+    // Now continue with the rest of your code...
     const shouldReload = getCookie('cookie_consent') !== null && 
                         (!analyticsChecked && !advertisingChecked && !performanceChecked && !uncategorizedChecked);
     
@@ -4835,13 +4886,9 @@ function saveCustomSettings() {
         console.log("🔄 Reloading page to re-activate cookie blocking...");
         setTimeout(() => {
             window.location.reload();
-        }, 500); // Small delay to ensure cookies are saved
+        }, 500);
     }
 }
-
-
-
-
 
 // Helper functions
 function clearNonEssentialCookies() {
