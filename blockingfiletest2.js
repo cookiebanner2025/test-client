@@ -6,80 +6,27 @@
     'use strict';
     
     /* ===================== CONFIGURATION ===================== */
-const CONSENT_KEY = "__user_cookie_consent__";
-const COOKIE_CONSENT_KEY = "cookie_consent";
-
-// Get consent from cookie (more reliable)
-const consentCookie = getCookie(COOKIE_CONSENT_KEY);
-let userConsent = null;
-
-// Helper function to get cookies
-function getCookie(name) {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-    }
-    return null;
-}
-
-// Parse consent data if exists
-if (consentCookie) {
-    try {
-        userConsent = JSON.parse(consentCookie);
-        console.log("📋 User consent found:", userConsent);
-    } catch(e) {
-        console.error("Error parsing consent:", e);
-    }
-}
-
-// Check if we should allow tracking
-function shouldAllowTracking() {
-    if (!userConsent) return false;
-    
-    if (userConsent.status === 'accepted') return true;
-    
-    if (userConsent.status === 'custom') {
-        // Allow if ANY category is selected
-        return userConsent.categories.analytics || 
-               userConsent.categories.advertising || 
-               userConsent.categories.performance || 
-               userConsent.categories.uncategorized;
-    }
-    
-    return false;
-}
-
-const SHOULD_ALLOW = shouldAllowTracking();
-
-// Get consent data from both localStorage and cookies
+    const CONSENT_KEY = "__user_cookie_consent__";
 const CONSENT_DATA = localStorage.getItem(CONSENT_KEY);
-const COOKIE_CONSENT_DATA = getCookie(COOKIE_CONSENT_KEY);
+let HAS_CONSENT = false;
+let CONSENT_CATEGORIES = {};
 
-// Parse the consent data
-let userConsent = null;
-try {
-    if (COOKIE_CONSENT_DATA) {
-        userConsent = JSON.parse(COOKIE_CONSENT_DATA);
-    } else if (CONSENT_DATA) {
-        userConsent = JSON.parse(CONSENT_DATA);
+// Parse consent data if it exists
+if (CONSENT_DATA) {
+    try {
+        const data = JSON.parse(CONSENT_DATA);
+        HAS_CONSENT = data.status === 'granted' || data.status === 'custom';
+        CONSENT_CATEGORIES = data.categories || {};
+    } catch(e) {
+        // If data is just "granted" (old format), use that
+        HAS_CONSENT = CONSENT_DATA === "granted";
+        CONSENT_CATEGORIES = {
+            functional: true,
+            analytics: true,
+            performance: true,
+            advertising: true
+        };
     }
-} catch (e) {
-    console.log("Error parsing consent data:", e);
-}
-
-// Helper function to get cookies
-function getCookie(name) {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-    }
-    return null;
 }
 
    /* ===================== ESSENTIAL COOKIES ===================== */
@@ -123,535 +70,138 @@ const ESSENTIAL_DOMAINS = [
     "maps.googleapis.com"
 ];
 
-
-
-
-
-
-/* ===================== CATEGORY MAPPINGS ===================== */
-// Map domains to their cookie categories
-const DOMAIN_CATEGORIES = {
-    // Analytics domains
-    "google-analytics.com": "analytics",
-    "googletagmanager.com": "analytics",
-    "clarity.ms": "analytics",
-    "hotjar.com": "analytics",
-    "segment.com": "analytics",
-    "cdn.segment.com": "analytics",
-    "mixpanel.com": "analytics",
-    "heap.io": "analytics",
-    "fullstory.com": "analytics",
-    "logrocket.com": "analytics",
-    "sentry.io": "analytics",
-    "amplitude.com": "analytics",
-    "crazyegg.com": "analytics",
-    "mouseflow.com": "analytics",
-    
-    // Advertising/Marketing domains
-    "doubleclick.net": "advertising",
-    "googleadservices.com": "advertising",
-    "facebook.com": "advertising",
-    "connect.facebook.net": "advertising",
-    "fbcdn.net": "advertising",
-    "fbsbx.com": "advertising",
-    "tiktok.com": "advertising",
-    "analytics.tiktok.com": "advertising",
-    "ads.tiktok.com": "advertising",
-    "bing.com": "advertising",
-    "bat.bing.com": "advertising",
-    "linkedin.com": "advertising",
-    "snap.licdn.com": "advertising",
-    "twitter.com": "advertising",
-    "analytics.twitter.com": "advertising",
-    "x.com": "advertising",
-    "snapchat.com": "advertising",
-    "sc-static.net": "advertising",
-    "pinterest.com": "advertising",
-    "pinimg.com": "advertising",
-    "criteo.com": "advertising",
-    "taboola.com": "advertising",
-    "outbrain.com": "advertising",
-    "amazon-adsystem.com": "advertising",
-    "rubiconproject.com": "advertising",
-    "pubmatic.com": "advertising",
-    "openx.net": "advertising",
-    "indexww.com": "advertising",
-    "adsrvr.org": "advertising",
-    "simpli.fi": "advertising",
-    
-    // Performance domains
-    "newrelic.com": "performance",
-    "go-mpulse.net": "performance",
-    "optimizely.com": "performance",
-    
-    // Video/Other
-    "vimeo.com": "uncategorized",
-    "youtube.com": "uncategorized",
-    "youtu.be": "uncategorized",
-    "dailymotion.com": "uncategorized",
-    "intercom.io": "uncategorized",
-    "intercomcdn.com": "uncategorized",
-    "drift.com": "uncategorized",
-    "driftcdn.com": "uncategorized",
-    "zendesk.com": "uncategorized",
-    "zdassets.com": "uncategorized",
-    "uservoice.com": "uncategorized",
-    "scorecardresearch.com": "uncategorized",
-    "quantserve.com": "uncategorized"
-};
-
-// Map cookies to their categories (based on your cookieDatabase)
-const COOKIE_CATEGORIES = {
-    // Analytics cookies
-    "_ga": "analytics", "_gid": "analytics", "_gat": "analytics",
-    "_gcl_au": "analytics", "_gcl_aw": "analytics", "_gcl_dc": "analytics",
-    "_gac_": "analytics", "_gcl_gb": "analytics", "_gcl_gf": "analytics",
-    "_gcl_ha": "analytics", "_ga_": "analytics", "_dc_gtm_": "analytics",
-    "_clck": "analytics", "_clsk": "analytics", "_cltk": "analytics",
-    "CLID": "analytics", "ANONCHK": "analytics", "SM": "analytics",
-    "_hjid": "analytics", "_hjIncludedInPageviewSample": "analytics",
-    "_hjClosedSurveyInvites": "analytics", "_hjDonePolls": "analytics",
-    "_hjMinimizedPolls": "analytics", "_hjShownFeedbackMessage": "analytics",
-    "hubspotutk": "analytics", "__hssc": "analytics", "__hssrc": "analytics",
-    "__hstc": "analytics", "hsfirstvisit": "analytics",
-    
-    // Advertising cookies
-    "_gcl": "advertising", "gclid": "advertising", "IDE": "advertising",
-    "NID": "advertising", "_gat_gtag": "advertising", "DSID": "advertising",
-    "FPLC": "advertising", "msclkid": "advertising", "_uetmsdns": "advertising",
-    "MUID": "advertising", "_uetsid": "advertising", "_uetmsclkid": "advertising",
-    "_uetmsd": "advertising", "MUIDB": "advertising", "_uetvid": "advertising",
-    "_uetsid_exp": "advertising", "_fbp": "advertising", "fr": "advertising",
-    "datr": "advertising", "lu": "advertising", "xs": "advertising",
-    "c_user": "advertising", "m_user": "advertising", "pl": "advertising",
-    "dbln": "advertising", "_fbc": "advertising", "usida": "advertising",
-    "act": "advertising", "_ttp": "advertising", "ttclid": "advertising",
-    "tt_sessionid": "advertising", "tt_medium": "advertising", "tt_campaign": "advertising",
-    
-    // Performance cookies
-    "_pk_id": "performance", "_pk_ses": "performance",
-    "ajs_anonymous_id": "performance", "ajs_user_id": "performance",
-    "_sp_id": "performance", "_sp_ses": "performance",
-    "mf_user": "performance", "_fsuid": "performance", "_fssid": "performance"
-};
-
-
-
-   
-
-
    
     
     /* ===================== BLOCKING SETTINGS ===================== */
     // These are the defaults - you can customize these later
-const BLOCKED_DOMAINS = [
-    // Google
-    "connect.facebook.net", "facebook.com/tr",
-    "googletagmanager.com", "google-analytics.com",
-    "googleadservices.com", "doubleclick.net",
-    "google.com/ads", "google-analytics.com",
-    "www.googleadservices.com", "www.googletagmanager.com",
+const BLOCKED_DOMAINS = {
+    // Analytics domains
+    analytics: [
+        "googletagmanager.com", "google-analytics.com",
+        "clarity.ms", "hotjar.com", "segment.com", "cdn.segment.com",
+        "amplitude.com", "mixpanel.com", "heap.io",
+        "crazyegg.com", "mouseflow.com", "fullstory.com",
+        "logrocket.com", "sentry.io", "newrelic.com",
+        "optimizely.com", "uservoice.com"
+    ],
     
-    // Facebook/Meta
-    "facebook.com", "fbcdn.net", "fbsbx.com",
+    // Advertising domains
+    advertising: [
+        "googleadservices.com", "doubleclick.net",
+        "google.com/ads", "www.googleadservices.com",
+        "connect.facebook.net", "facebook.com/tr",
+        "facebook.com", "fbcdn.net", "fbsbx.com",
+        "bat.bing.com", "bing.com",
+        "analytics.tiktok.com", "ads.tiktok.com", "tiktok.com",
+        "snap.licdn.com", "linkedin.com",
+        "analytics.twitter.com", "twitter.com", "x.com",
+        "snapchat.com", "sc-static.net",
+        "pinterest.com", "pinimg.com",
+        "criteo.com", "taboola.com", "outbrain.com",
+        "amazon-adsystem.com", "rubiconproject.com",
+        "pubmatic.com", "openx.net", "indexww.com",
+        "adsrvr.org", "simpli.fi"
+    ],
     
-    // Microsoft
-    "clarity.ms", "bat.bing.com", "bing.com",
+    // Other tracking domains
+    other: [
+        "vimeo.com", "youtube.com", "youtu.be",
+        "dailymotion.com",
+        "intercom.io", "intercomcdn.com",
+        "drift.com", "driftcdn.com",
+        "zendesk.com", "zdassets.com",
+        "scorecardresearch.com", "quantserve.com",
+        "go-mpulse.net"
+    ]
+};
     
-    // TikTok
-    "analytics.tiktok.com", "ads.tiktok.com", "tiktok.com",
+    const BLOCKED_COOKIES = {
+    // Analytics cookies
+    analytics: [
+        "_ga", "_gid", "_gat", "_gat_gtag", "_gat_UA-", "_ga_",
+        "_gcl_au", "_gcl_aw", "_gcl_dc", "_gcl_gb", "_gcl_gf", "_gcl_ha",
+        "_dc_gtag_",
+        "_clck", "_clsk", "_cltk", "CLID", "ANONCHK", "SM",
+        "s_cc", "s_sq", "AMCV_", "demdex", "s_vi",
+        "_hjid", "_hjIncludedInPageviewSample", "_hjClosedSurveyInvites",
+        "_hjDonePolls", "_hjMinimizedPolls", "_hjShownFeedbackMessage",
+        "hubspotutk", "__hssc", "__hssrc", "__hstc", "hsfirstvisit",
+        "_shopify_y", "_shopify_s", "_shopify_fs", "_shopify_uniq",
+        "ajs_anonymous_id", "ajs_user_id",
+        "_sp_id", "_sp_ses",
+        "_pk_id", "_pk_ses",
+        "mf_", "mf_user",
+        "_fsuid", "_fssid",
+        "is_returning", "ce_need_secure",
+        "yandexuid", "ymex", "_ym_uid", "_ym_d",
+        "NRBA_POOL", "NRBA_SESSION",
+        "optimizelyEndUserId", "optimizelySegments",
+        "vuid", "dmvk", "dm_last_visit",
+        "trustpilot_machine_id"
+    ],
     
-    // LinkedIn
-    "snap.licdn.com", "linkedin.com",
+    // Advertising cookies
+    advertising: [
+        "_gcl", "gclid",
+        "IDE", "NID", "DSID", "FPLC", "1P_JAR", "CONSENT", "AEC",
+        "__Secure-3PAPISID", "__Secure-3PSID", "__Secure-3PSIDCC",
+        "_fbp", "_fbc", "fr", "xs", "c_user", "datr", "sb", "dpr",
+        "wd", "presence", "act", "lu", "m_user", "pl", "dbln", "usida",
+        "_uetvid", "_uetsid", "_uetmsclkid", "MUID", "MUIDB",
+        "_ttp", "ttclid", "tt_sessionid", "tt_medium", "tt_campaign",
+        "lidc", "bcookie", "li_sugr", "bscookie", "UserMatchHistory",
+        "personalization_id", "guest_id", "ct0", "auth_token", "twid", "remember_checked_on",
+        "sc_at", "_scid", "_sctr", "snap_ga",
+        "_pinterest_ct_ua", "_pinterest_sess", "cm_sub", "_pin_unauth", "_auth", "_pinterest_referrer",
+        "t_gid", "t_sessionid", "taboola_usg",
+        "obuid", "obcl", "outbrain_cid",
+        "TUUID", "TUUID_TIMESTAMP",
+        "d", "qc_shared",
+        "_cc_cc", "_cc_id",
+        "sadb", "sadr",
+        "mmapi", "mmdata",
+        "m-b", "m-uid",
+        "criteo", "uid",
+        "__adroll", "__ar_v4",
+        "ad-id", "ad-privacy", "adblk",
+        "visitor_id", "visitor_id-hash",
+        "_mkto_trk", "BIGipServerpool_",
+        "ELOQUA", "ELQSTATUS",
+        "TDID", "TDCPM",
+        "OptanonAlertBoxClosed", "OptanonConsent",
+        "CookieConsent", "cookietest",
+        "uc_user_interaction", "uc_user_interaction_ts",
+        "euconsent-v2", "eupubconsent-v2"
+    ],
     
-    // Twitter/X
-    "analytics.twitter.com", "twitter.com", "x.com",
-    
-    // Snapchat
-    "snapchat.com", "sc-static.net",
-    
-    // Pinterest
-    "pinterest.com", "pinimg.com",
-    
-    // Other analytics
-    "hotjar.com", "segment.com", "cdn.segment.com",
-    "amplitude.com", "mixpanel.com", "heap.io",
-    "crazyegg.com", "mouseflow.com", "fullstory.com",
-    "logrocket.com", "sentry.io",
-    
-    // Advertising networks
-    "criteo.com", "taboola.com", "outbrain.com",
-    "amazon-adsystem.com", "rubiconproject.com",
-    "pubmatic.com", "openx.net", "indexww.com",
-    "adsrvr.org", "simpli.fi",
-    
-    // Video platforms
-    "vimeo.com", "youtube.com", "youtu.be",
-    "dailymotion.com",
-    
-    // Chat/Support
-    "intercom.io", "intercomcdn.com",
-    "drift.com", "driftcdn.com",
-    "zendesk.com", "zdassets.com",
-    
-    // Other trackers
-    "scorecardresearch.com", "quantserve.com",
-    "go-mpulse.net", "newrelic.com",
-    "optimizely.com", "uservoice.com"
-];
-    
-    const BLOCKED_COOKIES = [
-    // Google Analytics & Ads
-    "_ga", "_gid", "_gat", "_gcl_au", "_gcl_aw", "_gcl_dc",
-    "_gac_", "_gcl_gb", "_gcl_gf", "_gcl_ha",
-    "IDE", "ANID", "test_cookie", "NID", "DSID", "FPLC",
-    "1P_JAR", "CONSENT", "AEC", "__Secure-3PAPISID",
-    "__Secure-3PSID", "__Secure-3PSIDCC",
-    
-    // Facebook/Meta
-    "_fbp", "_fbc", "fr", "xs", "c_user", "datr", "sb",
-    "dpr", "wd", "presence", "act", "lu", "m_user",
-    
-    // Microsoft
-    "_clck", "_clsk", "_uetvid", "_uetsid", "_uetmsclkid",
-    "MUID", "MUIDB", "ANONCHK", "SM", "MR", "MSCC",
-    
-    // TikTok
-    "_ttp", "ttclid", "tt_sessionid", "tt_medium", "tt_campaign",
-    
-    // LinkedIn
-    "lidc", "bcookie", "li_sugr", "bscookie", "UserMatchHistory",
-    "lang", "li_at",
-    
-    // Twitter
-    "personalization_id", "guest_id", "ct0", "auth_token",
-    "twid", "remember_checked_on",
-    
-    // Snapchat
-    "sc_at", "_scid", "_sctr", "snap_ga",
-    
-    // Pinterest
-    "_pinterest_ct_ua", "_pinterest_sess", "cm_sub",
-    "_pin_unauth", "_auth", "_pinterest_referrer",
-    
-    // Adobe
-    "s_cc", "s_sq", "AMCV_", "demdex",
-    
-    // HubSpot
-    "hubspotutk", "__hssc", "__hssrc", "__hstc",
-    
-    // Hotjar
-    "_hjid", "_hjIncludedInPageviewSample",
-    "_hjClosedSurveyInvites", "_hjDonePolls",
-    "_hjMinimizedPolls", "_hjShownFeedbackMessage",
-    
-    // Shopify
-    "_shopify_y", "_shopify_s", "_shopify_sa_p",
-    "_shopify_fs", "_shopify_uniq",
-    
-    // Other platforms
-    "ajs_anonymous_id", "ajs_user_id",            // Segment
-    "_sp_id", "_sp_ses",                          // Snowplow
-    "_pk_id", "_pk_ses",                          // Matomo
-    "mf_", "mf_user",                             // Mouseflow
-    "_fsuid", "_fssid",                           // FullStory
-    "is_returning", "ce_need_secure",             // Crazy Egg
-    "visitor_id", "visitor_id-hash",              // Pardot
-    "_mkto_trk",                                  // Marketo
-    "ELOQUA", "ELQSTATUS",                        // Eloqua
-    "tdid", "tdcpm",                              // The Trade Desk
-    "criteo", "uid",                              // Criteo
-    "__adroll", "__ar_v4",                        // AdRoll
-    "ad-id", "ad-privacy",                        // Amazon
-    "yandexuid", "ymex", "_ym_uid", "_ym_d",      // Yandex
-    "obuid", "obcl", "outbrain_cid",              // Outbrain
-    "t_gid", "t_sessionid", "taboola_usg",        // Taboola
-    "TUUID", "TUUID_TIMESTAMP",                   // Verizon
-    "d", "qc_shared",                             // Quantcast
-    "_cc_cc", "_cc_id",                           // LiveRamp
-    "sadb", "sadr",                               // StackAdapt
-    "mmapi", "mmdata",                            // MediaMath
-    "m-b", "m-b", "m-uid",                        // Quora
-    
-    // Consent managers
-    "OptanonAlertBoxClosed", "OptanonConsent",    // OneTrust
-    "CookieConsent", "cookietest",                // Cookiebot
-    "uc_user_interaction", "uc_user_interaction_ts", // Usercentrics
-    
-    // IAB TCF
-    "euconsent-v2", "eupubconsent-v2"
-];
-    
+    // Performance cookies
+    performance: [
+        // Add performance cookies if you have any
+    ]
+};
     /* ============================================================
        EXIT IF CONSENT IS ALREADY GIVEN
     ============================================================ */
-/* ============================================================
-   CHECK USER CONSENT STATE
+   /* ============================================================
+   EXIT IF CONSENT IS ALREADY GIVEN
 =========================================================== */
-// If no consent data exists, continue with blocking
-if (!userConsent) {
-    console.info("🛡️ No consent found - blocking all non-essential cookies");
-} 
-// If user rejected all cookies, continue with blocking
-else if (userConsent.status === 'rejected') {
-    console.info("🛡️ User rejected all cookies - blocking all non-essential cookies");
+if (HAS_CONSENT) {
+    console.info("✅ Consent found – checking categories");
+    
+    // If user accepted ALL cookies, don't block anything
+    if (CONSENT_DATA && CONSENT_DATA.includes('"status":"accepted"')) {
+        console.info("✅ All cookies accepted - no blocking");
+        return;
+    }
+    
+    // If custom consent, we need to check which categories are allowed
+    // We'll handle blocking based on categories below
+    console.info("🔄 Custom consent detected, applying category-based blocking");
 }
-// If user accepted all cookies, exit blocking
-else if (userConsent.status === 'accepted') {
-    console.info("✅ User accepted all cookies - allowing all tracking");
-    return;
-}
-// If custom consent, we'll handle it in the blocking functions
-else if (userConsent.status === 'custom') {
-    console.info("⚙️ Custom consent detected - applying category-based blocking");
-    console.log("Custom consent categories:", userConsent.categories);
-}
-
-
-/* ===================== CATEGORY MAPPING FUNCTIONS ===================== */
-
-// Function to get category for a domain
-function getDomainCategory(url) {
-    if (!url) return 'other';
     
-    // Analytics domains
-    if (url.includes('google-analytics.com') || 
-        url.includes('googletagmanager.com') ||
-        url.includes('clarity.ms') ||
-        url.includes('analytics.tiktok.com') ||
-        url.includes('hotjar.com') ||
-        url.includes('segment.com') ||
-        url.includes('mixpanel.com') ||
-        url.includes('heap.io')) {
-        return 'analytics';
-    }
-    
-    // Advertising/Marketing domains  
-    if (url.includes('facebook.com') || 
-        url.includes('connect.facebook.net') ||
-        url.includes('doubleclick.net') ||
-        url.includes('googleadservices.com') ||
-        url.includes('ads.tiktok.com') ||
-        url.includes('bing.com') ||
-        url.includes('bat.bing.com') ||
-        url.includes('linkedin.com') ||
-        url.includes('twitter.com') ||
-        url.includes('x.com') ||
-        url.includes('snapchat.com') ||
-        url.includes('pinterest.com') ||
-        url.includes('criteo.com') ||
-        url.includes('taboola.com') ||
-        url.includes('outbrain.com') ||
-        url.includes('amazon-adsystem.com')) {
-        return 'advertising';
-    }
-    
-    // Performance domains
-    if (url.includes('newrelic.com') ||
-        url.includes('go-mpulse.net') ||
-        url.includes('optimizely.com')) {
-        return 'performance';
-    }
-    
-    return 'uncategorized';
-}
-
-// Function to get category for a cookie
-function getCookieCategory(cookieName) {
-    if (!cookieName) return 'other';
-    
-    // Analytics cookies
-    if (cookieName.startsWith('_ga') || 
-        cookieName.startsWith('_gid') || 
-        cookieName.startsWith('_gat') ||
-        cookieName.startsWith('_gcl_') ||
-        cookieName.startsWith('_cl') ||
-        cookieName.startsWith('_hj') ||
-        cookieName.includes('hubspot')) {
-        return 'analytics';
-    }
-    
-    // Advertising cookies
-    if (cookieName.startsWith('_fbp') || 
-        cookieName.startsWith('_fbc') ||
-        cookieName === 'IDE' ||
-        cookieName.startsWith('_gcl') ||
-        cookieName.startsWith('_uet') ||
-        cookieName.startsWith('MUID') ||
-        cookieName.startsWith('tt_') ||
-        cookieName.startsWith('_pin') ||
-        cookieName.includes('criteo') ||
-        cookieName.includes('taboola')) {
-        return 'advertising';
-    }
-    
-    return 'uncategorized';
-}
-
-// Function to check if a category is allowed
-function isCategoryAllowed(category) {
-    if (!userConsent || !userConsent.categories) return false;
-    
-    if (userConsent.status === 'accepted') return true;
-    
-    if (userConsent.status === 'custom') {
-        // Map category names to consent structure
-        switch(category) {
-            case 'analytics':
-                return userConsent.categories.analytics === true;
-            case 'advertising':
-                return userConsent.categories.advertising === true;
-            case 'performance':
-                return userConsent.categories.performance === true;
-            case 'uncategorized':
-                return userConsent.categories.uncategorized === true;
-            default:
-                return false;
-        }
-    }
-    
-    return false;
-}
-
-// Main function to check if something should be blocked
-function shouldBlockResource(url, type = 'domain') {
-    // If no consent or rejected, block everything non-essential
-    if (!userConsent || userConsent.status === 'rejected') {
-        return true;
-    }
-    
-    // If accepted all, allow everything
-    if (userConsent.status === 'accepted') {
-        return false;
-    }
-    
-    // If custom consent, check category
-    if (userConsent.status === 'custom') {
-        let category;
-        
-        if (type === 'domain') {
-            category = getDomainCategory(url);
-        } else if (type === 'cookie') {
-            category = getCookieCategory(url); // url is cookieName here
-        }
-        
-        const isAllowed = isCategoryAllowed(category);
-        
-        // If category is allowed, DON'T block it
-        // If category is not allowed, DO block it
-        return !isAllowed;
-    }
-    
-    // Default: block it
-    return true;
-}
-
-/* ===================== CATEGORY-BASED BLOCKING LOGIC ===================== */
-
-// Function to check if a domain should be blocked based on user consent
-function shouldBlockDomain(url) {
-    if (!url) return false;
-    
-    // If no consent data or rejected all, block everything non-essential
-    if (!userConsent || userConsent.status === 'rejected') {
-        return BLOCKED_DOMAINS.some(d => url.includes(d));
-    }
-    
-    // If accepted all, allow everything
-    if (userConsent.status === 'accepted') {
-        return false;
-    }
-    
-    // If custom consent, check category permissions
-    if (userConsent.status === 'custom' && userConsent.categories) {
-        // Find which category this domain belongs to
-        let domainCategory = null;
-        for (const [domain, category] of Object.entries(DOMAIN_CATEGORIES)) {
-            if (url.includes(domain)) {
-                domainCategory = category;
-                break;
-            }
-        }
-        
-        // If domain is not in our category mapping, block it by default
-        if (!domainCategory) {
-            // Check if it's in blocked domains list
-            const isBlockedDomain = BLOCKED_DOMAINS.some(d => url.includes(d));
-            return isBlockedDomain; // Block if in blocked list
-        }
-        
-        // Check if this category is allowed by user
-        const isCategoryAllowed = userConsent.categories[domainCategory];
-        
-        // Allow if category is allowed, block if not allowed
-        return !isCategoryAllowed;
-    }
-    
-    // Default: block if in blocked domains
-    return BLOCKED_DOMAINS.some(d => url.includes(d));
-}
-
-// Function to check if a cookie should be blocked based on user consent
-function shouldBlockCookie(cookieName) {
-    // If no consent data or rejected all, block everything non-essential
-    if (!userConsent || userConsent.status === 'rejected') {
-        return BLOCKED_COOKIES.some(c => 
-            cookieName.includes(c) || c.includes(cookieName)
-        );
-    }
-    
-    // If accepted all, allow everything
-    if (userConsent.status === 'accepted') {
-        return false;
-    }
-    
-    // If custom consent, check category permissions
-    if (userConsent.status === 'custom' && userConsent.categories) {
-        // Find which category this cookie belongs to
-        let cookieCategory = null;
-        for (const [cookiePattern, category] of Object.entries(COOKIE_CATEGORIES)) {
-            if (cookieName.startsWith(cookiePattern) || cookieName === cookiePattern) {
-                cookieCategory = category;
-                break;
-            }
-        }
-        
-        // If cookie is not in our category mapping, check blocked list
-        if (!cookieCategory) {
-            // Check if it's essential
-            const isEssential = ESSENTIAL_COOKIES.some(essentialCookie => 
-                cookieName.includes(essentialCookie) || essentialCookie.includes(cookieName)
-            );
-            
-            if (isEssential) return false;
-            
-            // Check blocked cookies list
-            return BLOCKED_COOKIES.some(c => 
-                cookieName.includes(c) || c.includes(cookieName)
-            );
-        }
-        
-        // Check if this category is allowed by user
-        const isCategoryAllowed = userConsent.categories[cookieCategory];
-        
-        // Block if category is not allowed
-        return !isCategoryAllowed;
-    }
-    
-    // Default: block if in blocked cookies
-    return BLOCKED_COOKIES.some(c => 
-        cookieName.includes(c) || c.includes(cookieName)
-    );
-}
-
-
-
-
-   
     /* ===================== HARD BLOCKING ===================== */
     
     // 1. Block script loading from tracking domains
-// 1. Block script loading from tracking domains
 // 1. Block script loading from tracking domains
 const _createElement = document.createElement;
 document.createElement = function (tag) {
@@ -659,19 +209,50 @@ document.createElement = function (tag) {
     if (tag.toLowerCase() === "script") {
         Object.defineProperty(el, "src", {
             set(url) {
-                // Check if this domain is essential (should NOT be blocked)
-                const isEssentialDomain = ESSENTIAL_DOMAINS.some(d => 
-                    url && url.includes(d)
-                );
-                
-                // Check if this domain should be blocked
-                const shouldBlock = !isEssentialDomain && 
-                    shouldBlockResource(url, 'domain');
-                
-                if (shouldBlock) {
-                    console.log("🛡️ Blocked script:", url);
+                if (!url) {
+                    el.setAttribute("src", url);
                     return;
                 }
+                
+                // Check if this domain is essential (should NOT be blocked)
+                const isEssentialDomain = ESSENTIAL_DOMAINS.some(d => 
+                    url.includes(d)
+                );
+                
+                if (isEssentialDomain) {
+                    el.setAttribute("src", url);
+                    return;
+                }
+                
+                // Check which category this domain belongs to
+                let domainCategory = null;
+                for (const category in BLOCKED_DOMAINS) {
+                    if (BLOCKED_DOMAINS[category].some(d => url.includes(d))) {
+                        domainCategory = category;
+                        break;
+                    }
+                }
+                
+                // If user has consent, check category permissions
+                if (HAS_CONSENT && CONSENT_CATEGORIES && domainCategory) {
+                    // Check if this category is allowed
+                    if (CONSENT_CATEGORIES[domainCategory] === true) {
+                        console.log(`✅ Allowed ${domainCategory} script:`, url);
+                        el.setAttribute("src", url);
+                        return;
+                    } else {
+                        console.log(`🛡️ Blocked ${domainCategory} script (category not allowed):`, url);
+                        return;
+                    }
+                }
+                
+                // If no consent or domain not categorized, check if it should be blocked
+                if (domainCategory) {
+                    console.log(`🛡️ Blocked ${domainCategory} script (no consent):`, url);
+                    return;
+                }
+                
+                // Allow if not in blocked list
                 el.setAttribute("src", url);
             }
         });
@@ -681,66 +262,45 @@ document.createElement = function (tag) {
     
     // 2. Block fetch requests to tracking domains
 // 2. Block fetch requests to tracking domains
-// 2. Block fetch requests to tracking domains
 const _fetch = window.fetch;
 window.fetch = function () {
     const url = arguments[0];
-    
-    if (!url) {
-        return _fetch.apply(this, arguments);
-    }
     
     // Check if this is an essential domain
     const isEssentialDomain = url && ESSENTIAL_DOMAINS.some(d => 
         url.includes && url.includes(d)
     );
     
-    if (isEssentialDomain) {
-        return _fetch.apply(this, arguments);
-    }
-    
-    // Check if we should block based on user consent
-      // Only block if NOT essential AND should be blocked
+    // Only block if NOT essential AND in blocked list
     const shouldBlock = url && !isEssentialDomain && 
-        shouldBlockResource(url, 'domain');
+        BLOCKED_DOMAINS.some(d => url.includes && url.includes(d));
     
     if (shouldBlock) {
-        console.log("🛡️ Blocked fetch (category-based):", url);
+        console.log("🛡️ Blocked fetch:", url);
         return new Promise(() => {});
     }
-    
     return _fetch.apply(this, arguments);
 };
 
 // 3. Block XHR requests to tracking domains
-// 3. Block XHR requests to tracking domains
 const _open = XMLHttpRequest.prototype.open;
 XMLHttpRequest.prototype.open = function (method, url) {
-    if (!url) {
-        return _open.apply(this, arguments);
-    }
-    
     // Check if this is an essential domain
     const isEssentialDomain = url && ESSENTIAL_DOMAINS.some(d => 
         url.includes(d)
     );
     
-    if (isEssentialDomain) {
-        return _open.apply(this, arguments);
-    }
-    
-    // Check if we should block based on user consent
-      // Only block if NOT essential AND should be blocked
+    // Only block if NOT essential AND in blocked list
     const shouldBlock = url && !isEssentialDomain && 
-        shouldBlockResource(url, 'domain');
+        BLOCKED_DOMAINS.some(d => url.includes(d));
     
     if (shouldBlock) {
-        console.log("🛡️ Blocked XHR (category-based):", url);
+        console.log("🛡️ Blocked XHR:", url);
         return;
     }
-    
     return _open.apply(this, arguments);
 };
+    
     // 4. Remove inline trackers
     function removeInlineTrackers() {
         document.querySelectorAll("script:not([src])").forEach(s => {
@@ -755,90 +315,68 @@ XMLHttpRequest.prototype.open = function (method, url) {
     new MutationObserver(removeInlineTrackers)
         .observe(document.documentElement, { childList: true, subtree: true });
     
-function clearBlockedCookies() {
-    // Only clear cookies if we have consent data
-    if (!userConsent) return;
+    // 5. Delete cookies aggressively
+   function clearBlockedCookies() {
+    // Only block cookies that are NOT in the essential list
+    BLOCKED_COOKIES.forEach(cookieName => {
+        // Check if this cookie is NOT essential
+        const isEssential = ESSENTIAL_COOKIES.some(essentialCookie => 
+            cookieName.includes(essentialCookie) || essentialCookie.includes(cookieName)
+        );
+        
+        if (!isEssential) {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        }
+    });
+}
+
+
+   // 6. Delete cookies by category when custom consent is given
+// 6. Delete cookies by category when custom consent is given
+function clearCookiesByCategory() {
+    if (!HAS_CONSENT || !CONSENT_CATEGORIES) return;
     
-    // If rejected all, clear all non-essential
-    if (userConsent.status === 'rejected') {
-        BLOCKED_COOKIES.forEach(cookieName => {
-            // Check if this cookie is NOT essential
-            const isEssential = ESSENTIAL_COOKIES.some(essentialCookie => 
-                cookieName.includes(essentialCookie) || essentialCookie.includes(cookieName)
-            );
-            
-            if (!isEssential) {
+    // Clear cookies for rejected categories
+    for (const category in CONSENT_CATEGORIES) {
+        if (CONSENT_CATEGORIES[category] === false && BLOCKED_COOKIES[category]) {
+            BLOCKED_COOKIES[category].forEach(cookieName => {
                 document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
                 document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-            }
-        });
-    }
-    // If custom consent, only clear cookies from unselected categories
-    else if (userConsent.status === 'custom') {
-        BLOCKED_COOKIES.forEach(cookieName => {
-            // Check if this cookie should be blocked
-            const shouldBlock = shouldBlockResource(cookieName, 'cookie');
-            
-            if (shouldBlock) {
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-                console.log(`🛡️ Cleared ${cookieName} (category not allowed)`);
-            }
-        });
+                console.log(`🗑️ Cleared ${category} cookie: ${cookieName}`);
+            });
+        }
     }
 }
+   
     clearBlockedCookies();
-    setInterval(clearBlockedCookies, 1000);
+clearCookiesByCategory(); // ADD THIS LINE
+setInterval(clearBlockedCookies, 1000);
     
     console.info("🛡️ Privacy Firewall ACTIVE – waiting for cookie consent");
     
-        /* ============================================================
+    /* ============================================================
        HOOK INTO YOUR CUSTOM COOKIE BANNER CONSENT SYSTEM
     ============================================================ */
     
+    // This function will be called when user gives consent in YOUR banner
+  // This function will be called when user gives consent in YOUR banner
+window.enableTracking = function(consentData) {
+    if (consentData) {
+        localStorage.setItem(CONSENT_KEY, JSON.stringify(consentData));
+    } else {
+        localStorage.setItem(CONSENT_KEY, "granted");
+    }
+    console.log("✅ Tracking enabled via custom banner consent");
+    location.reload();
+};
+    
     // Listen for consent events from your custom banner
     document.addEventListener('cookieConsentGranted', function(e) {
-        if (e.detail) {
-            console.log("🎯 Consent updated via event:", e.detail);
-            
-            // Save consent to localStorage for persistence
-            localStorage.setItem(CONSENT_KEY, JSON.stringify(e.detail));
-            
-            // Also save to cookie for consistency
-            try {
-                const consentStr = JSON.stringify(e.detail);
-                document.cookie = `cookie_consent=${encodeURIComponent(consentStr)}; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/; SameSite=Lax`;
-            } catch(err) {
-                console.error("Error saving consent cookie:", err);
-            }
-            
-            // Reload page to apply new blocking rules
-            console.log("🔄 Page will reload in 1 second to apply new consent settings...");
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+        if (e.detail && e.detail.consent === "granted") {
+            window.enableTracking();
         }
     });
-    
-    // Keep this function for backward compatibility
-    window.enableTracking = function() {
-        const consentData = {
-            status: 'accepted',
-            categories: {
-                functional: true,
-                analytics: true,
-                performance: true,
-                advertising: true,
-                uncategorized: true
-            },
-            timestamp: new Date().getTime()
-        };
-        
-        // Trigger the event
-        document.dispatchEvent(new CustomEvent('cookieConsentGranted', {
-            detail: consentData
-        }));
-    };
     
 })();
 
@@ -4966,10 +4504,21 @@ function hideFloatingButton() {
 // Cookie consent functions
 function acceptAllCookies() {
 
-   
-
    // ADD THIS LINE:
-    if (typeof window.enableTracking === 'function') window.enableTracking();
+   if (typeof window.enableTracking === 'function') {
+    const consentData = {
+        status: 'accepted',
+        categories: {
+            functional: true,
+            analytics: true,
+            performance: true,
+            advertising: true,
+            uncategorized: true
+        },
+        timestamp: new Date().getTime()
+    };
+    window.enableTracking(consentData);
+}
 
      // Add this line to initialize Clarity
     initializeClarity(true);
@@ -4990,15 +4539,7 @@ function acceptAllCookies() {
         },
         timestamp: new Date().getTime()
     };
-
-
-     // Trigger consent event for blocking script
-    document.dispatchEvent(new CustomEvent('cookieConsentGranted', {
-        detail: consentData
-    }));
-
-
-   
+    
     // Restore stored query parameters when accepting cookies
     addStoredParamsToURL();
     
@@ -5032,12 +4573,25 @@ function acceptAllCookies() {
 
 
 function rejectAllCookies() {
-
     // ADD THIS LINE TO RELOAD THE PAGE:
     const shouldReload = getCookie('cookie_consent') !== null;
     
     // Clear the consent from localStorage (for the blocking script)
     localStorage.removeItem("__user_cookie_consent__");
+
+    // ADD THIS - set explicit rejection data
+    const rejectionData = {
+        status: 'rejected',
+        categories: {
+            functional: false,
+            analytics: false,
+            performance: false,
+            advertising: false,
+            uncategorized: false
+        },
+        timestamp: new Date().getTime()
+    };
+    localStorage.setItem("__user_cookie_consent__", JSON.stringify(rejectionData));
   
     // Add this line to ensure Clarity isn't loaded
     initializeClarity(false);
@@ -5055,13 +4609,6 @@ function rejectAllCookies() {
         },
         timestamp: new Date().getTime()
     };
-
-
-       // Trigger consent event for blocking script
-    document.dispatchEvent(new CustomEvent('cookieConsentGranted', {
-        detail: consentData
-    }));
-   
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
@@ -5098,35 +4645,25 @@ function rejectAllCookies() {
         }, 500); // Small delay to ensure cookies are saved
     }
 }
-
-
 function saveCustomSettings() {
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
+    const performanceChecked = document.querySelector('input[data-category="performance"]').checked;
+    const uncategorizedChecked = document.querySelector('input[data-category="uncategorized"]') ? 
+        document.querySelector('input[data-category="uncategorized"]').checked : false;
 
-   
-    // ADD THESE LINES:
-    // Only enable tracking if user accepts analytics OR advertising
-    if ((analyticsChecked || advertisingChecked) && typeof window.enableTracking === 'function') {
-        window.enableTracking();
-    }
-
-
-       // NEW: Check if we need to reload (when switching from accepted to rejected)
+    // Check if we need to reload (when switching from accepted to rejected)
     const previousConsent = getCookie('cookie_consent');
-    const shouldReload = previousConsent !== null && 
-                        (!analyticsChecked && !advertisingChecked);
+    const previousData = previousConsent ? JSON.parse(previousConsent) : null;
+    const shouldReload = previousData !== null && (
+        (previousData.categories.analytics !== analyticsChecked) ||
+        (previousData.categories.advertising !== advertisingChecked) ||
+        (previousData.categories.performance !== performanceChecked)
+    );
 
-   
-  
-     // Initialize or stop Clarity based on consent
-    initializeClarity(analyticsChecked);
-    sendClarityConsentSignal(analyticsChecked); // Add this line
-  
-    
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
-    
+
     let gcsSignal;
     if (analyticsChecked && advertisingChecked) {
         gcsSignal = 'G111'; // Both granted
@@ -5144,33 +4681,37 @@ function saveCustomSettings() {
         categories: {
             functional: true,
             analytics: analyticsChecked,
-            performance: document.querySelector('input[data-category="performance"]').checked,
+            performance: performanceChecked,
             advertising: advertisingChecked,
-            uncategorized: document.querySelector('input[data-category="uncategorized"]') ? 
-                document.querySelector('input[data-category="uncategorized"]').checked : false
+            uncategorized: uncategorizedChecked
         },
         timestamp: new Date().getTime()
     };
 
-       // Trigger consent event for blocking script
-    document.dispatchEvent(new CustomEvent('cookieConsentGranted', {
-        detail: consentData
-    }));
-   
-    
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
-    loadCookiesAccordingToConsent(consentData);
     
+    // Save to localStorage for blocking script
+    if (typeof window.enableTracking === 'function') {
+        window.enableTracking(consentData);
+    } else {
+        // Fallback if blocking script not loaded
+        localStorage.setItem("__user_cookie_consent__", JSON.stringify(consentData));
+    }
+
+    // Initialize or stop Clarity based on consent
+    initializeClarity(analyticsChecked);
+    sendClarityConsentSignal(analyticsChecked);
+
     if (!consentData.categories.analytics) clearCategoryCookies('analytics');
     if (!consentData.categories.performance) clearCategoryCookies('performance');
     if (!consentData.categories.advertising) clearCategoryCookies('advertising');
     if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
-    
+
     if (config.analytics.enabled) {
         updateConsentStats('custom');
     }
-    
+
     const consentStates = {
         'ad_storage': consentData.categories.advertising ? 'granted' : 'denied',
         'analytics_storage': consentData.categories.analytics ? 'granted' : 'denied',
@@ -5180,7 +4721,7 @@ function saveCustomSettings() {
         'functionality_storage': consentData.categories.functional ? 'granted' : 'denied',
         'security_storage': 'granted'
     };
-    
+
     // Fire specific events based on consent choices with GCS signals
     if (analyticsChecked && !advertisingChecked) {
         window.dataLayer.push({
@@ -5189,7 +4730,7 @@ function saveCustomSettings() {
                 'analytics_storage': 'granted',
                 'ad_storage': 'denied'
             },
-            'gcs': 'G101', // Explicit GCS signal
+            'gcs': 'G101',
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
@@ -5202,18 +4743,17 @@ function saveCustomSettings() {
                 'ad_storage': 'granted',
                 'analytics_storage': 'denied'
             },
-            'gcs': 'G110', // Explicit GCS signal
+            'gcs': 'G110',
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
             'location_data': locationData
         });
     } else {
-        // For all other cases (both accepted or both rejected)
         window.dataLayer.push({
             'event': 'cookie_consent_custom',
             'consent_mode': consentStates,
-            'gcs': gcsSignal, // Explicit GCS signal
+            'gcs': gcsSignal,
             'consent_status': 'custom',
             'consent_categories': consentData.categories,
             'timestamp': new Date().toISOString(),
@@ -5221,15 +4761,11 @@ function saveCustomSettings() {
         });
     }
 
-
-
-       // NEW: RELOAD PAGE IF USER REJECTED ALL COOKIES AFTER PREVIOUSLY ACCEPTING
-    if (shouldReload) {
-        console.log("🔄 Reloading page to re-activate cookie blocking...");
-        setTimeout(() => {
-            window.location.reload();
-        }, 500); // Small delay to ensure cookies are saved
-    }
+    // RELOAD PAGE WHEN CONSENT CHANGES
+    console.log("🔄 Reloading page to apply new cookie settings...");
+    setTimeout(() => {
+        window.location.reload();
+    }, 500);
 }
 // Helper functions
 function clearNonEssentialCookies() {
