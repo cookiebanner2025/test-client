@@ -1,6 +1,6 @@
 window.COOKIE_SETTINGS = {
-    BLOCKING_ENABLED: false,    // Set to false to turn OFF blocking
-    RELOAD_ENABLED: false       // Set to false to turn OFF page reloads
+    BLOCKING_ENABLED: true,    // Set to false to turn OFF blocking
+    RELOAD_ENABLED: true       // Set to false to turn OFF page reloads
 };
 
 
