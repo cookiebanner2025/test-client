@@ -112,12 +112,14 @@ window.COOKIE_SETTINGS = {
     }
     
     /* ===================== SINGLE EXIT CONDITION ===================== */
-    if (storedConsent === "granted" || !BLOCKING_ENABLED) {
-        if (DEBUG) {
-            console.info(storedConsent === "granted" 
-                ? "✅ Full consent granted – all tracking allowed"
-                : "🟡 Blocking feature is OFF - all tracking allowed");
-        }
+    // RESTORED TO ORIGINAL ORDER - This is critical!
+    if (!BLOCKING_ENABLED) {
+        if (DEBUG) console.log("🟡 Blocking feature is OFF - all tracking allowed");
+        return; // Exit without blocking anything
+    }
+    
+    if (storedConsent === "granted") {
+        if (DEBUG) console.info("✅ Full consent granted – all tracking allowed");
         return; // Exit the blocking script
     }
     
@@ -165,7 +167,7 @@ window.COOKIE_SETTINGS = {
         }
     }
     
-    /* ===================== CACHE PARSED CATEGORIES WITH FALLBACK ===================== */
+    /* ===================== CACHE PARSED CATEGORIES ===================== */
     let parsedCategories = null;
     try {
         parsedCategories = storedCategories ? JSON.parse(storedCategories) : null;
@@ -174,22 +176,13 @@ window.COOKIE_SETTINGS = {
         parsedCategories = null;
     }
     
-    // Handle partial consent with malformed JSON
-    if (storedConsent === "partial" && !parsedCategories) {
-        parsedCategories = {
-            analytics: false,
-            advertising: false,
-            performance: false
-        };
-    }
-    
     /* ===================== HELPER FUNCTIONS ===================== */
     function getCategoryConsent(category) {
         return !!(parsedCategories && parsedCategories[category]);
     }
     
     /* ===================== CATEGORY DEFINITIONS ===================== */
-    // ANALYTICS DOMAINS & COOKIES
+    // KEEPING THE ORIGINAL CATEGORY DEFINITIONS - Critical for Meta Pixel blocking
     const ANALYTICS_DATA = {
         domains: [
             "google-analytics.com", "www.google-analytics.com", "analytics.google.com",
@@ -213,7 +206,6 @@ window.COOKIE_SETTINGS = {
         ]
     };
     
-    // MARKETING/ADVERTISING DOMAINS & COOKIES
     const MARKETING_DATA = {
         domains: [
             "googleadservices.com", "www.googleadservices.com", "doubleclick.net",
@@ -238,166 +230,36 @@ window.COOKIE_SETTINGS = {
         ]
     };
     
-    // PERFORMANCE DOMAINS & COOKIES (Fixed: Moved CDNs to essential)
     const PERFORMANCE_DATA = {
         domains: [
-            // Only actual performance trackers - CDNs moved to essential
-            "rum.getsitecontrol.com",
-            "pingdom.net",
-            "newrelic.com",
-            "dynatrace.com"
+            "cloudflare.com", "cdn.cloudflare.com",
+            "akamaihd.net", "edgekey.net"
         ],
         cookies: [
-            // Only actual performance tracking cookies
-            "_perf_session",
-            "rum_session",
-            "_nrpa_session"
+            "__cfduid", "__cf_bm", "AWSALB", "AWSALBCORS"
         ]
     };
     
-    // ESSENTIAL DOMAINS & COOKIES (ALWAYS ALLOWED) - Updated with CDNs
     const ESSENTIAL_DATA = {
         domains: [
             window.location.hostname,
-            // CDNs and essential services
             "cdnjs.cloudflare.com", "ajax.googleapis.com",
             "fonts.googleapis.com", "fonts.gstatic.com",
-            "maps.googleapis.com", "stripe.com", "paypal.com",
-            // Moved from performance to essential (CDNs and security services)
-            "cloudflare.com", "cdn.cloudflare.com",
-            "akamaihd.net", "edgekey.net",
-            "aws.amazon.com", "amazonaws.com",
-            // Security and infrastructure
-            "recaptcha.net", "hcaptcha.com"
+            "maps.googleapis.com", "stripe.com", "paypal.com"
         ],
         cookies: [
-            // Essential session cookies
             "PHPSESSID", "JSESSIONID", "ASP.NET_SessionId",
             "wordpress_logged_in_", "wordpress_sec_", "wp-settings-",
             "wp-settings-time-", "wordpress_test_cookie",
-            // Consent management
             "cookie_consent", "__user_cookie_consent__", "__user_cookie_categories__",
-            // E-commerce
             "cart_token", "cart_items", "checkout_token",
             "woocommerce_cart_hash", "woocommerce_items_in_cart",
-            // Security
-            "csrftoken", "XSRF-TOKEN", "_csrf",
-            // Moved from performance (CDN/load balancer cookies)
-            "__cfduid", "__cf_bm", "AWSALB", "AWSALBCORS",
-            "__Secure-", "__Host-",
-            // Authentication
-            "sessionid", "session", "auth_token"
+            "csrftoken", "XSRF-TOKEN", "_csrf"
         ]
     };
     
-    /* ===================== TRACKER DETECTION SETUP ===================== */
-    const trackerDetection = {
-        foundDomains: new Set(),
-        foundCookies: new Set(),
-        startedAt: new Date()
-    };
-    
-    /* ===================== TRACKING ENDPOINTS FOR INLINE DETECTION ===================== */
-    const TRACKING_ENDPOINTS = [
-        'google-analytics.com/collect',
-        'google-analytics.com/g/collect',
-        'googletagmanager.com/gtag/js',
-        'facebook.com/tr/',
-        'facebook.com/events',
-        'doubleclick.net',
-        'analytics.google.com',
-        'clarity.ms/collect',
-        'hotjar.com/api/v2'
-    ];
-    
-    function containsTrackingEndpoint(content) {
-        return TRACKING_ENDPOINTS.some(endpoint => content.includes(endpoint));
-    }
-    
-    function isInAnyList(item, isDomain = true) {
-        const allDomains = [
-            ...ESSENTIAL_DATA.domains,
-            ...ANALYTICS_DATA.domains,
-            ...MARKETING_DATA.domains,
-            ...PERFORMANCE_DATA.domains
-        ];
-        
-        const allCookies = [
-            ...ESSENTIAL_DATA.cookies,
-            ...ANALYTICS_DATA.cookies,
-            ...MARKETING_DATA.cookies,
-            ...PERFORMANCE_DATA.cookies
-        ];
-        
-        if (isDomain) {
-            for (const listedDomain of allDomains) {
-                if (item.includes(listedDomain) || listedDomain.includes(item)) {
-                    return true;
-                }
-            }
-        } else {
-            for (const listedCookie of allCookies) {
-                if (item.includes(listedCookie) || listedCookie.includes(item)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-    
-    function showNewTrackers() {
-        const domains = Array.from(trackerDetection.foundDomains);
-        const cookies = Array.from(trackerDetection.foundCookies);
-        
-        const newDomains = domains.filter(domain => !isInAnyList(domain, true));
-        const newCookies = cookies.filter(cookie => !isInAnyList(cookie, false));
-        
-        console.log('================================');
-        console.log('🔍 NEW TRACKER DETECTION REPORT');
-        console.log('================================');
-        console.log(`Total domains monitored: ${domains.length}`);
-        console.log(`Total cookies monitored: ${cookies.length}`);
-        console.log('');
-        
-        if (newDomains.length > 0) {
-            console.log('🌐 NEW DOMAINS (not in your lists):');
-            newDomains.forEach(domain => {
-                console.log(`   - ${domain}`);
-            });
-            console.log('');
-        }
-        
-        if (newCookies.length > 0) {
-            console.log('🍪 NEW COOKIES (not in your lists):');
-            newCookies.forEach(cookie => {
-                console.log(`   - ${cookie}`);
-            });
-            console.log('');
-        }
-        
-        if (newDomains.length === 0 && newCookies.length === 0) {
-            console.log('✅ No new domains or cookies found!');
-        }
-        
-        console.log('================================');
-        
-        return {
-            newDomains,
-            newCookies
-        };
-    }
-    
-    /* ===================== BLOCKING DECISION FUNCTIONS ===================== */
     function shouldBlockDomain(url) {
         if (!url || typeof url !== 'string') return false;
-        
-        // Track the domain for detection
-        try {
-            const domain = new URL(url).hostname;
-            trackerDetection.foundDomains.add(domain);
-        } catch (e) {
-            // Skip invalid URLs
-        }
         
         // Check if it's an essential domain (NEVER block)
         for (const domain of ESSENTIAL_DATA.domains) {
@@ -414,7 +276,7 @@ window.COOKIE_SETTINGS = {
             }
         }
         
-        // Check marketing domains
+        // Check marketing domains - THIS BLOCKS META PIXEL!
         if (!getCategoryConsent('advertising')) {
             for (const domain of MARKETING_DATA.domains) {
                 if (domainMatches(url, domain)) {
@@ -439,9 +301,6 @@ window.COOKIE_SETTINGS = {
     
     function shouldBlockCookie(cookieName) {
         if (!cookieName) return false;
-        
-        // Track the cookie for detection
-        trackerDetection.foundCookies.add(cookieName);
         
         // Check if it's an essential cookie (NEVER block)
         for (const cookie of ESSENTIAL_DATA.cookies) {
@@ -485,67 +344,40 @@ window.COOKIE_SETTINGS = {
     
     /* ===================== IMPLEMENT BLOCKING ===================== */
     
-    // 1. Block script loading WITH SAFE GUARD
-    if (!document.__cookieCreateElementPatched) {
-        document.__cookieCreateElementPatched = true;
+    // 1. Block script loading - ORIGINAL METHOD (aggressive)
+    const originalCreateElement = document.createElement;
+    document.createElement = function (tagName) {
+        const element = originalCreateElement.call(document, tagName);
         
-        const originalCreateElement = document.createElement;
-        document.createElement = function (tagName) {
-            const element = originalCreateElement.call(document, tagName);
+        if (tagName.toLowerCase() === 'script') {
+            const originalSetAttribute = element.setAttribute;
             
-            if (tagName.toLowerCase() === 'script') {
-                const originalSetAttribute = element.setAttribute;
-                
-                element.setAttribute = function (name, value) {
-                    if (name === 'src' && shouldBlockDomain(value)) {
-                        if (DEBUG) console.log(`🛡️ Blocked script loading: ${value}`);
-                        return; // Don't set the src attribute
-                    }
-                    return originalSetAttribute.call(this, name, value);
-                };
-                
-                Object.defineProperty(element, 'src', {
-                    set(value) {
-                        if (shouldBlockDomain(value)) {
-                            if (DEBUG) console.log(`🛡️ Blocked script src: ${value}`);
-                            return;
-                        }
-                        this.setAttribute('src', value);
-                    },
-                    get() {
-                        return this.getAttribute('src');
-                    }
-                });
-            }
+            element.setAttribute = function (name, value) {
+                if (name === 'src' && shouldBlockDomain(value)) {
+                    if (DEBUG) console.log(`🛡️ Blocked script loading: ${value}`);
+                    return; // Don't set the src attribute
+                }
+                return originalSetAttribute.call(this, name, value);
+            };
             
-            return element;
-        };
-    }
-    
-    // 2. Close appendChild/insertBefore bypass vectors
-    if (!Node.prototype.__cookieAppendPatched) {
-        Node.prototype.__cookieAppendPatched = true;
+            Object.defineProperty(element, 'src', {
+                set(value) {
+                    if (shouldBlockDomain(value)) {
+                        if (DEBUG) console.log(`🛡️ Blocked script src: ${value}`);
+                        return;
+                    }
+                    this.setAttribute('src', value);
+                },
+                get() {
+                    return this.getAttribute('src');
+                }
+            });
+        }
         
-        const originalAppendChild = Node.prototype.appendChild;
-        Node.prototype.appendChild = function(node) {
-            if (node?.tagName?.toLowerCase() === 'script' && node.src && shouldBlockDomain(node.src)) {
-                if (DEBUG) console.log('🛡️ Blocked script append:', node.src);
-                return node;
-            }
-            return originalAppendChild.call(this, node);
-        };
-        
-        const originalInsertBefore = Node.prototype.insertBefore;
-        Node.prototype.insertBefore = function(node, ref) {
-            if (node?.tagName?.toLowerCase() === 'script' && node.src && shouldBlockDomain(node.src)) {
-                if (DEBUG) console.log('🛡️ Blocked script insert:', node.src);
-                return node;
-            }
-            return originalInsertBefore.call(this, node, ref);
-        };
-    }
+        return element;
+    };
     
-    // 3. Block fetch requests WITH SAFER RESPONSE
+    // 2. Block fetch requests - ORIGINAL METHOD (aggressive rejection)
     if (window.fetch) {
         const originalFetch = window.fetch;
         window.fetch = function (resource, init) {
@@ -553,30 +385,15 @@ window.COOKIE_SETTINGS = {
             
             if (shouldBlockDomain(url)) {
                 if (DEBUG) console.log(`🛡️ Blocked fetch request: ${url}`);
-                // Return empty response instead of rejecting to prevent app crashes
-                return Promise.resolve(new Response(null, { 
-                    status: 204, 
-                    statusText: 'No Content' 
-                }));
+                // ORIGINAL: Reject with error (hides from Meta Pixel Helper)
+                return Promise.reject(new Error('Request blocked by cookie consent'));
             }
             
             return originalFetch.call(this, resource, init);
         };
     }
     
-    // 4. Block sendBeacon requests (CRITICAL ADDITION)
-    if (navigator.sendBeacon) {
-        const originalBeacon = navigator.sendBeacon;
-        navigator.sendBeacon = function(url, data) {
-            if (shouldBlockDomain(url)) {
-                if (DEBUG) console.log('🛡️ Blocked beacon:', url);
-                return false;
-            }
-            return originalBeacon.call(this, url, data);
-        };
-    }
-    
-    // 5. Block XMLHttpRequest
+    // 3. Block XMLHttpRequest - ORIGINAL METHOD
     if (window.XMLHttpRequest) {
         const originalOpen = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function (method, url) {
@@ -598,7 +415,19 @@ window.COOKIE_SETTINGS = {
         };
     }
     
-    // 6. Block iframes
+    // 4. Block sendBeacon - ORIGINAL STYLE (return false)
+    if (navigator.sendBeacon) {
+        const originalBeacon = navigator.sendBeacon;
+        navigator.sendBeacon = function(url, data) {
+            if (shouldBlockDomain(url)) {
+                if (DEBUG) console.log('🛡️ Blocked beacon:', url);
+                return false; // ORIGINAL STYLE
+            }
+            return originalBeacon.call(this, url, data);
+        };
+    }
+    
+    // 5. Block iframes
     const iframeObserver = new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
             mutation.addedNodes.forEach(function (node) {
@@ -615,43 +444,41 @@ window.COOKIE_SETTINGS = {
         subtree: true
     });
     
-    // 7. Block and delete cookies (with optimized interval)
+    // 6. Block and delete cookies - WITH IMPROVED DELETION
     function blockAndDeleteCookies() {
         document.cookie.split(';').forEach(function (cookie) {
             const [name] = cookie.trim().split('=');
             if (name && shouldBlockCookie(name)) {
-                // Use complete deletion function
                 deleteCookieEverywhere(name);
                 if (DEBUG) console.log(`🛡️ Deleted blocked cookie: ${name}`);
             }
         });
     }
     
-    // Run immediately and set limited interval (10 runs total)
+    // Run immediately and set interval - ORIGINAL (continuous)
     blockAndDeleteCookies();
-    let cookieCleanupRuns = 0;
-    const cookieCleanupInterval = setInterval(() => {
-        blockAndDeleteCookies();
-        cookieCleanupRuns++;
-        if (cookieCleanupRuns > 9) { // 10 total runs (0-9)
-            clearInterval(cookieCleanupInterval);
-            if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
-        }
-    }, 1000);
+    setInterval(blockAndDeleteCookies, 1000);
     
-    // 8. Block inline tracking scripts WITH DEBOUNCING AND IMPROVED DETECTION
+    // 7. Block inline tracking scripts - ORIGINAL METHOD
     function blockInlineTrackers() {
         document.querySelectorAll('script:not([src])').forEach(function (script) {
             const content = script.textContent || script.innerText;
             if (content) {
-                // Improved detection with endpoints and patterns
-                const hasTrackingEndpoint = containsTrackingEndpoint(content);
-                const hasTrackingPattern = /(gtag\(|fbq\(|dataLayer\.push|clarity\.|hj.*\(|mixpanel\.|segment\.)/.test(content);
-                
-                if (hasTrackingEndpoint || hasTrackingPattern) {
+                // Check if it contains tracking code
+                if (content.includes('google-analytics') || 
+                    content.includes('gtag') || 
+                    content.includes('dataLayer') || 
+                    content.includes('fbq') ||
+                    content.includes('clarity') ||
+                    content.includes('hotjar')) {
+                    
                     // Check if user has consented to the relevant category
-                    const isAnalyticsCode = /(google-analytics|gtag|clarity|hotjar|mixpanel|segment)/i.test(content);
-                    const isMarketingCode = /(fbq|facebook|doubleclick|googleadservices)/i.test(content);
+                    const isAnalyticsCode = content.includes('google-analytics') || 
+                                           content.includes('gtag') || 
+                                           content.includes('clarity') ||
+                                           content.includes('hotjar');
+                    const isMarketingCode = content.includes('fbq') || 
+                                           content.includes('facebook');
                     
                     if ((isAnalyticsCode && !getCategoryConsent('analytics')) ||
                         (isMarketingCode && !getCategoryConsent('advertising'))) {
@@ -663,15 +490,8 @@ window.COOKIE_SETTINGS = {
         });
     }
     
-    // Debounced inline script observer
-    let inlineScanTimer = null;
-    function scheduleInlineScan() {
-        clearTimeout(inlineScanTimer);
-        inlineScanTimer = setTimeout(blockInlineTrackers, 200);
-    }
-    
     blockInlineTrackers();
-    new MutationObserver(scheduleInlineScan).observe(document.documentElement, {
+    new MutationObserver(blockInlineTrackers).observe(document.documentElement, {
         childList: true,
         subtree: true
     });
@@ -683,16 +503,7 @@ window.COOKIE_SETTINGS = {
         console.log("Performance allowed:", getCategoryConsent('performance'));
     }
     
-    /* ===================== AUTO-REPORT AFTER PAGE LOADS ===================== */
-    window.addEventListener('load', () => {
-        setTimeout(() => {
-            if (DEBUG) console.log('\n💡 Type showNewTrackers() to see new domains/cookies');
-            showNewTrackers();
-        }, 2000);
-    });
-    
     /* ===================== HOOKS FOR YOUR BANNER ===================== */
-    // RELOAD LOGIC IS PRESERVED AND WORKING CORRECTLY
     
     window.enableAllTracking = function() {
         if (DEBUG) console.log("✅ Enabling ALL tracking");
@@ -749,9 +560,6 @@ window.COOKIE_SETTINGS = {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
     };
-    
-    /* ===================== MAKE FUNCTIONS AVAILABLE ===================== */
-    window.showNewTrackers = showNewTrackers;
     
 })();
 
