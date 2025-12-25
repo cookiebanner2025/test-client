@@ -14,6 +14,10 @@ you can change the cookie category description text by this class. like you can 
  */
 
 
+
+
+
+
 const EU_COUNTRIES = [
   "AL", // Albania
   "AD", // Andorra
@@ -158,7 +162,7 @@ clarityConfig: {
         msd: window.location.hostname // Add this line for Microsoft Domain handling
     },
     
-  
+    // Behavior configuration
        // Behavior configuration
     behavior: {
         autoShow: true,
@@ -178,13 +182,11 @@ clarityConfig: {
         },
         
         showFloatingButton: true,
-        showAdminButton: false,
         floatingButtonPosition: 'left',
-        adminButtonPosition: 'left',
         bannerPosition: 'left',
 
 
-       
+      
         bannerAnimation: {
             duration: 0.4,
             easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
@@ -224,7 +226,202 @@ clarityConfig: {
         showLanguageSelector: true,
         autoDetectLanguage: true
     },
-    
+
+
+
+urlLanguageRules: {
+    enabled: true,
+    rules: [
+        // ===========================================================================
+        // ====== PATH-BASED CONDITIONS (HIGHEST PRIORITY) ===========================
+        // ===========================================================================
+        
+        // Path contains (Most Flexible)
+        { condition: 'path-contains', value: 'shop', language: 'nl' },
+     /**   { condition: 'path-contains', value: '/shop/pl/', language: 'pl' },
+        { condition: 'path-contains', value: '/shop/sv/', language: 'sv' },
+        { condition: 'path-contains', value: '/shop/da/', language: 'da' },
+        { condition: 'path-contains', value: '/shop/fi/', language: 'fi' },
+        { condition: 'path-contains', value: '/shop/el/', language: 'el' },
+        { condition: 'path-contains', value: '/shop/hu/', language: 'hu' },
+        { condition: 'path-contains', value: '/shop/cs/', language: 'cs' },
+        { condition: 'path-contains', value: '/shop/ro/', language: 'ro' }, */
+
+        
+        // General shop for specific languages
+     /**   { condition: 'path-contains', value: '/nederlandse-winkel', language: 'nl' },
+        { condition: 'path-contains', value: '/polski-sklep', language: 'pl' },
+        { condition: 'path-contains', value: '/svenska-butik', language: 'sv' }, */
+
+        
+        // Language-specific paths
+      /**  { condition: 'path-contains', value: '/nederlands/', language: 'nl' },
+        { condition: 'path-contains', value: '/polski/', language: 'pl' },
+        { condition: 'path-contains', value: '/svenska/', language: 'sv' },
+        { condition: 'path-contains', value: '/dansk/', language: 'da' },
+        { condition: 'path-contains', value: '/suomi/', language: 'fi' },
+        { condition: 'path-contains', value: '/ελληνικά/', language: 'el' },
+        { condition: 'path-contains', value: '/magyar/', language: 'hu' },
+        { condition: 'path-contains', value: '/čeština/', language: 'cs' },
+        { condition: 'path-contains', value: '/română/', language: 'ro' }, */
+
+        
+        // Path exact (Higher priority than contains)
+       /** { condition: 'path-exact', value: '/shop/de', language: 'de' },
+        { condition: 'path-exact', value: '/shop/fr', language: 'fr' },
+        { condition: 'path-exact', value: '/shop/en', language: 'en' },
+        { condition: 'path-exact', value: '/german-version', language: 'de' },
+        { condition: 'path-exact', value: '/french-version', language: 'fr' },
+        { condition: 'path-exact', value: '/english-version', language: 'en' }, */
+
+        
+        // Path starts with
+       /** { condition: 'path-starts-with', value: '/nl/', language: 'nl' },
+        { condition: 'path-starts-with', value: '/pl/', language: 'pl' },
+        { condition: 'path-starts-with', value: '/sv/', language: 'sv' },
+        { condition: 'path-starts-with', value: '/da/', language: 'da' },
+        { condition: 'path-starts-with', value: '/fi/', language: 'fi' }, */
+
+        
+        // ===========================================================================
+        // ====== URL-BASED CONDITIONS (MEDIUM PRIORITY) =============================
+        // ===========================================================================
+        
+        // URL contains (full URL matching)
+      /**  { condition: 'url-contains', value: 'example.com/fr/shop', language: 'fr' },
+        { condition: 'url-contains', value: 'example.com/de/shop', language: 'de' },
+        { condition: 'url-contains', value: 'example.com/nl/shop', language: 'nl' },
+        { condition: 'url-contains', value: 'dev-rpractice.pantheonsite.io/fr/', language: 'fr' }, */
+
+        
+        // URL exact (specific full URLs)
+       /** { condition: 'url-exact', value: 'https://dev-rpractice.pantheonsite.io/shop/nl/', language: 'nl' },
+        { condition: 'url-exact', value: 'https://dev-rpractice.pantheonsite.io/shop/pl/', language: 'pl' },
+        { condition: 'url-exact', value: 'https://dev-rpractice.pantheonsite.io/shop/sv/', language: 'sv' },
+        
+        // URL starts with
+        { condition: 'url-starts-with', value: 'https://dev-rpractice.pantheonsite.io/nl/', language: 'nl' },
+        { condition: 'url-starts-with', value: 'https://dev-rpractice.pantheonsite.io/pl/', language: 'pl' },
+        { condition: 'url-starts-with', value: 'https://dev-rpractice.pantheonsite.io/sv/', language: 'sv' }, */
+
+        
+        // ===========================================================================
+        // ====== HOSTNAME/DOMAIN CONDITIONS ========================================
+        // ===========================================================================
+        
+        // Exact hostname matches
+       /** { condition: 'exact', value: 'nl.example.com', language: 'nl' },
+        { condition: 'exact', value: 'pl.example.com', language: 'pl' },
+        { condition: 'exact', value: 'se.example.com', language: 'sv' },
+        { condition: 'exact', value: 'dk.example.com', language: 'da' },
+        { condition: 'exact', value: 'fi.example.com', language: 'fi' },
+        { condition: 'exact', value: 'gr.example.com', language: 'el' },
+        { condition: 'exact', value: 'hu.example.com', language: 'hu' },
+        { condition: 'exact', value: 'cz.example.com', language: 'cs' },
+        { condition: 'exact', value: 'ro.example.com', language: 'ro' },
+        { condition: 'exact', value: 'fr.example.com', language: 'fr' },
+        { condition: 'exact', value: 'de.example.com', language: 'de' }, */
+
+        
+        // Hostname contains
+       /** { condition: 'hostname-contains', value: '.fr.', language: 'fr' },
+        { condition: 'hostname-contains', value: '.de.', language: 'de' },
+        { condition: 'hostname-contains', value: '.nl.', language: 'nl' }, */
+
+        
+        // Hostname starts with (subdomains)
+      /**  { condition: 'hostname-starts-with', value: 'fr.', language: 'fr' },
+        { condition: 'hostname-starts-with', value: 'de.', language: 'de' },
+        { condition: 'hostname-starts-with', value: 'nl.', language: 'nl' }, */
+
+        
+        // Subdomain specific
+      /**  { condition: 'subdomain', value: 'fr', language: 'fr' },
+        { condition: 'subdomain', value: 'de', language: 'de' },
+        { condition: 'subdomain', value: 'nl', language: 'nl' },
+        { condition: 'subdomain', value: 'pl', language: 'pl' }, */
+
+        
+        // ===========================================================================
+        // ====== QUERY PARAMETER CONDITIONS =========================================
+        // ===========================================================================
+        
+        // General contains (old format - for backward compatibility)
+       /** { condition: 'contains', value: '?lang=nl', language: 'nl' },
+        { condition: 'contains', value: '?lang=pl', language: 'pl' },
+        { condition: 'contains', value: '?lang=sv', language: 'sv' },
+        { condition: 'contains', value: '?language=da', language: 'da' },
+        { condition: 'contains', value: '?language=fi', language: 'fi' },
+        { condition: 'contains', value: 'locale=el', language: 'el' },
+        { condition: 'contains', value: 'locale=hu', language: 'hu' }, */
+
+        
+        // Parameter contains (new format)
+       /** { condition: 'param-contains', value: 'lang=nl', language: 'nl' },
+        { condition: 'param-contains', value: 'lang=pl', language: 'pl' },
+        { condition: 'param-contains', value: 'lang=sv', language: 'sv' },
+        { condition: 'param-contains', value: 'language=da', language: 'da' },
+        { condition: 'param-contains', value: 'language=fi', language: 'fi' }, */
+
+        
+        // Parameter exact match
+     /**   { condition: 'param-exact', value: 'lang=fr', language: 'fr' },
+        { condition: 'param-exact', value: 'lang=de', language: 'de' },
+        { condition: 'param-exact', value: 'lang=en', language: 'en' },
+        { condition: 'param-exact', value: 'locale=fr_FR', language: 'fr' },
+        { condition: 'param-exact', value: 'locale=de_DE', language: 'de' }, */
+
+        
+        // Has parameter
+      /**  { condition: 'has-param', value: 'lang', language: 'en' },
+        { condition: 'has-param', value: 'language', language: 'en' },
+        { condition: 'has-param', value: 'locale', language: 'en' }, */
+
+        
+        // ===========================================================================
+        // ====== FALLBACK BY DOMAIN EXTENSION =======================================
+        // ===========================================================================
+        
+    /**    { condition: 'hostname-ends-with', value: '.nl', language: 'nl' },
+        { condition: 'hostname-ends-with', value: '.pl', language: 'pl' },
+        { condition: 'hostname-ends-with', value: '.se', language: 'sv' },
+        { condition: 'hostname-ends-with', value: '.dk', language: 'da' },
+        { condition: 'hostname-ends-with', value: '.fi', language: 'fi' },
+        { condition: 'hostname-ends-with', value: '.gr', language: 'el' },
+        { condition: 'hostname-ends-with', value: '.hu', language: 'hu' },
+        { condition: 'hostname-ends-with', value: '.cz', language: 'cs' },
+        { condition: 'hostname-ends-with', value: '.ro', language: 'ro' },
+        { condition: 'hostname-ends-with', value: '.sk', language: 'sk' },
+        { condition: 'hostname-ends-with', value: '.si', language: 'sl' },
+        { condition: 'hostname-ends-with', value: '.bg', language: 'bg' },
+        { condition: 'hostname-ends-with', value: '.hr', language: 'hr' },
+        { condition: 'hostname-ends-with', value: '.lt', language: 'lt' },
+        { condition: 'hostname-ends-with', value: '.lv', language: 'lv' },
+        { condition: 'hostname-ends-with', value: '.ee', language: 'et' },
+        { condition: 'hostname-ends-with', value: '.mt', language: 'mt' },
+        { condition: 'hostname-ends-with', value: '.fr', language: 'fr' },
+        { condition: 'hostname-ends-with', value: '.de', language: 'de' }, */
+
+        
+        // ===========================================================================
+        // ====== FINAL FALLBACK RULES ===============================================
+        // ===========================================================================
+        
+      /**  { condition: 'exact', value: 'dev-rpractice.pantheonsite.io', language: 'en' },
+        { condition: 'hostname-contains', value: 'dev-rpractice', language: 'en' }, */
+
+        
+        // Ultimate fallback - will match any page on your domain
+        { condition: 'url-contains', value: 'dev-rpractice.pantheonsite.io', language: 'en' }
+    ]
+},
+
+
+  
+
+
+
+  
     // Geo-targeting configuration
  // In your config object, update the geoConfig section:
 geoConfig: {
@@ -238,18 +435,7 @@ geoConfig: {
     specificRegions: [] // NEW: Can specify 'EU' or other regions
 },
     
-    // Analytics configuration
-    analytics: {
-        enabled: true,
-        storageDays: 365,
-        showDashboard: true,
-        passwordProtect: true,
-        dashboardPassword: 'admin123',
-        passwordCookieDuration: 365,
-        trackPageViews: true,
-        trackEvents: true,
-        trackConsentChanges: true
-    },
+  
     
     // UI Theme selection
     uiTheme: 'default',
@@ -1708,18 +1894,8 @@ const countryLanguageMap = {
     'RU': 'ru'      // Russia
 };
 
-// Analytics data storage
-let consentAnalytics = {
-    total: {
-        accepted: 0,
-        rejected: 0,
-        custom: 0
-    },
-    daily: {}
-};
 
-// Password protection for analytics
-let isDashboardAuthenticated = false;
+
 
 // Banner scheduling variables
 let bannerTimer = null;
@@ -1896,214 +2072,8 @@ function getContinentFromCountry(countryCode) {
     return continentMap[countryCode] || "Unknown";
 }
 
-// Load analytics data from localStorage
-function loadAnalyticsData() {
-    const savedData = localStorage.getItem('consentAnalytics');
-    if (savedData) {
-        consentAnalytics = JSON.parse(savedData);
-    }
-    
-    // Initialize today's data if not exists
-    const today = new Date().toISOString().split('T')[0];
-    if (!consentAnalytics.daily[today]) {
-        consentAnalytics.daily[today] = {
-            accepted: 0,
-            rejected: 0,
-            custom: 0
-        };
-    }
-    
-    // Check if dashboard is authenticated
-    if (config.analytics.passwordProtect) {
-        isDashboardAuthenticated = getCookie('dashboard_auth') === 'true';
-    } else {
-        isDashboardAuthenticated = true;
-    }
-}
 
-// Save analytics data to localStorage
-function saveAnalyticsData() {
-    localStorage.setItem('consentAnalytics', JSON.stringify(consentAnalytics));
-}
 
-// Update analytics data
-function updateConsentStats(status) {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Update totals
-    if (status === 'accepted') {
-        consentAnalytics.total.accepted++;
-        consentAnalytics.daily[today].accepted++;
-    } else if (status === 'rejected') {
-        consentAnalytics.total.rejected++;
-        consentAnalytics.daily[today].rejected++;
-    } else if (status === 'custom') {
-        consentAnalytics.total.custom++;
-        consentAnalytics.daily[today].custom++;
-    }
-    
-    saveAnalyticsData();
-}
-
-// Generate analytics dashboard HTML with 1 day, 7 days, and 30 days sections
-function generateAnalyticsDashboard(language = 'en') {
-    const lang = translations[language] || translations.en;
-    
-    // Calculate totals
-    const total = consentAnalytics.total.accepted + 
-                 consentAnalytics.total.rejected + 
-                 consentAnalytics.total.custom;
-    
-    const acceptedPercent = total > 0 ? Math.round((consentAnalytics.total.accepted / total) * 100) : 0;
-    const rejectedPercent = total > 0 ? Math.round((consentAnalytics.total.rejected / total) * 100) : 0;
-    const customPercent = total > 0 ? Math.round((consentAnalytics.total.custom / total) * 100) : 0;
-    
-    // Get last 1 day data
-    const today = new Date().toISOString().split('T')[0];
-    const last1Day = {};
-    last1Day[today] = consentAnalytics.daily[today] || { accepted: 0, rejected: 0, custom: 0 };
-    
-    // Get last 7 days data
-    const last7Days = {};
-    const dates = Object.keys(consentAnalytics.daily).sort().reverse().slice(0, 7);
-    dates.forEach(date => {
-        last7Days[date] = consentAnalytics.daily[date];
-    });
-    
-    // Get last 30 days data
-    const last30Days = {};
-    const monthlyDates = Object.keys(consentAnalytics.daily).sort().reverse().slice(0, 30);
-    monthlyDates.forEach(date => {
-        last30Days[date] = consentAnalytics.daily[date];
-    });
-    
-    return `
-    <div class="analytics-dashboard">
-        <h3>${lang.dashboardTitle}</h3>
-        
-        <div class="stats-summary">
-            <div class="stat-card accepted">
-                <h4>${lang.statsAccepted}</h4>
-                <div class="stat-value">${consentAnalytics.total.accepted}</div>
-                <div class="stat-percentage">${acceptedPercent}%</div>
-            </div>
-            
-            <div class="stat-card rejected">
-                <h4>${lang.statsRejected}</h4>
-                <div class="stat-value">${consentAnalytics.total.rejected}</div>
-                <div class="stat-percentage">${rejectedPercent}%</div>
-            </div>
-            
-            <div class="stat-card custom">
-                <h4>${lang.statsCustom}</h4>
-                <div class="stat-value">${consentAnalytics.total.custom}</div>
-                <div class="stat-percentage">${customPercent}%</div>
-            </div>
-            
-            <div class="stat-card total">
-                <h4>${lang.statsTotal}</h4>
-                <div class="stat-value">${total}</div>
-                <div class="stat-percentage">100%</div>
-            </div>
-        </div>
-        
-        <div class="time-based-stats">
-            <div class="time-stat">
-                <h4>${lang.statsLast1Day}</h4>
-                <div class="stat-bars">
-                    ${Object.entries(last1Day).map(([date, data]) => {
-                        const dayTotal = data.accepted + data.rejected + data.custom;
-                        const dayAcceptedPercent = dayTotal > 0 ? (data.accepted / dayTotal) * 100 : 0;
-                        const dayRejectedPercent = dayTotal > 0 ? (data.rejected / dayTotal) * 100 : 0;
-                        const dayCustomPercent = dayTotal > 0 ? (data.custom / dayTotal) * 100 : 0;
-                        
-                        return `
-                        <div class="stat-bar-container">
-                            <div class="stat-bar-label">${date}</div>
-                            <div class="stat-bar">
-                                <div class="stat-bar-segment accepted" style="width: ${dayAcceptedPercent}%"></div>
-                                <div class="stat-bar-segment custom" style="width: ${dayCustomPercent}%"></div>
-                                <div class="stat-bar-segment rejected" style="width: ${dayRejectedPercent}%"></div>
-                            </div>
-                            <div class="stat-bar-legend">
-                                <span>${data.accepted} ${lang.statsAccepted}</span>
-                                <span>${data.custom} ${lang.statsCustom}</span>
-                                <span>${data.rejected} ${lang.statsRejected}</span>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
-            </div>
-            
-            <div class="time-stat">
-                <h4>${lang.statsLast7Days}</h4>
-                <div class="stat-bars">
-                    ${Object.entries(last7Days).map(([date, data]) => {
-                        const dayTotal = data.accepted + data.rejected + data.custom;
-                        const dayAcceptedPercent = dayTotal > 0 ? (data.accepted / dayTotal) * 100 : 0;
-                        const dayRejectedPercent = dayTotal > 0 ? (data.rejected / dayTotal) * 100 : 0;
-                        const dayCustomPercent = dayTotal > 0 ? (data.custom / dayTotal) * 100 : 0;
-                        
-                        return `
-                        <div class="stat-bar-container">
-                            <div class="stat-bar-label">${date}</div>
-                            <div class="stat-bar">
-                                <div class="stat-bar-segment accepted" style="width: ${dayAcceptedPercent}%"></div>
-                                <div class="stat-bar-segment custom" style="width: ${dayCustomPercent}%"></div>
-                                <div class="stat-bar-segment rejected" style="width: ${dayRejectedPercent}%"></div>
-                            </div>
-                            <div class="stat-bar-legend">
-                                <span>${data.accepted} ${lang.statsAccepted}</span>
-                                <span>${data.custom} ${lang.statsCustom}</span>
-                                <span>${data.rejected} ${lang.statsRejected}</span>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
-            </div>
-            
-            <div class="time-stat">
-                <h4>${lang.statsLast30Days}</h4>
-                <div class="stat-bars">
-                    ${Object.entries(last30Days).map(([date, data]) => {
-                        const dayTotal = data.accepted + data.rejected + data.custom;
-                        const dayAcceptedPercent = dayTotal > 0 ? (data.accepted / dayTotal) * 100 : 0;
-                        const dayRejectedPercent = dayTotal > 0 ? (data.rejected / dayTotal) * 100 : 0;
-                        const dayCustomPercent = dayTotal > 0 ? (data.custom / dayTotal) * 100 : 0;
-                        
-                        return `
-                        <div class="stat-bar-container">
-                            <div class="stat-bar-label">${date}</div>
-                            <div class="stat-bar">
-                                <div class="stat-bar-segment accepted" style="width: ${dayAcceptedPercent}%"></div>
-                                <div class="stat-bar-segment custom" style="width: ${dayCustomPercent}%"></div>
-                                <div class="stat-bar-segment rejected" style="width: ${dayRejectedPercent}%"></div>
-                            </div>
-                            <div class="stat-bar-legend">
-                                <span>${data.accepted} ${lang.statsAccepted}</span>
-                                <span>${data.custom} ${lang.statsCustom}</span>
-                                <span>${data.rejected} ${lang.statsRejected}</span>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
-            </div>
-        </div>
-    </div>`;
-}
-
-// Generate password prompt HTML
-function generatePasswordPrompt(language = 'en') {
-    const lang = translations[language] || translations.en;
-    
-    return `
-    <div class="password-prompt">
-        <h3>${lang.passwordPrompt}</h3>
-        <input type="password" id="dashboardPasswordInput" placeholder="Password">
-        <button id="dashboardPasswordSubmit">${lang.passwordSubmit}</button>
-        <p id="passwordError" class="error-message"></p>
-    </div>`;
-}
 
 // Check if current domain is allowed
 function isDomainAllowed() {
@@ -2178,8 +2148,30 @@ function checkGeoTargeting(geoData) {
 
 // Detect user language based on country and browser settings
 // Detect user language based on country and browser settings
+
+
+
+
+// Detect user language based on country and browser settings
 function detectUserLanguage(geoData) {
-    // First check if language is stored in cookie (user's previous choice)
+    console.log('=== Starting language detection ===');
+    
+    // Step 1: Check URL-based language rules first (highest priority)
+    if (config.urlLanguageRules && config.urlLanguageRules.enabled) {
+        const urlLanguage = detectLanguageFromURL();
+        if (urlLanguage) {
+            console.log('Language detected from URL rule:', urlLanguage);
+            
+            // Save the detected language to cookie for future visits
+            if (config.behavior.rememberLanguage) {
+                setCookie('preferred_language', urlLanguage, 365);
+            }
+            return urlLanguage;
+        }
+    }
+    console.log('No URL rule matched');
+    
+    // Step 2: Check cookie (user's previous choice)
     if (config.behavior.rememberLanguage) {
         const preferredLanguage = getCookie('preferred_language');
         if (preferredLanguage && translations[preferredLanguage]) {
@@ -2188,25 +2180,23 @@ function detectUserLanguage(geoData) {
         }
     }
     
-    // Then try to get language from browser settings
+    // Step 3: Browser language
     const browserLang = (navigator.language || navigator.userLanguage || 'en').split('-')[0];
     console.log('Browser language detected:', browserLang);
     
     if (translations[browserLang]) {
-        // Save the detected language to cookie for future visits
         if (config.behavior.rememberLanguage) {
             setCookie('preferred_language', browserLang, 365);
         }
         return browserLang;
     }
     
-    // Then try to get language from country if auto-detection is enabled
+    // Step 4: Country-based detection
     if (config.languageConfig.autoDetectLanguage && geoData && geoData.country) {
         const countryLang = countryLanguageMap[geoData.country];
         console.log('Country language detected:', countryLang, 'for country:', geoData.country);
         
         if (countryLang && translations[countryLang]) {
-            // Save the detected language to cookie for future visits
             if (config.behavior.rememberLanguage) {
                 setCookie('preferred_language', countryLang, 365);
             }
@@ -2214,10 +2204,187 @@ function detectUserLanguage(geoData) {
         }
     }
     
-    // Final fallback to configured default language
+    // Step 5: Final fallback
     console.log('Using default language:', config.languageConfig.defaultLanguage);
     return config.languageConfig.defaultLanguage || 'en';
 }
+
+
+
+
+
+
+// NEW: Detect language based on URL rules
+function detectLanguageFromURL() {
+    if (!config.urlLanguageRules || !config.urlLanguageRules.enabled) {
+        return null;
+    }
+    
+    const currentURL = window.location.href;
+    const currentHostname = window.location.hostname;
+    const currentPath = window.location.pathname;
+    const currentSearch = window.location.search;
+    const currentHash = window.location.hash;
+    
+    // Full URL for comprehensive matching
+    const fullURL = currentURL;
+    
+    console.log('🔍 URL Language Detection - Checking:', {
+        hostname: currentHostname,
+        path: currentPath,
+        search: currentSearch,
+        hash: currentHash,
+        fullURL: fullURL
+    });
+    
+    // Check each rule in the exact order they're defined
+    for (let i = 0; i < config.urlLanguageRules.rules.length; i++) {
+        const rule = config.urlLanguageRules.rules[i];
+        let matches = false;
+        
+        // First, validate that the language exists in translations
+        if (!translations[rule.language]) {
+            console.warn(`⚠️ Skipping rule ${i+1} - Language '${rule.language}' not found in translations`);
+            continue;
+        }
+        
+        // Perform matching based on condition type
+        switch (rule.condition) {
+            // ====== PATH-BASED CONDITIONS (HIGHEST PRIORITY) ======
+            case 'path-contains':
+                matches = currentPath.includes(rule.value);
+                break;
+                
+            case 'path-exact':
+                matches = currentPath === rule.value;
+                break;
+                
+            case 'path-starts-with':
+                matches = currentPath.startsWith(rule.value);
+                break;
+                
+            case 'path-ends-with':
+                matches = currentPath.endsWith(rule.value);
+                break;
+                
+            case 'path-regex':
+                try {
+                    const regex = new RegExp(rule.value);
+                    matches = regex.test(currentPath);
+                } catch (e) {
+                    console.error(`Invalid regex in rule ${i+1}:`, e);
+                }
+                break;
+                
+            // ====== URL-BASED CONDITIONS (MEDIUM PRIORITY) ======
+            case 'url-contains':
+                matches = fullURL.includes(rule.value);
+                break;
+                
+            case 'url-exact':
+                matches = fullURL === rule.value;
+                break;
+                
+            case 'url-starts-with':
+                matches = fullURL.startsWith(rule.value);
+                break;
+                
+            case 'url-ends-with':
+                matches = fullURL.endsWith(rule.value);
+                break;
+                
+            case 'url-regex':
+                try {
+                    const regex = new RegExp(rule.value);
+                    matches = regex.test(fullURL);
+                } catch (e) {
+                    console.error(`Invalid regex in rule ${i+1}:`, e);
+                }
+                break;
+                
+            // ====== HOSTNAME/DOMAIN CONDITIONS ======
+            case 'exact':
+                matches = currentHostname === rule.value;
+                break;
+                
+            case 'hostname-contains':
+                matches = currentHostname.includes(rule.value);
+                break;
+                
+            case 'hostname-starts-with':
+                matches = currentHostname.startsWith(rule.value);
+                break;
+                
+            case 'hostname-ends-with':
+                matches = currentHostname.endsWith(rule.value);
+                break;
+                
+            case 'subdomain':
+                const subdomainPattern = new RegExp(`^${rule.value}\\.`);
+                matches = subdomainPattern.test(currentHostname);
+                break;
+                
+            // ====== QUERY PARAMETER CONDITIONS ======
+            case 'contains':
+                matches = fullURL.includes(rule.value);
+                break;
+                
+            case 'param-contains':
+                matches = currentSearch.includes(rule.value);
+                break;
+                
+            case 'param-exact':
+                const params = new URLSearchParams(currentSearch);
+                const [key, value] = rule.value.split('=');
+                matches = params.get(key) === value;
+                break;
+                
+            case 'has-param':
+                const paramName = rule.value.replace('?', '');
+                matches = currentSearch.includes(paramName);
+                break;
+                
+            // ====== HASH/FRAGMENT CONDITIONS ======
+            case 'hash-contains':
+                matches = currentHash.includes(rule.value);
+                break;
+                
+            case 'hash-exact':
+                matches = currentHash === rule.value;
+                break;
+                
+            default:
+                console.warn(`Unknown condition type: ${rule.condition} in rule ${i+1}`);
+                continue;
+        }
+        
+        if (matches) {
+            console.log(`✅ Rule ${i+1} MATCHED!`, {
+                rule: `${rule.condition}: "${rule.value}"`,
+                language: rule.language,
+                languageName: translations[rule.language].language,
+                currentPath: currentPath,
+                currentHostname: currentHostname,
+                matchedValue: rule.value
+            });
+            return rule.language;
+        }
+    }
+    
+    console.log('ℹ️ No URL language rule matched');
+    return null;
+}
+
+
+
+
+
+
+
+
+
+
+
 // Get available languages for dropdown
 function getAvailableLanguages() {
     if (config.languageConfig.availableLanguages.length > 0) {
@@ -2563,20 +2730,9 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         </select>
     </div>` : '';
     
-    // Generate admin dashboard button if analytics enabled
-    const adminButton = config.analytics.enabled && config.analytics.showDashboard && config.behavior.showAdminButton ? `
-    <div id="cookieAdminButton" class="cookie-admin-button" title="${lang.dashboardTitle}">
-        <svg viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg" fill="currentColor" stroke="none">
-            <title>Admin Dashboard</title>
-            <path d="M4.75,20.75A.25.25,0,0,0,5,20.5v-2a1,1,0,0,0-1-1H2a1,1,0,0,0-1,1v2a.25.25,0,0,0,.25.25Z"/>
-            <path d="M10.75,20.75A.25.25,0,0,0,11,20.5v-7a1,1,0,0,0-1-1H8a1,1,0,0,0-1,1v7a.25.25,0,0,0,.25.25Z"/>
-            <path d="M16.75,20.75A.25.25,0,0,0,17,20.5v-5a1,1,0,0,0-1-1H14a1,1,0,0,0-1,1v5a.25.25,0,0,0,.25.25Z"/>
-            <path d="M22.75,20.75A.25.25,0,0,0,23,20.5V8.5a1,1,0,0,0-1-1H20a1,1,0,0,0-1,1v12a.25.25,0,0,0,.25.25Z"/>
-            <path d="M3.5,13.5a2,2,0,0,0,2-2,1.981,1.981,0,0,0-.1-.6l3.167-2.64A1.955,1.955,0,0,0,11.011,7.8l2.5.834A2,2,0,0,0,17.5,8.5a1.964,1.964,0,0,0-.231-.912l3.287-3.835A1.994,1.994,0,1,0,19.5,2a1.962,1.962,0,0,0,.093.571L16.13,6.612a1.932,1.932,0,0,0-2.141.593l-2.5-.833A1.995,1.995,0,0,0,7.6,7.1L4.436,9.744A1.975,1.975,0,0,0,3.5,9.5a2,2,0,0,0,0,4Z"/>
-            <path d="M23,22H1a1.016,1.016,0,0,0-1,1,1,1,0,0,0,1,1H23a1,1,0,0,0,1-1A1.015,1.015,0,0,0,23,22Z"/>
-        </svg>
-    </div>` : '';
-    
+
+
+  
     const html = `
     <!-- Main Consent Banner -->
     <div id="cookieConsentBanner" class="cookie-consent-banner">
@@ -2612,10 +2768,7 @@ function injectConsentHTML(detectedCookies, language = 'en') {
                 ${detectedCookies.uncategorized.length > 0 ? generateCategorySection('uncategorized') : ''}
             </div>
             <div class="cookie-settings-footer">
-                ${config.analytics.enabled ? `
-                <div class="see-analytics-container">
-                    <a href="#" class="see-analytics-link">${lang.seeAnalytics}</a>
-                </div>` : ''}
+             
                  <div class="modal-buttons-container">
                     <button id="acceptAllSettingsBtn" class="cookie-btn main-accept-button">${lang.accept}</button>
                     <button id="saveSettingsBtn" class="cookie-btn main-save-btn">${lang.save}</button>
@@ -2636,27 +2789,15 @@ function injectConsentHTML(detectedCookies, language = 'en') {
     </svg>
 </div>
     
-    ${adminButton}
-    
-    <!-- Analytics Dashboard -->
-    <div id="cookieAnalyticsModal" class="cookie-analytics-modal">
-        <div class="cookie-analytics-content">
-            <div class="cookie-analytics-header">
-                <h2>${lang.dashboardTitle}</h2>
-                <span class="close-analytics-modal">&times;</span>
-            </div>
-            <div class="cookie-analytics-body">
-                ${config.analytics.passwordProtect && !isDashboardAuthenticated ? 
-                    generatePasswordPrompt(language) : 
-                    generateAnalyticsDashboard(language)}
-            </div>
-        </div>
-    </div>
+
 
 
     
     <!-- Blur overlay for restricting interaction -->
     <div id="cookieBlurOverlay" class="cookie-blur-overlay"></div>
+
+
+
     
     <style>
     /* Main Banner Styles */
@@ -2856,6 +2997,7 @@ function injectConsentHTML(detectedCookies, language = 'en') {
 
 
 
+
     /* Blur overlay for restricting interaction */
     .cookie-blur-overlay {
         position: fixed;
@@ -2870,7 +3012,6 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         pointer-events: none; /* Allows clicks to pass through to banner */
     }
     
-  
        /* When restricting clicks, make overlay block clicks */
     .cookie-blur-overlay.block-clicks {
         pointer-events: auto;
@@ -2882,7 +3023,13 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         overflow: hidden !important;
     }
 
-    
+
+
+
+
+
+
+
     .cookie-settings-modal.show {
         display: flex;
         align-items: center;
@@ -3112,26 +3259,8 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         color: ${config.bannerStyle.title.color};
     }
 
-    /* See Analytics Link */
-    .see-analytics-container {
-        margin-bottom: 15px;
-        text-align: center;
-    }
+  
 
-    .see-analytics-link {
-        color: ${config.bannerStyle.linkColor};
-        text-decoration: none;
-        font-size: 13px;
-        font-weight: 500;
-        display: inline-block;
-        transition: color 0.2s ease;
-        display: none;
-    }
-
-    .see-analytics-link:hover {
-        color: ${config.bannerStyle.linkHoverColor};
-        text-decoration: underline;
-    }
 
     /* Mobile-friendly cookie value display */
     .cookie-value-cell {
@@ -3210,260 +3339,7 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         transform: rotate(15deg);
     }
 
-    /* Admin Button */
-    .cookie-admin-button {
-        position: fixed;
-        ${config.behavior.adminButtonPosition === 'left' ? 
-          'left: 30px; bottom: 100px;' : 
-          'right: 30px; bottom: 100px;'}
-        width: ${config.adminButtonStyle.size};
-        height: ${config.adminButtonStyle.size};
-        background-color: ${config.adminButtonStyle.background};
-        border-radius: ${config.adminButtonStyle.borderRadius};
-        display: none;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: ${config.adminButtonStyle.boxShadow};
-        z-index: 9997;
-        transition: all 0.3s ease;
-        opacity: 0;
-        transform: translateY(20px);
-        border: ${config.adminButtonStyle.border};
-    }
-
-    .cookie-admin-button.show {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    .cookie-admin-button:hover {
-        background-color: ${config.adminButtonStyle.hover.background};
-        transform: ${config.adminButtonStyle.hover.transform};
-        box-shadow: ${config.adminButtonStyle.hover.boxShadow};
-    }
-
-    .cookie-admin-button svg {
-        width: 28px;
-        height: 28px;
-        fill: ${config.adminButtonStyle.iconColor};
-        transition: transform 0.3s ease;
-    }
-
-    .cookie-admin-button:hover svg {
-        transform: rotate(15deg);
-    }
-
-    /* Analytics Dashboard */
-    .cookie-analytics-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 10001;
-        overflow-y: auto;
-        padding: 30px 0;
-        opacity: 0;
-        transition: opacity ${config.behavior.dashboardAnimation.duration}s ${config.behavior.dashboardAnimation.easing};
-    }
-
-    .cookie-analytics-modal.show {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 1;
-    }
-
-    .cookie-analytics-content {
-        background-color: ${config.dashboardStyle.background};
-        margin: 0 auto;
-        width: ${config.dashboardStyle.width};
-        max-height: ${config.dashboardStyle.maxHeight};
-        border-radius: ${config.dashboardStyle.borderRadius};
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        overflow: hidden;
-        transform: translateY(20px);
-        transition: transform ${config.behavior.dashboardAnimation.duration}s ${config.behavior.dashboardAnimation.easing};
-        display: flex;
-        flex-direction: column;
-    }
-
-    .cookie-analytics-modal.show .cookie-analytics-content {
-        transform: translateY(0);
-    }
-
-    .cookie-analytics-header {
-        padding: 20px 30px;
-        border-bottom: 1px solid #ecf0f1;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background-color: ${config.dashboardStyle.header.background};
-    }
-
-    .cookie-analytics-header h2 {
-        margin: 0;
-        color: ${config.dashboardStyle.header.textColor};
-        font-size: ${config.dashboardStyle.header.fontSize};
-        font-weight: ${config.dashboardStyle.header.fontWeight};
-    }
-
-    .close-analytics-modal {
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-        color: ${config.modalStyle.closeButton.color};
-        background: none;
-        border: none;
-        padding: 0 10px;
-        transition: color 0.2s ease;
-    }
-
-    .close-analytics-modal:hover {
-        color: ${config.modalStyle.closeButton.hoverColor};
-    }
-
-    .cookie-analytics-body {
-        padding: 25px 30px;
-        background-color: ${config.dashboardStyle.body.background};
-        overflow-y: auto;
-        flex: 1;
-    }
-
-    /* Stats Dashboard */
-    .analytics-dashboard {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    .analytics-dashboard h3 {
-        color: ${config.bannerStyle.title.color};
-        margin-top: 0;
-        margin-bottom: 20px;
-        font-size: 1.3rem;
-    }
-
-    .stats-summary {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
-        margin-bottom: 30px;
-    }
-
-    .stat-card {
-        background-color: ${config.dashboardStyle.statCards.background};
-                border-radius: ${config.dashboardStyle.statCards.borderRadius};
-        padding: 15px;
-        text-align: center;
-        transition: all 0.3s ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-
-    .stat-card.accepted {
-        border-top: 4px solid ${config.dashboardStyle.statCards.acceptedColor};
-    }
-
-    .stat-card.rejected {
-        border-top: 4px solid ${config.dashboardStyle.statCards.rejectedColor};
-    }
-
-    .stat-card.custom {
-        border-top: 4px solid ${config.dashboardStyle.statCards.customColor};
-    }
-
-    .stat-card.total {
-        border-top: 4px solid ${config.dashboardStyle.statCards.totalColor};
-    }
-
-    .stat-card h4 {
-        margin: 0 0 10px 0;
-        font-size: 1rem;
-        color: ${config.bannerStyle.description.color};
-    }
-
-    .stat-value {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: ${config.bannerStyle.title.color};
-        margin-bottom: 5px;
-    }
-
-    .stat-percentage {
-        font-size: 1rem;
-        color: ${config.bannerStyle.description.color};
-    }
-
-    .time-based-stats {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 30px;
-    }
-
-    .time-stat {
-        background-color: ${config.dashboardStyle.statCards.background};
-        border-radius: ${config.dashboardStyle.statCards.borderRadius};
-        padding: 20px;
-    }
-
-    .time-stat h4 {
-        margin: 0 0 15px 0;
-        font-size: 1.1rem;
-        color: ${config.bannerStyle.title.color};
-    }
-
-    .stat-bars {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-
-    .stat-bar-container {
-        margin-bottom: 15px;
-    }
-
-    .stat-bar-label {
-        font-size: 0.85rem;
-        color: ${config.bannerStyle.description.color};
-        margin-bottom: 5px;
-    }
-
-    .stat-bar {
-        height: ${config.dashboardStyle.barChart.height};
-        background-color: ${config.dashboardStyle.barChart.background};
-        border-radius: ${config.dashboardStyle.barChart.borderRadius};
-        overflow: hidden;
-        display: flex;
-    }
-
-    .stat-bar-segment {
-        height: 100%;
-    }
-
-    .stat-bar-segment.accepted {
-        background-color: ${config.dashboardStyle.barChart.acceptedColor};
-    }
-
-    .stat-bar-segment.rejected {
-        background-color: ${config.dashboardStyle.barChart.rejectedColor};
-    }
-
-    .stat-bar-segment.custom {
-        background-color: ${config.dashboardStyle.barChart.customColor};
-    }
-
-    .stat-bar-legend {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.75rem;
-        color: ${config.bannerStyle.description.color};
-        margin-top: 5px;
-    }
+  
 
     /* Footer Buttons */
     .cookie-settings-footer {
@@ -3472,47 +3348,7 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         border-top: ${config.modalStyle.footer.borderTop};
     }
 
-    /* Password Prompt */
-    .password-prompt {
-        text-align: center;
-        padding: 30px;
-    }
 
-    .password-prompt h3 {
-        color: ${config.bannerStyle.title.color};
-        margin-bottom: 20px;
-    }
-
-    .password-prompt input {
-        padding: 12px 15px;
-        border-radius: 6px;
-        border: 1px solid #e0e0e0;
-        width: 100%;
-        max-width: 300px;
-        margin-bottom: 15px;
-        font-size: 14px;
-    }
-
-    .password-prompt button {
-        padding: 12px 25px;
-        background-color: ${config.buttonStyle.accept.background};
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-
-    .password-prompt button:hover {
-        background-color: ${config.buttonStyle.accept.hover.background};
-    }
-
-    .error-message {
-        color: ${config.buttonStyle.reject.color};
-        margin-top: 10px;
-        font-size: 14px;
-    }
 
     /* Responsive Styles */
     @media (max-width: 900px) {
@@ -3772,8 +3608,7 @@ function shouldShowBanner() {
 
 // Main initialization function
 function initializeCookieConsent(detectedCookies, language) {
-
-   // NEW: Check if we should show on this URL
+    // NEW: Check if we should show on this URL
     if (!shouldShowOnCurrentUrl()) {
         console.log('Cookie consent banner disabled for this URL');
         return; // Don't show the banner on this URL
@@ -3804,70 +3639,65 @@ function initializeCookieConsent(detectedCookies, language) {
         }
     }
 
-
-
-    // Microsoft Clarity initialization
-// Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
-function initializeClarity(consentGranted) {
-    if (!config.clarityConfig.enabled) return;
-    
-    const consentRequired = isEEAVisitor();
-    
-    // If we don't need consent or it's granted, load Clarity
-    if (consentGranted || !consentRequired) {
-        // Only load if not already loaded
-        if (typeof window.clarity === 'undefined') {
-            (function(c,l,a,r,i,t,y){
-                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", config.clarityConfig.projectId);
-        }
+    // Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
+    function initializeClarity(consentGranted) {
+        if (!config.clarityConfig.enabled) return;
         
-        // Send consent signal
-        ensureClarityConsentSignal(consentGranted);
-    } else if (config.clarityConfig.loadBeforeConsent === false) {
-        // Ensure Clarity doesn't load if consent not given and not allowed to load before consent
-        window.clarity = window.clarity || function() {
-            // Store calls in queue but don't execute them
-            (window.clarity.q = window.clarity.q || []).push(arguments);
-        };
-        window.clarity('consent', false);
-    }
-}
-
-
-
-// Function to send consent signal to Microsoft Clarity
-function sendClarityConsentSignal(consentGranted) {
-    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
-    
-    try {
-        if (typeof window.clarity !== 'undefined') {
-            // Send consent signal to Clarity
-            window.clarity('consent', consentGranted);
-            console.log('Microsoft Clarity consent signal sent:', consentGranted);
+        const consentRequired = isEEAVisitor();
+        
+        // If we don't need consent or it's granted, load Clarity
+        if (consentGranted || !consentRequired) {
+            // Only load if not already loaded
+            if (typeof window.clarity === 'undefined') {
+                (function(c,l,a,r,i,t,y){
+                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", config.clarityConfig.projectId);
+            }
             
-            // Push to dataLayer for tracking
-            window.dataLayer.push({
-                'event': 'clarity_consent_signal',
-                'clarity_consent': consentGranted,
-                'timestamp': new Date().toISOString(),
-                'location_data': locationData
-            });
+            // Send consent signal
+            ensureClarityConsentSignal(consentGranted);
+        } else if (config.clarityConfig.loadBeforeConsent === false) {
+            // Ensure Clarity doesn't load if consent not given and not allowed to load before consent
+            window.clarity = window.clarity || function() {
+                // Store calls in queue but don't execute them
+                (window.clarity.q = window.clarity.q || []).push(arguments);
+            };
+            window.clarity('consent', false);
         }
-    } catch (error) {
-        console.error('Failed to send Clarity consent signal:', error);
     }
-}
+
+    // Function to send consent signal to Microsoft Clarity
+    function sendClarityConsentSignal(consentGranted) {
+        if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
+        
+        try {
+            if (typeof window.clarity !== 'undefined') {
+                // Send consent signal to Clarity
+                window.clarity('consent', consentGranted);
+                console.log('Microsoft Clarity consent signal sent:', consentGranted);
+                
+                // Push to dataLayer for tracking
+                window.dataLayer.push({
+                    'event': 'clarity_consent_signal',
+                    'clarity_consent': consentGranted,
+                    'timestamp': new Date().toISOString(),
+                    'location_data': locationData
+                });
+            }
+        } catch (error) {
+            console.error('Failed to send Clarity consent signal:', error);
+        }
+    }
     
-    // Explicitly apply the default language from config
-    changeLanguage(config.languageConfig.defaultLanguage);
+    // FIXED: Apply the dynamically detected language instead of forcing default
+    changeLanguage(language);
     
-    // Set the dropdown to the default language
+    // FIXED: Set the dropdown to the detected language, not the default
     const languageSelect = document.getElementById('cookieLanguageSelect');
     if (languageSelect) {
-        languageSelect.value = config.languageConfig.defaultLanguage;
+        languageSelect.value = language;
         // Ensure the change event listener is correctly set up
         languageSelect.addEventListener('change', function() {
             changeLanguage(this.value);
@@ -3916,31 +3746,14 @@ function sendClarityConsentSignal(consentGranted) {
         }
     });
     
-    // Setup admin button if enabled
-    if (config.analytics.enabled && config.analytics.showDashboard && config.behavior.showAdminButton) {
-        const adminButton = document.getElementById('cookieAdminButton');
-        if (adminButton) {
-            adminButton.addEventListener('click', showAnalyticsDashboard);
-            setTimeout(() => {
-                adminButton.style.display = 'flex';
-                adminButton.classList.add('show');
-            }, 100);
-        }
-    }
+
     
     // Setup password prompt events if needed
     if (config.analytics.passwordProtect && !isDashboardAuthenticated) {
         setupPasswordPromptEvents();
     }
     
-    // Setup "See Consent Analytics" link in the modal footer
-    const seeAnalyticsLink = document.querySelector('.see-analytics-link');
-    if (seeAnalyticsLink) {
-        seeAnalyticsLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            showAnalyticsDashboard();
-        });
-    }
+
     
     // Setup timer for durationMinutes if enabled
     if (config.behavior.bannerSchedule.enabled && config.behavior.bannerSchedule.durationMinutes) {
@@ -3957,28 +3770,6 @@ function sendClarityConsentSignal(consentGranted) {
     }
 }
 
-// Setup password prompt events
-function setupPasswordPromptEvents() {
-    const passwordSubmit = document.getElementById('dashboardPasswordSubmit');
-    if (passwordSubmit) {
-        passwordSubmit.addEventListener('click', function() {
-            const passwordInput = document.getElementById('dashboardPasswordInput');
-            const errorMessage = document.getElementById('passwordError');
-            const lang = document.getElementById('cookieLanguageSelect') ? 
-                document.getElementById('cookieLanguageSelect').value : 'en';
-            
-            if (passwordInput.value === config.analytics.dashboardPassword) {
-                isDashboardAuthenticated = true;
-                setCookie('dashboard_auth', 'true', config.analytics.passwordCookieDuration);
-                
-                // Update the dashboard content
-                document.querySelector('.cookie-analytics-body').innerHTML = generateAnalyticsDashboard(lang);
-            } else {
-                errorMessage.textContent = translations[lang].passwordIncorrect;
-            }
-        });
-    }
-}
 
 
 
@@ -4080,9 +3871,7 @@ function setupEventListeners() {
         }
     });
     
-    document.querySelector('.close-analytics-modal').addEventListener('click', function() {
-        hideAnalyticsDashboard();
-    });
+ 
     
     document.getElementById('cookieFloatingButton').addEventListener('click', function() {
         if (!document.getElementById('cookieConsentBanner').classList.contains('show')) {
@@ -4105,7 +3894,6 @@ function showCookieBanner() {
     // NEW: Enable interaction restrictions when banner shows
     enableInteractionRestrictions();
 }
-
 
 function hideCookieBanner() {
     const banner = document.getElementById('cookieConsentBanner');
@@ -4136,33 +3924,10 @@ function hideCookieSettings() {
     }, 300);
 }
 
-function showAnalyticsDashboard() {
-    const lang = document.getElementById('cookieLanguageSelect') ? 
-        document.getElementById('cookieLanguageSelect').value : 'en';
-    
-    if (config.analytics.passwordProtect && !isDashboardAuthenticated) {
-        const modal = document.getElementById('cookieAnalyticsModal');
-        modal.style.display = 'flex';
-        setTimeout(() => {
-            modal.classList.add('show');
-        }, 10);
-    } else {
-        const modal = document.getElementById('cookieAnalyticsModal');
-        document.querySelector('.cookie-analytics-body').innerHTML = generateAnalyticsDashboard(lang);
-        modal.style.display = 'flex';
-        setTimeout(() => {
-            modal.classList.add('show');
-        }, 10);
-    }
-}
 
-function hideAnalyticsDashboard() {
-    const modal = document.getElementById('cookieAnalyticsModal');
-    modal.classList.remove('show');
-    setTimeout(() => {
-        modal.style.display = 'none';
-    }, 300);
-}
+
+
+
 
 function showFloatingButton() {
     const button = document.getElementById('cookieFloatingButton');
@@ -4179,8 +3944,6 @@ function hideFloatingButton() {
         button.style.display = 'none';
     }, 300);
 }
-
-
 
 
 
@@ -4279,6 +4042,7 @@ function setBlurDensity(density) {
 
 
 
+
 // Cookie consent functions
 function acceptAllCookies() {
 
@@ -4306,9 +4070,7 @@ function acceptAllCookies() {
     updateConsentMode(consentData);
     loadCookiesAccordingToConsent(consentData);
     
-    if (config.analytics.enabled) {
-        updateConsentStats('accepted');
-    }
+
     
     // Push dataLayer event for consent acceptance with location data and GCS
     window.dataLayer.push({
@@ -4329,13 +4091,10 @@ function acceptAllCookies() {
         'location_data': locationData
     });
 
-     // NEW: Disable interaction restrictions when user accepts
+    // Add this at the end of acceptAllCookies function
     disableInteractionRestrictions();
+  
 }
-
-
-
-
 
 function rejectAllCookies() {
 
@@ -4359,11 +4118,7 @@ function rejectAllCookies() {
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     clearNonEssentialCookies();
-    
-    if (config.analytics.enabled) {
-        updateConsentStats('rejected');
-    }
-    
+   
     // Push dataLayer event for consent rejection with location data and GCS
     window.dataLayer.push({
         'event': 'cookie_consent_rejected',
@@ -4383,9 +4138,8 @@ function rejectAllCookies() {
         'location_data': locationData
     });
 
-     // NEW: Disable interaction restrictions when user accepts
+      // Add this at the end of rejectAllCookies function
     disableInteractionRestrictions();
-   
 }
 
 function saveCustomSettings() {
@@ -4432,9 +4186,7 @@ function saveCustomSettings() {
     if (!consentData.categories.advertising) clearCategoryCookies('advertising');
     if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
     
-    if (config.analytics.enabled) {
-        updateConsentStats('custom');
-    }
+ 
     
     const consentStates = {
         'ad_storage': consentData.categories.advertising ? 'granted' : 'denied',
@@ -4486,17 +4238,9 @@ function saveCustomSettings() {
         });
     }
 
-     // NEW: Disable interaction restrictions when user accepts
+      // Add this at the end of saveCustomSettings function
     disableInteractionRestrictions();
-   
 }
-
-
-
-
-
-
-
 // Helper functions
 function clearNonEssentialCookies() {
     const cookies = document.cookie.split(';');
@@ -4872,11 +4616,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-    // Load analytics data from storage
-    if (config.analytics.enabled) {
-        loadAnalyticsData();
-    }
-
+   
     // Set default UET consent
     setDefaultUetConsent();
 
@@ -4957,6 +4697,7 @@ function checkExistingClarityConsent() {
 
 
 // Export functions for global access if needed
+// Export functions for global access if needed
 if (typeof window !== 'undefined') {
     window.cookieConsent = {
         showBanner: showCookieBanner,
@@ -4966,7 +4707,6 @@ if (typeof window !== 'undefined') {
         rejectAll: rejectAllCookies,
         saveSettings: saveCustomSettings,
         changeLanguage: changeLanguage,
-        showAnalytics: showAnalyticsDashboard,
         config: config,
         // NEW: Control functions for restrictions
         toggleRestrictions: toggleRestrictions,
