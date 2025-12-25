@@ -85,6 +85,13 @@ window.COOKIE_SETTINGS = {
 /* ============================================================
    ENHANCED COOKIE BLOCKING FIREWALL WITH DATABASE SUPPORT
 ============================================================ */
+/* ============================================================
+   COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
+   This blocks all cookies and trackers BEFORE consent is given
+============================================================ */
+/* ============================================================
+   ENHANCED COOKIE BLOCKING FIREWALL WITH DATABASE SUPPORT
+============================================================ */
 (function () {
     'use strict';
 
