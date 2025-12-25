@@ -83,12 +83,9 @@ window.COOKIE_SETTINGS = {
 /* ============================================================
    FIXED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
 ============================================================ */
+
 /* ============================================================
-   COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
-   This blocks all cookies and trackers BEFORE consent is given
-============================================================ */
-/* ============================================================
-   ENHANCED COOKIE BLOCKING FIREWALL WITH DATABASE SUPPORT
+   ENHANCED COOKIE BLOCKING FIREWALL WITH NEW TRACKER DETECTION
 ============================================================ */
 (function () {
     'use strict';
@@ -105,7 +102,7 @@ window.COOKIE_SETTINGS = {
     const storedConsent = localStorage.getItem(CONSENT_KEY);
     const storedCategories = localStorage.getItem(CATEGORIES_KEY);
     
-    console.log("🛡️ Blocking Script Initialized");
+    console.log("🛡️ Enhanced Blocking Script Initialized");
     console.log("Consent Status:", storedConsent);
     console.log("Categories:", storedCategories);
     
@@ -122,11 +119,20 @@ window.COOKIE_SETTINGS = {
         return; // Exit the blocking script
     }
     
-    // If user gave PARTIAL consent (custom categories), we'll block selectively
-    // If no consent at all, block everything
+    /* ===================== NEW: ENHANCED MONITORING ===================== */
+    // Track NEW domains and cookies that aren't in your lists
+    const newTrackerDetector = {
+        foundDomains: new Set(),
+        foundCookies: new Set(),
+        blockedCount: { domains: 0, cookies: 0 },
+        allowedCount: { domains: 0, cookies: 0 }
+    };
     
-    /* ===================== ESSENTIAL DEFINITIONS ===================== */
-    // ESSENTIAL DOMAINS & COOKIES (ALWAYS ALLOWED)
+    // Store for later reporting
+    window.newTrackerReport = newTrackerDetector;
+    
+    /* ===================== ENHANCED ESSENTIAL DEFINITIONS ===================== */
+    // ESSENTIAL DOMAINS & COOKIES (ALWAYS ALLOWED) - KEEP YOUR EXISTING
     const ESSENTIAL_DATA = {
         domains: [
             window.location.hostname,
@@ -145,113 +151,87 @@ window.COOKIE_SETTINGS = {
         ]
     };
     
-    /* ===================== BUILD LISTS FROM DATABASE ===================== */
-    // Domain to category mapping
-    const domainCategoryMap = {
-        // Analytics domains
-        'google-analytics.com': 'analytics',
-        'analytics.google.com': 'analytics',
-        'clarity.ms': 'analytics',
-        'hotjar.com': 'analytics',
-        'segment.com': 'analytics',
-        'mixpanel.com': 'analytics',
-        'heap.io': 'analytics',
-        'fullstory.com': 'analytics',
-        'mouseflow.com': 'analytics',
-        'logrocket.com': 'analytics',
-        'matomo.org': 'analytics',
-        'amplitude.com': 'analytics',
-        'pendo.io': 'analytics',
-        'optimizely.com': 'analytics',
-        'crazyegg.com': 'analytics',
-        
-        // Advertising domains
-        'googleadservices.com': 'advertising',
-        'doubleclick.net': 'advertising',
-        'googlesyndication.com': 'advertising',
-        'facebook.com': 'advertising',
-        'fbcdn.net': 'advertising',
-        'connect.facebook.net': 'advertising',
-        'bing.com': 'advertising',
-        'bat.bing.com': 'advertising',
-        'tiktok.com': 'advertising',
-        'ads.tiktok.com': 'advertising',
-        'linkedin.com': 'advertising',
-        'pinterest.com': 'advertising',
-        'criteo.com': 'advertising',
-        'adsrvr.org': 'advertising',
-        'rubiconproject.com': 'advertising',
-        'amazon-adsystem.com': 'advertising',
-        'outbrain.com': 'advertising',
-        'taboola.com': 'advertising',
-        'snapchat.com': 'advertising',
-        'twitter.com': 'advertising',
-        'reddit.com': 'advertising',
-        'youtube.com': 'advertising',
-        
-        // Performance domains
-        'cloudflare.com': 'performance',
-        'akamaihd.net': 'performance',
-        'edgekey.net': 'performance',
-        'cdnjs.cloudflare.com': 'performance',
-        'fastly.net': 'performance',
-        'cdn77.org': 'performance',
-        'keycdn.com': 'performance'
+    /* ===================== ENHANCED CATEGORY DEFINITIONS ===================== */
+    // KEEP YOUR EXISTING ANALYTICS BLOCKLIST
+    const ANALYTICS_DATA = {
+        domains: [
+            "google-analytics.com", "www.google-analytics.com", "analytics.google.com",
+            "clarity.ms", "www.clarity.ms",
+            "hotjar.com", "insights.hotjar.com",
+            "segment.com", "cdn.segment.com",
+            "mixpanel.com", "api.mixpanel.com",
+            "heap.io", "cdn.heap.io",
+            "fullstory.com", "rs.fullstory.com",
+            "mouseflow.com", "cdn.mouseflow.com",
+            "logrocket.com", "cdn.logrocket.com",
+            "matomo.org", "piwik.js", "piwikcdn.com", // Added from your mapping
+            "amplitude.com", "pendo.io", "optimizely.com", "crazyegg.com" // Added from mapping
+        ],
+        cookies: [
+            "_ga", "_gid", "_gat", "_ga_", "_gat_UA-", "_gat_gtag", "_dc_gtm_",
+            "_clck", "_clsk", "_cltk", "CLID", "ANONCHK", "SM",
+            "_hjid", "_hjIncludedInPageviewSample", "_hjClosedSurveyInvites",
+            "_hjDonePolls", "_hjMinimizedPolls", "_hjShownFeedbackMessage",
+            "hubspotutk", "__hssc", "__hssrc", "__hstc", "hsfirstvisit",
+            "_pk_id", "_pk_ses",
+            "ajs_anonymous_id", "ajs_user_id"
+        ]
     };
-
-    // Create empty category lists
-    const categoryLists = {
-        analytics: { domains: [], cookies: [] },
-        advertising: { domains: [], cookies: [] },
-        performance: { domains: [], cookies: [] }
+    
+    // KEEP YOUR EXISTING MARKETING BLOCKLIST
+    const MARKETING_DATA = {
+        domains: [
+            "googleadservices.com", "www.googleadservices.com", "doubleclick.net",
+            "www.doubleclick.net", "googlesyndication.com",
+            "facebook.com", "www.facebook.com", "connect.facebook.net",
+            "fbcdn.net", "fbsbx.com",
+            "bing.com", "bat.bing.com",
+            "tiktok.com", "analytics.tiktok.com", "ads.tiktok.com",
+            "linkedin.com", "www.linkedin.com", "snap.licdn.com",
+            "pinterest.com", "www.pinterest.com",
+            "criteo.com", "adsrvr.org", "rubiconproject.com",
+            "amazon-adsystem.com", "outbrain.com", "taboola.com",
+            "snapchat.com", "twitter.com", "reddit.com", "youtube.com", // Added from mapping
+            "adsrvr.org", "rubiconproject.com" // Added from mapping
+        ],
+        cookies: [
+            "_gcl", "_gcl_au", "gclid", "IDE", "NID", "DSID", "FPLC",
+            "_fbp", "_fbc", "fr", "xs", "c_user", "datr", "sb",
+            "_uetvid", "_uetsid", "_uetmsclkid", "MUID", "MUIDB",
+            "_ttp", "ttclid", "tt_sessionid",
+            "lidc", "bcookie", "li_sugr", "bscookie",
+            "criteo", "uid"
+        ]
     };
-
-    // Wait a moment for the main database to load, then build lists
-    setTimeout(() => {
-        // Access the main cookie database from your banner script
-        const mainCookieDatabase = window.cookieDatabase;
-        
-        if (mainCookieDatabase && typeof mainCookieDatabase === 'object') {
-            console.log("📊 Found main cookie database with", Object.keys(mainCookieDatabase).length, "cookies");
-            
-            // Fill cookie lists from database
-            for (const [cookieName, cookieInfo] of Object.entries(mainCookieDatabase)) {
-                const category = cookieInfo.category;
-                if (categoryLists[category]) {
-                    if (!categoryLists[category].cookies.includes(cookieName)) {
-                        categoryLists[category].cookies.push(cookieName);
-                    }
-                }
-            }
-            
-            console.log("✅ Analytics cookies:", categoryLists.analytics.cookies.length);
-            console.log("✅ Advertising cookies:", categoryLists.advertising.cookies.length);
-            console.log("✅ Performance cookies:", categoryLists.performance.cookies.length);
-        } else {
-            console.log("⚠️ Main cookie database not found yet, using default lists");
-            // Fallback to some common cookies
-            categoryLists.analytics.cookies = ['_ga', '_gid', '_gat', '_ga_', '_gcl_au', '_gcl_aw', '_gac_'];
-            categoryLists.advertising.cookies = ['_fbp', '_fbc', 'fr', '_uetsid', '_uetvid', 'IDE'];
-            categoryLists.performance.cookies = ['__cfduid', '__cf_bm', 'AWSALB', 'AWSALBCORS'];
-        }
-        
-        // Add domains from mapping
-        for (const [domain, category] of Object.entries(domainCategoryMap)) {
-            if (categoryLists[category]) {
-                categoryLists[category].domains.push(domain);
-                categoryLists[category].domains.push(`www.${domain}`);
-            }
-        }
-        
-        // Remove duplicates
-        for (const category in categoryLists) {
-            categoryLists[category].domains = [...new Set(categoryLists[category].domains)];
-            categoryLists[category].cookies = [...new Set(categoryLists[category].cookies)];
-        }
-        
-    }, 100); // Small delay to ensure database is loaded
-
-    /* ===================== HELPER FUNCTIONS ===================== */
+    
+    // KEEP YOUR EXISTING PERFORMANCE BLOCKLIST
+    const PERFORMANCE_DATA = {
+        domains: [
+            "cloudflare.com", "cdn.cloudflare.com",
+            "akamaihd.net", "edgekey.net",
+            "fastly.net", "cdn77.org", "keycdn.com" // Added from mapping
+        ],
+        cookies: [
+            "__cfduid", "__cf_bm", "AWSALB", "AWSALBCORS"
+        ]
+    };
+    
+    /* ===================== NEW: COMBINED BLOCKLISTS ===================== */
+    // Combine all domains/cookies for quick checking
+    const ALL_BLOCKED_DOMAINS = [
+        ...ANALYTICS_DATA.domains,
+        ...MARKETING_DATA.domains,
+        ...PERFORMANCE_DATA.domains
+    ];
+    
+    const ALL_BLOCKED_COOKIES = [
+        ...ANALYTICS_DATA.cookies,
+        ...MARKETING_DATA.cookies,
+        ...PERFORMANCE_DATA.cookies,
+        ...ESSENTIAL_DATA.cookies
+    ];
+    
+    /* ===================== ENHANCED HELPER FUNCTIONS ===================== */
     
     function getCategoryConsent(category) {
         if (!storedCategories) return false;
@@ -265,85 +245,267 @@ window.COOKIE_SETTINGS = {
         }
     }
     
-    function shouldBlockDomain(url) {
+    // NEW: Check if domain is already in ANY blocklist
+    function isDomainInBlocklists(url) {
         if (!url || typeof url !== 'string') return false;
         
-        // Check if it's an essential domain (NEVER block)
+        // Check essential domains first (never block)
         for (const domain of ESSENTIAL_DATA.domains) {
-            if (url.includes(domain)) return false;
+            if (url.includes(domain)) return 'essential';
         }
         
-        // Check domain category mapping
-        for (const [domain, category] of Object.entries(domainCategoryMap)) {
-            if (url.includes(domain) || url.includes(`www.${domain}`)) {
-                // Check if user consented to this category
-                if (!getCategoryConsent(category)) {
-                    console.log(`🛡️ Blocked ${category} Domain: ${url}`);
-                    return true;
-                }
-                return false; // User consented, don't block
+        // Check analytics domains
+        for (const domain of ANALYTICS_DATA.domains) {
+            if (url.includes(domain)) return 'analytics';
+        }
+        
+        // Check marketing domains
+        for (const domain of MARKETING_DATA.domains) {
+            if (url.includes(domain)) return 'advertising';
+        }
+        
+        // Check performance domains
+        for (const domain of PERFORMANCE_DATA.domains) {
+            if (url.includes(domain)) return 'performance';
+        }
+        
+        return false; // Not in any list
+    }
+    
+    // NEW: Check if cookie is already in ANY blocklist
+    function isCookieInBlocklists(cookieName) {
+        if (!cookieName) return false;
+        
+        // Check essential cookies first
+        for (const cookie of ESSENTIAL_DATA.cookies) {
+            if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                return 'essential';
             }
         }
         
-        return false;
+        // Check analytics cookies
+        for (const cookie of ANALYTICS_DATA.cookies) {
+            if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                return 'analytics';
+            }
+        }
+        
+        // Check marketing cookies
+        for (const cookie of MARKETING_DATA.cookies) {
+            if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                return 'advertising';
+            }
+        }
+        
+        // Check performance cookies
+        for (const cookie of PERFORMANCE_DATA.cookies) {
+            if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                return 'performance';
+            }
+        }
+        
+        return false; // Not in any list
     }
     
-    function shouldBlockCookie(cookieName) {
-        if (!cookieName) return false;
+    // NEW: Enhanced domain checking with detection
+    function shouldBlockDomain(url) {
+        if (!url || typeof url !== 'string') return false;
         
-        // Check if it's an essential cookie (NEVER block)
-        for (const cookie of ESSENTIAL_DATA.cookies) {
-            if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+        // Track ALL domains (for reporting)
+        try {
+            const domain = new URL(url).hostname;
+            newTrackerDetector.foundDomains.add(domain);
+        } catch (e) {
+            // Invalid URL, skip
+        }
+        
+        // Check if it's an essential domain (NEVER block)
+        for (const domain of ESSENTIAL_DATA.domains) {
+            if (url.includes(domain)) {
+                newTrackerDetector.allowedCount.domains++;
                 return false;
             }
         }
         
-        // Wait for database to load
-        const mainCookieDatabase = window.cookieDatabase || {};
-        
-        // First check exact match in database
-        const cookieInfo = mainCookieDatabase[cookieName];
-        if (cookieInfo) {
-            const category = cookieInfo.category;
-            if (!getCategoryConsent(category)) {
-                console.log(`🛡️ Blocked ${category} Cookie from database: ${cookieName}`);
-                return true;
+        // Check analytics domains
+        if (!getCategoryConsent('analytics')) {
+            for (const domain of ANALYTICS_DATA.domains) {
+                if (url.includes(domain)) {
+                    console.log(`🛡️ Blocked Analytics Domain: ${url}`);
+                    newTrackerDetector.blockedCount.domains++;
+                    return true;
+                }
             }
-            return false;
         }
         
-        // Check category lists (for partial matches)
+        // Check marketing domains
+        if (!getCategoryConsent('advertising')) {
+            for (const domain of MARKETING_DATA.domains) {
+                if (url.includes(domain)) {
+                    console.log(`🛡️ Blocked Marketing Domain: ${url}`);
+                    newTrackerDetector.blockedCount.domains++;
+                    return true;
+                }
+            }
+        }
+        
+        // Check performance domains
+        if (!getCategoryConsent('performance')) {
+            for (const domain of PERFORMANCE_DATA.domains) {
+                if (url.includes(domain)) {
+                    console.log(`🛡️ Blocked Performance Domain: ${url}`);
+                    newTrackerDetector.blockedCount.domains++;
+                    return true;
+                }
+            }
+        }
+        
+        // NEW: Check if domain looks like a potential tracker but isn't in lists
+        const isPotentialTracker = looksLikeTrackerDomain(url);
+        if (isPotentialTracker) {
+            console.log(`🔍 Potential new tracker domain (not blocked): ${url}`);
+            // Don't block, just log for reporting
+        }
+        
+        newTrackerDetector.allowedCount.domains++;
+        return false;
+    }
+    
+    // NEW: Enhanced cookie checking with detection
+    function shouldBlockCookie(cookieName) {
+        if (!cookieName) return false;
+        
+        // Track ALL cookies (for reporting)
+        newTrackerDetector.foundCookies.add(cookieName);
+        
+        // Check if it's an essential cookie (NEVER block)
+        for (const cookie of ESSENTIAL_DATA.cookies) {
+            if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                newTrackerDetector.allowedCount.cookies++;
+                return false;
+            }
+        }
+        
+        // Check analytics cookies
         if (!getCategoryConsent('analytics')) {
-            for (const cookie of categoryLists.analytics.cookies) {
+            for (const cookie of ANALYTICS_DATA.cookies) {
                 if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
                     console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                    newTrackerDetector.blockedCount.cookies++;
                     return true;
                 }
             }
         }
         
+        // Check marketing cookies
         if (!getCategoryConsent('advertising')) {
-            for (const cookie of categoryLists.advertising.cookies) {
+            for (const cookie of MARKETING_DATA.cookies) {
                 if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
                     console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                    newTrackerDetector.blockedCount.cookies++;
                     return true;
                 }
             }
         }
         
+        // Check performance cookies
         if (!getCategoryConsent('performance')) {
-            for (const cookie of categoryLists.performance.cookies) {
+            for (const cookie of PERFORMANCE_DATA.cookies) {
                 if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
                     console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                    newTrackerDetector.blockedCount.cookies++;
                     return true;
                 }
+            }
+        }
+        
+        // NEW: Check if cookie looks like a potential tracker but isn't in lists
+        const isPotentialTracker = looksLikeTrackerCookie(cookieName);
+        if (isPotentialTracker) {
+            console.log(`🔍 Potential new tracker cookie (not blocked): ${cookieName}`);
+            // Don't block, just log for reporting
+        }
+        
+        newTrackerDetector.allowedCount.cookies++;
+        return false;
+    }
+    
+    /* ===================== NEW: SMART DETECTION FUNCTIONS ===================== */
+    // SAFE detection - won't break your site
+    
+    function looksLikeTrackerDomain(url) {
+        const urlLower = url.toLowerCase();
+        
+        // SAFE patterns that won't break functionality
+        const safeTrackerPatterns = [
+            // Known tracking TLDs/domains
+            'doubleclick.net',
+            'googleadservices.com',
+            'googlesyndication.com',
+            'facebook.com/tr',
+            'facebook.com/fbevents',
+            'bat.bing.com',
+            'clarity.ms/tag',
+            'hotjar.com',
+            // Partial matches for common trackers
+            'analytics.js',
+            'gtag/js',
+            'fbevents.js',
+            'bat.js'
+        ];
+        
+        // Check against safe patterns
+        for (const pattern of safeTrackerPatterns) {
+            if (urlLower.includes(pattern)) {
+                return true;
             }
         }
         
         return false;
     }
     
-    /* ===================== IMPLEMENT BLOCKING ===================== */
+    function looksLikeTrackerCookie(cookieName) {
+        const cookieLower = cookieName.toLowerCase();
+        
+        // SAFE cookie patterns that are almost always trackers
+        const safeCookiePatterns = [
+            // Common tracker prefixes
+            '_ga', '_gid', '_gat',
+            '_fbp', '_fbc',
+            '_clck', '_clsk',
+            '_uet', '_uetsid',
+            '_gcl_', 'gclid',
+            'IDE', 'NID',
+            'tt_', 'ttclid',
+            'fr=', 'datr='
+        ];
+        
+        // Check for exact matches or prefixes
+        for (const pattern of safeCookiePatterns) {
+            if (cookieLower.startsWith(pattern) || 
+                cookieLower.includes('=' + pattern) ||
+                cookieLower === pattern) {
+                return true;
+            }
+        }
+        
+        // Common tracker-like patterns
+        const trackerLikePatterns = [
+            '_track', '_id', '_uuid', '_session',
+            '_visitor', '_user', 'tracking_',
+            'analytics_', 'ad_', 'pixel_'
+        ];
+        
+        for (const pattern of trackerLikePatterns) {
+            if (cookieLower.includes(pattern)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /* ===================== IMPLEMENT BLOCKING (KEEP YOUR EXISTING) ===================== */
     
     // 1. Block script loading
     const originalCreateElement = document.createElement;
@@ -486,12 +648,221 @@ window.COOKIE_SETTINGS = {
         subtree: true
     });
     
-    console.log("🛡️ Cookie blocking initialized with database support");
+    /* ===================== NEW: CONSOLE REPORTING FEATURES ===================== */
+    
+    // Function to generate comprehensive report
+    function generateTrackerReport() {
+        const now = new Date();
+        const foundDomains = Array.from(newTrackerDetector.foundDomains);
+        const foundCookies = Array.from(newTrackerDetector.foundCookies);
+        
+        // Find NEW domains not in any list
+        const newDomains = foundDomains.filter(domain => {
+            const url = `https://${domain}`;
+            return !isDomainInBlocklists(url) && looksLikeTrackerDomain(url);
+        });
+        
+        // Find NEW cookies not in any list
+        const newCookies = foundCookies.filter(cookie => {
+            return !isCookieInBlocklists(cookie) && looksLikeTrackerCookie(cookie);
+        });
+        
+        console.log('==============================================');
+        console.log('📊 ENHANCED TRACKER DETECTION REPORT');
+        console.log('==============================================');
+        console.log(`⏱️  Generated: ${now.toLocaleTimeString()}`);
+        console.log('');
+        
+        // Summary
+        console.log('📈 SUMMARY:');
+        console.log(`🌐 Total domains loaded: ${foundDomains.length}`);
+        console.log(`🍪 Total cookies found: ${foundCookies.length}`);
+        console.log(`🚫 Domains blocked: ${newTrackerDetector.blockedCount.domains}`);
+        console.log(`🚫 Cookies blocked: ${newTrackerDetector.blockedCount.cookies}`);
+        console.log(`✅ Domains allowed: ${newTrackerDetector.allowedCount.domains}`);
+        console.log(`✅ Cookies allowed: ${newTrackerDetector.allowedCount.cookies}`);
+        console.log('');
+        
+        // NEW trackers found
+        if (newDomains.length > 0 || newCookies.length > 0) {
+            console.log('🚨 POTENTIAL NEW TRACKERS FOUND:');
+            console.log('');
+            
+            if (newDomains.length > 0) {
+                console.log('🌐 NEW DOMAINS (not in your blocklists):');
+                newDomains.forEach(domain => {
+                    const category = suggestCategory(domain);
+                    console.log(`   - ${domain}`);
+                    console.log(`     💡 Suggested category: ${category}`);
+                    console.log(`     📝 Add to script: ${category.toUpperCase()}_DATA.domains.push('${domain}');`);
+                });
+                console.log('');
+            }
+            
+            if (newCookies.length > 0) {
+                console.log('🍪 NEW COOKIES (not in your blocklists):');
+                newCookies.forEach(cookie => {
+                    const category = suggestCookieCategory(cookie);
+                    console.log(`   - ${cookie}`);
+                    console.log(`     💡 Suggested category: ${category}`);
+                    console.log(`     📝 Add to script: ${category.toUpperCase()}_DATA.cookies.push('${cookie}');`);
+                });
+                console.log('');
+            }
+            
+            console.log('💡 HOW TO UPDATE:');
+            console.log('1. Copy the suggested lines above');
+            console.log('2. Add them to your blocking script');
+            console.log('3. Test on your website');
+            console.log('4. Deploy updated script');
+            
+        } else {
+            console.log('✅ No new potential trackers detected!');
+            console.log('Your current blocklists are covering everything well.');
+        }
+        
+        console.log('');
+        console.log('🔧 QUICK COMMANDS:');
+        console.log('- showBlockStats() - View blocking statistics');
+        console.log('- checkDomain("example.com") - Check a specific domain');
+        console.log('- checkCookie("cookie_name") - Check a specific cookie');
+        console.log('==============================================');
+        
+        return {
+            newDomains,
+            newCookies,
+            summary: {
+                totalDomains: foundDomains.length,
+                totalCookies: foundCookies.length,
+                blockedDomains: newTrackerDetector.blockedCount.domains,
+                blockedCookies: newTrackerDetector.blockedCount.cookies
+            }
+        };
+    }
+    
+    // Helper to suggest category for new domains
+    function suggestCategory(domain) {
+        const domainLower = domain.toLowerCase();
+        
+        if (domainLower.includes('analytics') || 
+            domainLower.includes('metrics') || 
+            domainLower.includes('clarity') ||
+            domainLower.includes('hotjar')) {
+            return 'analytics';
+        }
+        
+        if (domainLower.includes('ad') || 
+            domainLower.includes('doubleclick') ||
+            domainLower.includes('facebook') ||
+            domainLower.includes('bing') ||
+            domainLower.includes('tiktok') ||
+            domainLower.includes('criteo')) {
+            return 'advertising';
+        }
+        
+        if (domainLower.includes('cdn') || 
+            domainLower.includes('cloud') ||
+            domainLower.includes('fastly')) {
+            return 'performance';
+        }
+        
+        // Default to analytics for unknown trackers
+        return 'analytics';
+    }
+    
+    // Helper to suggest category for new cookies
+    function suggestCookieCategory(cookieName) {
+        const cookieLower = cookieName.toLowerCase();
+        
+        if (cookieLower.includes('_ga') || 
+            cookieLower.includes('_gid') ||
+            cookieLower.includes('_cl') ||
+            cookieLower.includes('_hj')) {
+            return 'analytics';
+        }
+        
+        if (cookieLower.includes('_fb') || 
+            cookieLower.includes('_uet') ||
+            cookieLower.includes('gclid') ||
+            cookieLower.includes('IDE')) {
+            return 'advertising';
+        }
+        
+        if (cookieLower.includes('__cf') || 
+            cookieLower.includes('AWS')) {
+            return 'performance';
+        }
+        
+        // Default to advertising for unknown cookies
+        return 'advertising';
+    }
+    
+    // Quick check functions
+    function checkDomain(domainUrl) {
+        const inList = isDomainInBlocklists(domainUrl);
+        const looksLikeTracker = looksLikeTrackerDomain(domainUrl);
+        
+        console.log(`🔍 Checking domain: ${domainUrl}`);
+        console.log(`   In blocklists: ${inList ? '✅ Yes (' + inList + ')' : '❌ No'}`);
+        console.log(`   Looks like tracker: ${looksLikeTracker ? '⚠️ Yes' : '✅ No'}`);
+        
+        if (!inList && looksLikeTracker) {
+            const category = suggestCategory(domainUrl);
+            console.log(`   💡 Suggested action: Add to ${category} blocklist`);
+            console.log(`   📝 Code: ${category.toUpperCase()}_DATA.domains.push('${new URL(domainUrl).hostname}');`);
+        }
+        
+        return { inList, looksLikeTracker };
+    }
+    
+    function checkCookie(cookieName) {
+        const inList = isCookieInBlocklists(cookieName);
+        const looksLikeTracker = looksLikeTrackerCookie(cookieName);
+        
+        console.log(`🔍 Checking cookie: ${cookieName}`);
+        console.log(`   In blocklists: ${inList ? '✅ Yes (' + inList + ')' : '❌ No'}`);
+        console.log(`   Looks like tracker: ${looksLikeTracker ? '⚠️ Yes' : '✅ No'}`);
+        
+        if (!inList && looksLikeTracker) {
+            const category = suggestCookieCategory(cookieName);
+            console.log(`   💡 Suggested action: Add to ${category} blocklist`);
+            console.log(`   📝 Code: ${category.toUpperCase()}_DATA.cookies.push('${cookieName}');`);
+        }
+        
+        return { inList, looksLikeTracker };
+    }
+    
+    // Show blocking statistics
+    function showBlockStats() {
+        console.log('📊 BLOCKING STATISTICS:');
+        console.log(`   Domains monitored: ${newTrackerDetector.foundDomains.size}`);
+        console.log(`   Cookies monitored: ${newTrackerDetector.foundCookies.size}`);
+        console.log(`   Domains blocked: ${newTrackerDetector.blockedCount.domains}`);
+        console.log(`   Cookies blocked: ${newTrackerDetector.blockedCount.cookies}`);
+        console.log(`   Domains allowed: ${newTrackerDetector.allowedCount.domains}`);
+        console.log(`   Cookies allowed: ${newTrackerDetector.allowedCount.cookies}`);
+    }
+    
+    /* ===================== NEW: PUBLIC API ===================== */
+    // Make functions available in console
+    window.CookieBlocker = {
+        generateReport: generateTrackerReport,
+        checkDomain: checkDomain,
+        checkCookie: checkCookie,
+        showStats: showBlockStats,
+        // Quick access to your blocklists
+        getBlocklists: function() {
+            return {
+                analytics: ANALYTICS_DATA,
+                advertising: MARKETING_DATA,
+                performance: PERFORMANCE_DATA,
+                essential: ESSENTIAL_DATA
+            };
+        }
+    };
     
     /* ===================== HOOKS FOR YOUR BANNER ===================== */
-    
-    // Your banner will call these functions when user makes a choice
-    
+    // KEEP YOUR EXISTING FUNCTIONS EXACTLY
     window.enableAllTracking = function() {
         console.log("✅ Enabling ALL tracking");
         localStorage.setItem(CONSENT_KEY, "granted");
@@ -501,7 +872,6 @@ window.COOKIE_SETTINGS = {
             performance: true
         }));
         
-        // Only reload if reload feature is enabled
         if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
@@ -514,10 +884,8 @@ window.COOKIE_SETTINGS = {
     window.enableTrackingByCategory = function(categories) {
         console.log("✅ Enabling tracking for categories:", categories);
         
-        // Store categories
         localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
         
-        // Check if all categories are enabled
         const allEnabled = categories.analytics && 
                           categories.advertising && 
                           categories.performance;
@@ -528,7 +896,6 @@ window.COOKIE_SETTINGS = {
             localStorage.setItem(CONSENT_KEY, "partial");
         }
         
-        // Only reload if reload feature is enabled
         if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
@@ -543,7 +910,6 @@ window.COOKIE_SETTINGS = {
         localStorage.removeItem(CONSENT_KEY);
         localStorage.removeItem(CATEGORIES_KEY);
         
-        // Only reload if reload feature is enabled
         if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
@@ -552,6 +918,22 @@ window.COOKIE_SETTINGS = {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
     };
+    
+    /* ===================== INITIALIZE REPORTING ===================== */
+    // Generate report after page loads
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            console.log('🕵️‍♂️ Enhanced blocking active!');
+            console.log('Type CookieBlocker.generateReport() to see new trackers');
+            console.log('Type CookieBlocker.showStats() for blocking statistics');
+            
+            // Auto-generate report in console
+            console.log('\n📋 AUTO-GENERATED REPORT:');
+            generateTrackerReport();
+        }, 3000);
+    });
+    
+    console.log("🛡️ Enhanced blocking initialized with new tracker detection");
     
 })();
 
