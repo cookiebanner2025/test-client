@@ -79,11 +79,9 @@ window.COOKIE_SETTINGS = {
    This blocks all cookies and trackers BEFORE consent is given
 ============================================================ */
 /* ============================================================
-   COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
-   This blocks all cookies and trackers BEFORE consent is given
-============================================================ */
+   ENHANCED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
 /* ============================================================
-   ENHANCED COOKIE BLOCKING FIREWALL WITH DATABASE SUPPORT
+   FIXED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
 ============================================================ */
 /* ============================================================
    COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
@@ -557,12 +555,9 @@ window.COOKIE_SETTINGS = {
     
 })();
 
+// YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
 
-// Make cookie database globally available
-window.cookieDatabase = cookieDatabase;
-
-
-
+// YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
 /**
  * Microsoft Clarity Configuration
  * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
