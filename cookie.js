@@ -715,30 +715,11 @@ window.COOKIE_SETTINGS = {
 
 
 
-// ADD: Cleanup on page unload
-const beforeUnloadHandler = () => {
+    // ADD: Cleanup on page unload
+window.addEventListener('beforeunload', () => {
     clearInterval(cookieCleanupInterval);
     iframeObserver.disconnect();
-    
-    // Clean up all mutation observers
-    if (typeof blockInlineTrackersObserver !== 'undefined') {
-        blockInlineTrackersObserver.disconnect();
-    }
-    
-    // Clean up document event listeners
-    if (typeof cleanupEventListeners === 'function') {
-        cleanupEventListeners();
-    }
-};
-
-window.addEventListener('beforeunload', beforeUnloadHandler);
-
-// Also add to cleanupFunctions array
-if (typeof cleanupFunctions !== 'undefined') {
-    cleanupFunctions.push(() => {
-        window.removeEventListener('beforeunload', beforeUnloadHandler);
-    });
-}
+});
 
 
     
@@ -796,81 +777,56 @@ if (typeof cleanupFunctions !== 'undefined') {
 
 
  /* ===================== CLEANUP SYSTEM ===================== */
-
-let cleanupFunctions = [];
-
-// Store references to all event listeners
-let eventListeners = [];
-
-function addCleanup(fn) {
-    cleanupFunctions.push(fn);
-}
-
-// Function to add tracked event listeners
-function addTrackedEventListener(element, event, handler) {
-    element.addEventListener(event, handler);
-    eventListeners.push({ element, event, handler });
-}
-
-// Function to remove all tracked event listeners
-function cleanupEventListeners() {
-    eventListeners.forEach(listener => {
-        listener.element.removeEventListener(listener.event, listener.handler);
-    });
-    eventListeners = [];
-}
-
-// Call this when banner is dismissed
-function cleanup() {
-    // Clean up observers
-    iframeObserver.disconnect();
+    // FIX: Clean up event listeners and observers
+   function cleanup() {
+    console.log("🧹 Cleaning up event listeners...");
     
-    if (typeof blockInlineTrackersObserver !== 'undefined') {
-        blockInlineTrackersObserver.disconnect();
+    // 1. Clean up the toggle cookie value listener (we fixed this earlier)
+    if (typeof toggleCookieValueHandler !== 'undefined') {
+        document.removeEventListener('click', toggleCookieValueHandler);
+        console.log("✅ Removed cookie toggle listener");
     }
     
-    // Clean up all tracked event listeners
-    cleanupEventListeners();
+    // 2. Clean up continue acceptance listener (we fixed this earlier)
+    if (typeof continueAcceptHandler !== 'undefined' && continueAcceptHandler !== null) {
+        document.removeEventListener('click', continueAcceptHandler);
+        console.log("✅ Removed continue acceptance listener");
+    }
     
-    // Clean up all functions
+    // 3. Clean up scroll acceptance listener
+    if (typeof scrollAcceptHandler !== 'undefined' && scrollAcceptHandler !== null) {
+        window.removeEventListener('scroll', scrollAcceptHandler);
+        console.log("✅ Removed scroll acceptance listener");
+    }
+    
+    // 4. Clean up beforeunload listener
+    if (typeof beforeUnloadHandler !== 'undefined') {
+        window.removeEventListener('beforeunload', beforeUnloadHandler);
+        console.log("✅ Removed beforeunload listener");
+    }
+    
+    // 5. Clean up banner button click listeners
+    const acceptBtn = document.getElementById('acceptAllBtn');
+    const rejectBtn = document.getElementById('rejectAllBtn');
+    const adjustBtn = document.getElementById('adjustConsentBtn');
+    
+    if (acceptBtn) acceptBtn.removeEventListener('click', acceptAllCookies);
+    if (rejectBtn) rejectBtn.removeEventListener('click', rejectAllCookies);
+    if (adjustBtn) adjustBtn.removeEventListener('click', showCookieSettings);
+    
+    console.log("✅ Removed banner button listeners");
+    
+    // Your existing cleanup code continues...
+    iframeObserver.disconnect();
     cleanupFunctions.forEach(fn => fn());
     cleanupFunctions = [];
     
-    // Clean up interval
-    clearInterval(cookieCleanupInterval);
-    
-    // Clean up DOM elements
+    // Clean up mutation observers
     document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
-        if (script.parentNode) {
-            script.parentNode.removeChild(script);
-        }
+        script.parentNode.removeChild(script);
     });
-}
-
-// Make sure cleanup is called when consent is given
-const originalAcceptAllCookies = acceptAllCookies;
-const originalRejectAllCookies = rejectAllCookies;
-const originalSaveCustomSettings = saveCustomSettings;
-
-if (typeof acceptAllCookies !== 'undefined') {
-    acceptAllCookies = function() {
-        cleanup();
-        return originalAcceptAllCookies.apply(this, arguments);
-    };
-}
-
-if (typeof rejectAllCookies !== 'undefined') {
-    rejectAllCookies = function() {
-        cleanup();
-        return originalRejectAllCookies.apply(this, arguments);
-    };
-}
-
-if (typeof saveCustomSettings !== 'undefined') {
-    saveCustomSettings = function() {
-        cleanup();
-        return originalSaveCustomSettings.apply(this, arguments);
-    };
+    
+    console.log("✅ Cleanup complete!");
 }
 
     
@@ -4313,25 +4269,29 @@ function sendClarityConsentSignal(consentGranted) {
     });
     
     // Setup cookie value toggles for mobile
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('toggle-cookie-value')) {
-            const cell = e.target.closest('.cookie-value-cell');
-            const full = cell.querySelector('.cookie-value-full');
-            const truncated = cell.querySelector('.cookie-value-truncated');
-            
-            if (e.target.dataset.state === 'truncated') {
-                full.style.display = 'inline';
-                truncated.style.display = 'none';
-                e.target.textContent = 'Hide full';
-                e.target.dataset.state = 'full';
-            } else {
-                full.style.display = 'none';
-                truncated.style.display = 'inline';
-                e.target.textContent = 'Show full';
-                e.target.dataset.state = 'truncated';
-            }
+// FIXED: Cookie value toggles - named function for cleanup
+const toggleCookieValueHandler = function(e) {
+    if (e.target.classList.contains('toggle-cookie-value')) {
+        const cell = e.target.closest('.cookie-value-cell');
+        const full = cell.querySelector('.cookie-value-full');
+        const truncated = cell.querySelector('.cookie-value-truncated');
+        
+        if (e.target.dataset.state === 'truncated') {
+            full.style.display = 'inline';
+            truncated.style.display = 'none';
+            e.target.textContent = 'Hide full';
+            e.target.dataset.state = 'full';
+        } else {
+            full.style.display = 'none';
+            truncated.style.display = 'inline';
+            e.target.textContent = 'Show full';
+            e.target.dataset.state = 'truncated';
         }
-    });
+    }
+};
+
+// Add the listener
+document.addEventListener('click', toggleCookieValueHandler);
     
 
     
@@ -4696,11 +4656,13 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
     // NEW: Disable interaction restrictions when user accepts
     disableInteractionRestrictions();
+
+      // ADD THIS LINE:
+    cleanup(); // Clean up memory
     
     console.log("✅ All cookies accepted, page will reload");
 
-     // ADD THIS LINE:
-    cleanup(); // Clean up memory
+   
     
 }
 
@@ -4769,11 +4731,12 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
     // Add this at the end of rejectAllCookies function
     disableInteractionRestrictions();
+       // ADD THIS LINE:
+    cleanup(); // Clean up memory
     
     console.log("✅ All cookies rejected, page will reload");
 
-      // ADD THIS LINE:
-    cleanup(); // Clean up memory
+   
     
 }
 
@@ -4924,11 +4887,12 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         // NEW: Disable interaction restrictions when user saves custom settings
     disableInteractionRestrictions();
    
-    console.log("✅ Custom settings saved and page will reload");
 
     // ADD THIS LINE:
     cleanup(); // Clean up memory
     
+    console.log("✅ Custom settings saved and page will reload");
+
 }
 
 
@@ -5356,19 +5320,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // Handle continue button acceptance if enabled
-    if (config.behavior.acceptOnContinue) {
-        document.addEventListener('click', function(e) {
-            if (!getCookie('cookie_consent') && bannerShown && 
-                !e.target.closest('#cookieConsentBanner') && 
-                !e.target.closest('#cookieSettingsModal')) {
-                acceptAllCookies();
-                hideCookieBanner();
-                if (config.behavior.showFloatingButton) {
-                    showFloatingButton();
-                }
+ // FIXED: Continue button acceptance - named function for cleanup
+let continueAcceptHandler = null;
+
+if (config.behavior.acceptOnContinue) {
+    continueAcceptHandler = function(e) {
+        if (!getCookie('cookie_consent') && bannerShown && 
+            !e.target.closest('#cookieConsentBanner') && 
+            !e.target.closest('#cookieSettingsModal')) {
+            acceptAllCookies();
+            hideCookieBanner();
+            if (config.behavior.showFloatingButton) {
+                showFloatingButton();
             }
-        });
-    }
+        }
+    };
+    
+    document.addEventListener('click', continueAcceptHandler);
+}
 });
 
 
