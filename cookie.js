@@ -86,7 +86,6 @@ window.COOKIE_SETTINGS = {
 
 
 
-
 (function () {
     'use strict';
 
@@ -285,12 +284,28 @@ window.COOKIE_SETTINGS = {
     };
     
     // ESSENTIAL DOMAINS & COOKIES (ALWAYS ALLOWED)
+    // ============================================================================
+    // ADDED: Shopify domains for better Shopify compatibility
+    // ============================================================================
     const ESSENTIAL_DATA = {
         domains: [
             window.location.hostname,
             "cdnjs.cloudflare.com", "ajax.googleapis.com",
             "fonts.googleapis.com", "fonts.gstatic.com",
-            "maps.googleapis.com", "stripe.com", "paypal.com"
+            "maps.googleapis.com", "stripe.com", "paypal.com",
+            // ============================================================================
+            // ADDED: Shopify essential domains
+            // ============================================================================
+            "shopify.com", "*.shopify.com",
+            "myshopify.com", "*.myshopify.com",
+            "shopifycdn.com", "*.shopifycdn.com",
+            "shopifystatic.com",
+            // ============================================================================
+            // ADDED: Additional essential domains for e-commerce
+            // ============================================================================
+            "woocommerce.com", "*.woocommerce.com",
+            "bigcommerce.com", "*.bigcommerce.com",
+            "magento.com", "*.magento.com"
         ],
         cookies: [
             "PHPSESSID", "JSESSIONID", "ASP.NET_SessionId",
@@ -299,7 +314,18 @@ window.COOKIE_SETTINGS = {
             "cookie_consent", "__user_cookie_consent__", "__user_cookie_categories__",
             "cart_token", "cart_items", "checkout_token",
             "woocommerce_cart_hash", "woocommerce_items_in_cart",
-            "csrftoken", "XSRF-TOKEN", "_csrf"
+            "csrftoken", "XSRF-TOKEN", "_csrf",
+            // ============================================================================
+            // ADDED: Shopify essential cookies
+            // ============================================================================
+            "shopify_cart_token", "secure_customer_sig",
+            "_shopify_s", "_shopify_sa_p", "_shopify_sa_t",
+            "_shopify_y", "_shopify_fs",
+            "_orig_referrer", "_landing_page", "_referring_shop",
+            // ============================================================================
+            // ADDED: Additional e-commerce cookies
+            // ============================================================================
+            "magento_cart", "bigcommerce_cart"
         ]
     };
     
@@ -317,7 +343,13 @@ window.COOKIE_SETTINGS = {
         
         // Check if it's an essential domain (NEVER block)
         for (const domain of ESSENTIAL_DATA.domains) {
-            if (domainMatches(url, domain)) return false;
+            // Handle wildcard domains like *.shopify.com
+            if (domain.startsWith('*.')) {
+                const baseDomain = domain.substring(2); // Remove "*."
+                if (domainMatches(url, baseDomain)) return false;
+            } else if (domainMatches(url, domain)) {
+                return false;
+            }
         }
         
         // Check analytics domains - ONLY block if analytics consent is FALSE
@@ -358,7 +390,22 @@ window.COOKIE_SETTINGS = {
         
         // Check if it's an essential cookie (NEVER block)
         for (const cookie of ESSENTIAL_DATA.cookies) {
-            if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+            // ============================================================================
+            // IMPROVED: Safer cookie matching logic
+            // Uses startsWith() for prefix cookies and exact match for others
+            // Prevents false positives with similar cookie names
+            // ============================================================================
+            if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                // For cookies that end with _ or - (like _ga_, wp-settings-)
+                // These are prefixes, so use startsWith()
+                if (cookieName.startsWith(cookie)) {
+                    return false;
+                }
+            } else if (cookieName === cookie) {
+                // Exact match for specific cookie names
+                return false;
+            } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                // Fallback for broader matches (legacy compatibility)
                 return false;
             }
         }
@@ -366,7 +413,21 @@ window.COOKIE_SETTINGS = {
         // Check analytics cookies - ONLY block if analytics consent is FALSE
         if (!getCategoryConsent('analytics')) {
             for (const cookie of ANALYTICS_DATA.cookies) {
-                if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                // ============================================================================
+                // IMPROVED: Safer cookie matching for analytics
+                // ============================================================================
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    // Prefix cookies like _ga_, _gat_UA-
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                        return true;
+                    }
+                } else if (cookieName === cookie) {
+                    // Exact match
+                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                    return true;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    // Fallback
                     if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
                     return true;
                 }
@@ -376,7 +437,21 @@ window.COOKIE_SETTINGS = {
         // Check marketing cookies - ONLY block if advertising consent is FALSE
         if (!getCategoryConsent('advertising')) {
             for (const cookie of MARKETING_DATA.cookies) {
-                if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                // ============================================================================
+                // IMPROVED: Safer cookie matching for marketing
+                // ============================================================================
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    // Prefix cookies
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                        return true;
+                    }
+                } else if (cookieName === cookie) {
+                    // Exact match
+                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                    return true;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    // Fallback
                     if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
                     return true;
                 }
@@ -386,7 +461,21 @@ window.COOKIE_SETTINGS = {
         // Check performance cookies - ONLY block if performance consent is FALSE
         if (!getCategoryConsent('performance')) {
             for (const cookie of PERFORMANCE_DATA.cookies) {
-                if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                // ============================================================================
+                // IMPROVED: Safer cookie matching for performance
+                // ============================================================================
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    // Prefix cookies
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                        return true;
+                    }
+                } else if (cookieName === cookie) {
+                    // Exact match
+                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                    return true;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    // Fallback
                     if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
                     return true;
                 }
@@ -765,7 +854,6 @@ window.COOKIE_SETTINGS = {
             ...PERFORMANCE_DATA.cookies
         ];
         
-        // Note: This would need the trackerDetection setup to work
         console.log('================================');
         console.log('🔍 TRACKER DETECTION REPORT');
         console.log('================================');
@@ -801,13 +889,15 @@ window.COOKIE_SETTINGS = {
     
     if (DEBUG) {
         console.log("========================================");
-        console.log("🎯 ENTERPRISE-GRADE BLOCKING FEATURES:");
+        console.log("🎯 ENHANCED BLOCKING FEATURES:");
         console.log("========================================");
         console.log("• Category-based consent");
         console.log("• Extension hiding (when AGGRESSIVE_MODE = true)");
         console.log("• Safe default (AGGRESSIVE_MODE = false)");
         console.log("• Limited cookie cleanup (10 cycles)");
         console.log("• Production-safe blocking");
+        console.log("• Enhanced Shopify support");
+        console.log("• Safer cookie matching logic");
         console.log("========================================");
         console.log("⚠️  IMPORTANT: For production, use:");
         console.log("   window.COOKIE_SETTINGS = {");
