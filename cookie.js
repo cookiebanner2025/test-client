@@ -4825,6 +4825,7 @@ function loadPerformanceCookies() {
     // This would typically load performance optimization scripts
 }
 
+
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
     // Ensure location data is loaded first
