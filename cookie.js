@@ -668,16 +668,16 @@ window.COOKIE_SETTINGS = {
     }
     
     // 5. Block iframes
-const iframeObserver = new MutationObserver(function iframeMutationHandler(mutations) {
-    mutations.forEach(function (mutation) {
-        mutation.addedNodes.forEach(function (node) {
-            if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
-                if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
-                node.remove();
-            }
+    const iframeObserver = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            mutation.addedNodes.forEach(function (node) {
+                if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
+                    if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
+                    node.remove();
+                }
+            });
         });
     });
-});
     
     iframeObserver.observe(document.documentElement, {
         childList: true,
@@ -716,68 +716,53 @@ const iframeObserver = new MutationObserver(function iframeMutationHandler(mutat
 
 
     // ADD: Cleanup on page unload
-    function cleanupBeforeUnload() {
-        clearInterval(cookieCleanupInterval);
-        iframeObserver.disconnect();
-        if (inlineScriptObserver) {
-            inlineScriptObserver.disconnect();
-        }
-        cleanup(); // Call the main cleanup function
-    }
+window.addEventListener('beforeunload', () => {
+    clearInterval(cookieCleanupInterval);
+    iframeObserver.disconnect();
+});
 
-    window.addEventListener('beforeunload', cleanupBeforeUnload);
-    
-    // Also add to cleanupFunctions for proper cleanup
-    addCleanup(function() {
-        window.removeEventListener('beforeunload', cleanupBeforeUnload);
-    });
 
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
     function blockInlineTrackers() {
-  // 7. Block inline tracking scripts - IMPROVED DETECTION
-function blockInlineTrackers() {
-    document.querySelectorAll('script:not([src])').forEach(function (script) {
-        const content = script.textContent || script.innerText;
-        if (content) {
-            // ============================================================================
-            // IMPROVED DETECTION: More precise targeting
-            // Avoids false positives on legitimate dataLayer usage
-            // ============================================================================
-            const hasTrackingPattern = 
-                /(gtag\s*\(|fbq\s*\(|clarity\.|hj.*\(|mixpanel\.|segment\.)/i.test(content);
-            
-            // Check for specific tracking function calls, not just "dataLayer"
-            const hasTrackingCode = 
-                content.includes('google-analytics') || 
-                content.includes('gtag(') || 
-                content.includes('fbq(') ||
-                content.includes('clarity') ||
-                content.includes('hotjar');
-            
-            if (hasTrackingPattern || hasTrackingCode) {
-                // Check if user has consented to the relevant category
-                const isAnalyticsCode = /(google-analytics|gtag|clarity|hotjar|mixpanel|segment)/i.test(content);
-                const isMarketingCode = /(fbq|facebook|doubleclick|googleadservices)/i.test(content);
+        document.querySelectorAll('script:not([src])').forEach(function (script) {
+            const content = script.textContent || script.innerText;
+            if (content) {
+                // ============================================================================
+                // IMPROVED DETECTION: More precise targeting
+                // Avoids false positives on legitimate dataLayer usage
+                // ============================================================================
+                const hasTrackingPattern = 
+                    /(gtag\s*\(|fbq\s*\(|clarity\.|hj.*\(|mixpanel\.|segment\.)/i.test(content);
                 
-                if ((isAnalyticsCode && !getCategoryConsent('analytics')) ||
-                    (isMarketingCode && !getCategoryConsent('advertising'))) {
-                    if (DEBUG) console.log('🛡️ Blocked inline tracker script');
-                    script.remove();
+                // Check for specific tracking function calls, not just "dataLayer"
+                const hasTrackingCode = 
+                    content.includes('google-analytics') || 
+                    content.includes('gtag(') || 
+                    content.includes('fbq(') ||
+                    content.includes('clarity') ||
+                    content.includes('hotjar');
+                
+                if (hasTrackingPattern || hasTrackingCode) {
+                    // Check if user has consented to the relevant category
+                    const isAnalyticsCode = /(google-analytics|gtag|clarity|hotjar|mixpanel|segment)/i.test(content);
+                    const isMarketingCode = /(fbq|facebook|doubleclick|googleadservices)/i.test(content);
+                    
+                    if ((isAnalyticsCode && !getCategoryConsent('analytics')) ||
+                        (isMarketingCode && !getCategoryConsent('advertising'))) {
+                        if (DEBUG) console.log('🛡️ Blocked inline tracker script');
+                        script.remove();
+                    }
                 }
             }
-        }
+        });
+    }
+    
+    blockInlineTrackers();
+    new MutationObserver(blockInlineTrackers).observe(document.documentElement, {
+        childList: true,
+        subtree: true
     });
-}
-
-blockInlineTrackers();
-
-// Create a named observer for cleanup
-const inlineScriptObserver = new MutationObserver(blockInlineTrackers);
-inlineScriptObserver.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-});
     
     if (DEBUG) {
         console.log("✅ Inline script blocking activated");
@@ -791,8 +776,7 @@ inlineScriptObserver.observe(document.documentElement, {
 
 
 
-
-/* ===================== CLEANUP SYSTEM ===================== */
+ /* ===================== CLEANUP SYSTEM ===================== */
     // FIX: Clean up event listeners and observers
     let cleanupFunctions = [];
 
@@ -800,31 +784,17 @@ inlineScriptObserver.observe(document.documentElement, {
         cleanupFunctions.push(fn);
     }
 
-    // Call this when banner is dismissed or consent is given
+    // Call this when banner is dismissed
     function cleanup() {
-        // Disconnect all observers
         iframeObserver.disconnect();
-        if (inlineScriptObserver) {
-            inlineScriptObserver.disconnect();
-        }
-        
-        // Clear all intervals
-        if (cookieCleanupInterval) {
-            clearInterval(cookieCleanupInterval);
-        }
-        
-        // Execute all cleanup functions
         cleanupFunctions.forEach(fn => fn());
         cleanupFunctions = [];
         
-        // Clean up any leftover elements
+        // Clean up mutation observers
         document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
             script.parentNode.removeChild(script);
         });
     }
-
-    // Store cleanup function globally for access
-    window.cleanupBlocking = cleanup;
 
 
     
@@ -1119,7 +1089,6 @@ clarityConfig: {
         bannerDelay: 0, // Desktop delay (seconds)
         bannerDelayMobile: 0, // Mobile delay (seconds) - add this line
         rememberLanguage: true,
-     
         acceptOnContinue: false,
         
         // NEW: Restrict user interaction when banner is visible
@@ -4267,8 +4236,7 @@ function sendClarityConsentSignal(consentGranted) {
     });
     
     // Setup cookie value toggles for mobile
-    // Setup cookie value toggles for mobile
-    function handleCookieValueToggle(e) {
+    document.addEventListener('click', function(e) {
         if (e.target.classList.contains('toggle-cookie-value')) {
             const cell = e.target.closest('.cookie-value-cell');
             const full = cell.querySelector('.cookie-value-full');
@@ -4286,14 +4254,8 @@ function sendClarityConsentSignal(consentGranted) {
                 e.target.dataset.state = 'truncated';
             }
         }
-    }
-    
-    document.addEventListener('click', handleCookieValueToggle);
-    
-    // Add cleanup for this event listener
-    addCleanup(function() {
-        document.removeEventListener('click', handleCookieValueToggle);
     });
+    
 
     
     // Setup password prompt events if needed
@@ -5230,11 +5192,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
         if (!sessionStorage.getItem('locationData')) {
             console.log('Fetching fresh location data...');
-            locationData = await fetchLocationData(); // This will now push to dataLayer
+            locationData = await fetchLocationData();
         } else {
             console.log('Using cached location data');
             locationData = JSON.parse(sessionStorage.getItem('locationData'));
-            // Push cached data to dataLayer
             pushGeoDataToDataLayer(locationData);
         }
         
@@ -5243,13 +5204,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Failed to load location data:', e);
     }
 
-      // Check existing consent for Clarity compliance
+    // Check existing consent for Clarity compliance
     checkExistingClarityConsent();
 
-  
     // Store query parameters on page load
     storeQueryParams();
-   
 
     // Check existing consent on page load and apply to Clarity
     const existingConsent = getClarityConsentState();
@@ -5257,27 +5216,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         ensureClarityConsentSignal(existingConsent);
     }
 
-
-
-
-
-
-
-  
- // Check if domain is allowed
+    // Check if domain is allowed
     if (!isDomainAllowed()) {
         console.log('Cookie consent banner not shown - domain not allowed');
         return;
     }
 
-  
     // Set default UET consent
     setDefaultUetConsent();
 
     // Fetch location data asynchronously
     await fetchLocationData();
     
-      // Check geo-targeting before proceeding
+    // Check geo-targeting before proceeding
     const geoAllowed = checkGeoTargeting(locationData);
     if (!geoAllowed) {
         console.log('Cookie consent banner not shown - geo-targeting restriction');
@@ -5295,10 +5246,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Initialize cookie consent
     initializeCookieConsent(detectedCookies, userLanguage);
+});
 
 
 
-   
+
 
 
 // Add this function to check consent on each page load
