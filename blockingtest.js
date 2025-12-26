@@ -4409,6 +4409,9 @@ function showCookieBanner() {
 function hideCookieBanner() {
     const banner = document.getElementById('cookieConsentBanner');
     
+    // ADD THIS CHECK:
+    if (!banner) return; // If banner doesn't exist, exit early
+    
     // Fast fade out (0.2 seconds instead of 0.4)
     banner.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
     banner.style.opacity = '0';
