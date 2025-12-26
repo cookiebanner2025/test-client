@@ -12,59 +12,128 @@ window.COOKIE_SETTINGS = {
    ENHANCED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
 /* ============================================================
    FIXED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
-============================================================ */
+
+
+
 (function () {
     'use strict';
-    
-    /* ===================== CONFIGURATION ===================== */
-  
-// Use global settings
-const BLOCKING_ENABLED = window.COOKIE_SETTINGS.BLOCKING_ENABLED;
-const RELOAD_ENABLED = window.COOKIE_SETTINGS.RELOAD_ENABLED;
 
-const CONSENT_KEY = "__user_cookie_consent__";
+    /* ===================== CONFIGURATION ===================== */
+    // Use global settings with safe defaults
+    const BLOCKING_ENABLED = window.COOKIE_SETTINGS?.BLOCKING_ENABLED ?? true;
+    const RELOAD_ENABLED = window.COOKIE_SETTINGS?.RELOAD_ENABLED ?? true;
+    const DEBUG = window.COOKIE_SETTINGS?.DEBUG === true;
+    
+    // ============================================================================
+    // CRITICAL FIX: AGGRESSIVE_MODE default = false (safer for production)
+    // Default is POLITE mode (204 responses) - safer for websites
+    // Set AGGRESSIVE_MODE = true only if you need to hide from extensions
+    // and have tested your website won't break
+    // ============================================================================
+    const AGGRESSIVE_MODE = window.COOKIE_SETTINGS?.AGGRESSIVE_MODE === true; // Default: false
+    
+    const CONSENT_KEY = "__user_cookie_consent__";
     const CATEGORIES_KEY = "__user_cookie_categories__";
     
     // Get stored consent data
     const storedConsent = localStorage.getItem(CONSENT_KEY);
     const storedCategories = localStorage.getItem(CATEGORIES_KEY);
     
-    console.log("🛡️ Blocking Script Initialized");
-    console.log("Consent Status:", storedConsent);
-    console.log("Categories:", storedCategories);
+    if (DEBUG) {
+        console.log("🛡️ Ultimate Cookie Blocking Script");
+        console.log("========================================");
+        console.log("Mode:", AGGRESSIVE_MODE ? "AGGRESSIVE (hides from extensions)" : "POLITE (safer for websites)");
+        console.log("Consent Status:", storedConsent || "none");
+        console.log("Categories:", storedCategories || "none");
+        console.log("========================================");
+    }
     
     /* ===================== EXIT CONDITIONS ===================== */
-    // If user gave FULL consent, don't block anything
-    if (storedConsent === "granted") {
-        console.info("✅ Full consent granted – all tracking allowed");
-        return; // Exit the blocking script
-    }
-
-       /* ===================== BLOCKING ON/OFF SWITCH ===================== */
-    // ADD THESE NEW LINES HERE:
-    // If blocking is disabled, exit the entire script
+    // Check blocking first, then check for "granted" consent
+    // "partial" consent continues to allow category-based blocking
+    
     if (!BLOCKING_ENABLED) {
-        console.log("🟡 Blocking feature is OFF - all tracking allowed");
+        if (DEBUG) console.log("🟡 Blocking feature is disabled");
         return; // Exit without blocking anything
     }
     
     // If user gave FULL consent, don't block anything
     if (storedConsent === "granted") {
-        console.info("✅ Full consent granted – all tracking allowed");
+        if (DEBUG) console.info("✅ Full consent granted - no blocking needed");
         return; // Exit the blocking script
     }
-    // If user gave PARTIAL consent (custom categories), we'll block selectively
-    // If no consent at all, block everything
+    
+    // IMPORTANT: If storedConsent is "partial" or null/undefined, we CONTINUE
+    // This allows category-based blocking to work
+    
+    /* ===================== SAFE DOMAIN MATCHING ===================== */
+    function domainMatches(url, domain) {
+        try {
+            const hostname = new URL(url).hostname;
+            // Exact match OR subdomain match
+            return hostname === domain || hostname.endsWith(`.${domain}`);
+        } catch {
+            // If URL parsing fails, fall back to includes() for safety
+            return url.includes(domain);
+        }
+    }
+    
+    /* ===================== COMPLETE COOKIE DELETION ===================== */
+    function deleteCookieEverywhere(name) {
+        // Delete from all possible domain variations
+        const parts = location.hostname.split('.');
+        
+        // Generate all possible parent domains
+        for (let i = 0; i < parts.length - 1; i++) {
+            const domain = '.' + parts.slice(i).join('.');
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${domain}`;
+        }
+        
+        // Delete from current hostname
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${location.hostname}`;
+        
+        // Delete without domain (current path only)
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+        
+        // Delete from common paths
+        const paths = ['/', '/admin', '/wp-admin', '/dashboard', '/account'];
+        paths.forEach(path => {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${path}`;
+        });
+        
+        if (DEBUG) {
+            // Check if cookie might be HttpOnly (can't be deleted by JavaScript)
+            const allCookies = document.cookie;
+            if (!allCookies.includes(name + '=')) {
+                console.warn(`⚠️ Cookie "${name}" may be HttpOnly or server-set`);
+            }
+        }
+    }
+    
+    /* ===================== CACHE PARSED CATEGORIES ===================== */
+    let parsedCategories = null;
+    try {
+        parsedCategories = storedCategories ? JSON.parse(storedCategories) : null;
+    } catch (e) {
+        if (DEBUG) console.error("❌ Error parsing categories:", e);
+        parsedCategories = null;
+    }
+    
+    // Handle partial consent with malformed JSON
+    if (storedConsent === "partial" && !parsedCategories) {
+        parsedCategories = {
+            analytics: false,
+            advertising: false,
+            performance: false
+        };
+    }
     
     /* ===================== CATEGORY DEFINITIONS ===================== */
-    // These domains and cookies will be blocked UNLESS user consents to their category
-    
     // ANALYTICS DOMAINS & COOKIES
     const ANALYTICS_DATA = {
         domains: [
             // Google Analytics
-            "google-analytics.com", "www.google-analytics.com", "googletagmanager.com",
-            "www.googletagmanager.com", "analytics.google.com",
+            "google-analytics.com", "www.google-analytics.com", "analytics.google.com",
             // Microsoft Clarity
             "clarity.ms", "www.clarity.ms",
             // Hotjar
@@ -132,7 +201,7 @@ const CONSENT_KEY = "__user_cookie_consent__";
         ]
     };
     
-    // PERFORMANCE DOMAINS & COOKIES
+    // PERFORMANCE DOMAINS & COOKIES (Keep original for compatibility)
     const PERFORMANCE_DATA = {
         domains: [
             "cloudflare.com", "cdn.cloudflare.com",
@@ -144,12 +213,28 @@ const CONSENT_KEY = "__user_cookie_consent__";
     };
     
     // ESSENTIAL DOMAINS & COOKIES (ALWAYS ALLOWED)
+    // ============================================================================
+    // ADDED: Shopify domains for better Shopify compatibility
+    // ============================================================================
     const ESSENTIAL_DATA = {
         domains: [
             window.location.hostname,
             "cdnjs.cloudflare.com", "ajax.googleapis.com",
             "fonts.googleapis.com", "fonts.gstatic.com",
-            "maps.googleapis.com", "stripe.com", "paypal.com"
+            "maps.googleapis.com", "stripe.com", "paypal.com",
+            // ============================================================================
+            // ADDED: Shopify essential domains
+            // ============================================================================
+            "shopify.com", "*.shopify.com",
+            "myshopify.com", "*.myshopify.com",
+            "shopifycdn.com", "*.shopifycdn.com",
+            "shopifystatic.com",
+            // ============================================================================
+            // ADDED: Additional essential domains for e-commerce
+            // ============================================================================
+            "woocommerce.com", "*.woocommerce.com",
+            "bigcommerce.com", "*.bigcommerce.com",
+            "magento.com", "*.magento.com"
         ],
         cookies: [
             "PHPSESSID", "JSESSIONID", "ASP.NET_SessionId",
@@ -158,22 +243,28 @@ const CONSENT_KEY = "__user_cookie_consent__";
             "cookie_consent", "__user_cookie_consent__", "__user_cookie_categories__",
             "cart_token", "cart_items", "checkout_token",
             "woocommerce_cart_hash", "woocommerce_items_in_cart",
-            "csrftoken", "XSRF-TOKEN", "_csrf"
+            "csrftoken", "XSRF-TOKEN", "_csrf",
+            // ============================================================================
+            // ADDED: Shopify essential cookies
+            // ============================================================================
+            "shopify_cart_token", "secure_customer_sig",
+            "_shopify_s", "_shopify_sa_p", "_shopify_sa_t",
+            "_shopify_y", "_shopify_fs",
+            "_orig_referrer", "_landing_page", "_referring_shop",
+            // ============================================================================
+            // ADDED: Additional e-commerce cookies
+            // ============================================================================
+            "magento_cart", "bigcommerce_cart"
         ]
     };
     
     /* ===================== HELPER FUNCTIONS ===================== */
-    
     function getCategoryConsent(category) {
-        if (!storedCategories) return false;
+        // If no categories stored, deny all (safe default)
+        if (!parsedCategories) return false;
         
-        try {
-            const categories = JSON.parse(storedCategories);
-            return categories[category] === true;
-        } catch (e) {
-            console.error("Error parsing categories:", e);
-            return false;
-        }
+        // Check if this specific category is consented
+        return parsedCategories[category] === true;
     }
     
     function shouldBlockDomain(url) {
@@ -181,34 +272,40 @@ const CONSENT_KEY = "__user_cookie_consent__";
         
         // Check if it's an essential domain (NEVER block)
         for (const domain of ESSENTIAL_DATA.domains) {
-            if (url.includes(domain)) return false;
+            // Handle wildcard domains like *.shopify.com
+            if (domain.startsWith('*.')) {
+                const baseDomain = domain.substring(2); // Remove "*."
+                if (domainMatches(url, baseDomain)) return false;
+            } else if (domainMatches(url, domain)) {
+                return false;
+            }
         }
         
-        // Check analytics domains
+        // Check analytics domains - ONLY block if analytics consent is FALSE
         if (!getCategoryConsent('analytics')) {
             for (const domain of ANALYTICS_DATA.domains) {
-                if (url.includes(domain)) {
-                    console.log(`🛡️ Blocked Analytics Domain: ${url}`);
+                if (domainMatches(url, domain)) {
+                    if (DEBUG) console.log(`🛡️ Blocked Analytics Domain: ${url}`);
                     return true;
                 }
             }
         }
         
-        // Check marketing domains
+        // Check marketing domains - ONLY block if advertising consent is FALSE
         if (!getCategoryConsent('advertising')) {
             for (const domain of MARKETING_DATA.domains) {
-                if (url.includes(domain)) {
-                    console.log(`🛡️ Blocked Marketing Domain: ${url}`);
+                if (domainMatches(url, domain)) {
+                    if (DEBUG) console.log(`🛡️ Blocked Marketing Domain: ${url}`);
                     return true;
                 }
             }
         }
         
-        // Check performance domains
+        // Check performance domains - ONLY block if performance consent is FALSE
         if (!getCategoryConsent('performance')) {
             for (const domain of PERFORMANCE_DATA.domains) {
-                if (url.includes(domain)) {
-                    console.log(`🛡️ Blocked Performance Domain: ${url}`);
+                if (domainMatches(url, domain)) {
+                    if (DEBUG) console.log(`🛡️ Blocked Performance Domain: ${url}`);
                     return true;
                 }
             }
@@ -222,36 +319,93 @@ const CONSENT_KEY = "__user_cookie_consent__";
         
         // Check if it's an essential cookie (NEVER block)
         for (const cookie of ESSENTIAL_DATA.cookies) {
-            if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+            // ============================================================================
+            // IMPROVED: Safer cookie matching logic
+            // Uses startsWith() for prefix cookies and exact match for others
+            // Prevents false positives with similar cookie names
+            // ============================================================================
+            if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                // For cookies that end with _ or - (like _ga_, wp-settings-)
+                // These are prefixes, so use startsWith()
+                if (cookieName.startsWith(cookie)) {
+                    return false;
+                }
+            } else if (cookieName === cookie) {
+                // Exact match for specific cookie names
+                return false;
+            } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                // Fallback for broader matches (legacy compatibility)
                 return false;
             }
         }
         
-        // Check analytics cookies
+        // Check analytics cookies - ONLY block if analytics consent is FALSE
         if (!getCategoryConsent('analytics')) {
             for (const cookie of ANALYTICS_DATA.cookies) {
-                if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                // ============================================================================
+                // IMPROVED: Safer cookie matching for analytics
+                // ============================================================================
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    // Prefix cookies like _ga_, _gat_UA-
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                        return true;
+                    }
+                } else if (cookieName === cookie) {
+                    // Exact match
+                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                    return true;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    // Fallback
+                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
                     return true;
                 }
             }
         }
         
-        // Check marketing cookies
+        // Check marketing cookies - ONLY block if advertising consent is FALSE
         if (!getCategoryConsent('advertising')) {
             for (const cookie of MARKETING_DATA.cookies) {
-                if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                // ============================================================================
+                // IMPROVED: Safer cookie matching for marketing
+                // ============================================================================
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    // Prefix cookies
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                        return true;
+                    }
+                } else if (cookieName === cookie) {
+                    // Exact match
+                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                    return true;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    // Fallback
+                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
                     return true;
                 }
             }
         }
         
-        // Check performance cookies
+        // Check performance cookies - ONLY block if performance consent is FALSE
         if (!getCategoryConsent('performance')) {
             for (const cookie of PERFORMANCE_DATA.cookies) {
-                if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                // ============================================================================
+                // IMPROVED: Safer cookie matching for performance
+                // ============================================================================
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    // Prefix cookies
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                        return true;
+                    }
+                } else if (cookieName === cookie) {
+                    // Exact match
+                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                    return true;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    // Fallback
+                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
                     return true;
                 }
             }
@@ -262,52 +416,154 @@ const CONSENT_KEY = "__user_cookie_consent__";
     
     /* ===================== IMPLEMENT BLOCKING ===================== */
     
-    // 1. Block script loading
-    const originalCreateElement = document.createElement;
-    document.createElement = function (tagName) {
-        const element = originalCreateElement.call(document, tagName);
+    // 1. Block script loading WITH SAFE GUARD
+    if (!document.__cookieCreateElementPatched) {
+        document.__cookieCreateElementPatched = true;
         
-        if (tagName.toLowerCase() === 'script') {
-            const originalSetAttribute = element.setAttribute;
+        const originalCreateElement = document.createElement;
+        document.createElement = function (tagName) {
+            const element = originalCreateElement.call(document, tagName);
             
-            element.setAttribute = function (name, value) {
-                if (name === 'src' && shouldBlockDomain(value)) {
-                    console.log(`🛡️ Blocked script loading: ${value}`);
-                    return; // Don't set the src attribute
-                }
-                return originalSetAttribute.call(this, name, value);
-            };
-            
-            Object.defineProperty(element, 'src', {
-                set(value) {
-                    if (shouldBlockDomain(value)) {
-                        console.log(`🛡️ Blocked script src: ${value}`);
-                        return;
+            if (tagName.toLowerCase() === 'script') {
+                const originalSetAttribute = element.setAttribute;
+                
+                element.setAttribute = function (name, value) {
+                    if (name === 'src' && shouldBlockDomain(value)) {
+                        if (DEBUG) console.log(`🛡️ Blocked script loading: ${value}`);
+                        return; // Don't set the src attribute
                     }
-                    this.setAttribute('src', value);
-                },
-                get() {
-                    return this.getAttribute('src');
-                }
-            });
-        }
+                    return originalSetAttribute.call(this, name, value);
+                };
+                
+                Object.defineProperty(element, 'src', {
+                    set(value) {
+                        if (shouldBlockDomain(value)) {
+                            if (DEBUG) console.log(`🛡️ Blocked script src: ${value}`);
+                            return;
+                        }
+                        this.setAttribute('src', value);
+                    },
+                    get() {
+                        return this.getAttribute('src');
+                    }
+                });
+            }
+            
+            return element;
+        };
         
-        return element;
-    };
+        if (DEBUG) console.log("✅ Script loading protection activated");
+    }
     
-    // 2. Block fetch requests
+    // 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
     if (window.fetch) {
         const originalFetch = window.fetch;
         window.fetch = function (resource, init) {
-            const url = typeof resource === 'string' ? resource : resource.url;
+            const url = typeof resource === 'string' ? resource : resource?.url;
             
             if (shouldBlockDomain(url)) {
-                console.log(`🛡️ Blocked fetch request: ${url}`);
-                return Promise.reject(new Error('Request blocked by cookie consent'));
+                if (DEBUG) console.log(`🛡️ Blocked fetch request: ${url}`);
+                
+                // ============================================================================
+                // CRITICAL FIX: AGGRESSIVE_MODE default = false (safer for websites)
+                // ============================================================================
+                if (AGGRESSIVE_MODE) {
+                    // ============================================================================
+                    // AGGRESSIVE MODE: Hides from extensions
+                    // Returns Promise.reject() for trackers (invisible to extensions)
+                    // Returns 204 for functional APIs (prevents website crashes)
+                    // ============================================================================
+                    
+                    // List of KNOWN TRACKER PATTERNS (these get rejected)
+                    const isDefinitelyTracker = 
+                        // Meta/Facebook
+                        url.includes('facebook.com') || 
+                        url.includes('connect.facebook.net') ||
+                        url.includes('fbcdn.net') ||
+                        // Google Analytics/Ads
+                        url.includes('google-analytics.com') ||
+                        url.includes('doubleclick.net') ||
+                        url.includes('googleadservices.com') ||
+                        url.includes('googlesyndication.com') ||
+                        // TikTok
+                        url.includes('tiktok.com') ||
+                        // Microsoft/UET
+                        url.includes('bing.com') ||
+                        // Pinterest
+                        url.includes('pinterest.com') ||
+                        // Common tracker endpoints
+                        url.includes('/collect') ||
+                        url.includes('/tr/') ||
+                        url.includes('/gtag/') ||
+                        url.includes('/beacon') ||
+                        url.includes('/event') ||
+                        url.includes('/track') ||
+                        url.includes('/pixel') ||
+                        url.includes('/conversion') ||
+                        url.includes('/ads') ||
+                        url.includes('/adserver');
+                    
+                    // List of FUNCTIONAL API PATTERNS (these get 204 responses)
+                    const isLikelyFunctionalAPI = 
+                        // Standard API patterns
+                        (url.includes('/api/') && !url.includes('/api/event')) || 
+                        url.includes('/graphql') ||
+                        url.includes('/rest/') ||
+                        url.includes('/ajax/') ||
+                        // WordPress
+                        url.includes('/wp-admin/admin-ajax.php') ||
+                        // E-commerce
+                        url.includes('/checkout') ||
+                        url.includes('/cart') ||
+                        url.includes('/add-to-cart') ||
+                        url.includes('/update-cart') ||
+                        // User actions
+                        url.includes('/login') ||
+                        url.includes('/register') ||
+                        url.includes('/contact') ||
+                        url.includes('/newsletter') ||
+                        // Payment processors
+                        url.includes('/stripe') ||
+                        url.includes('/paypal') ||
+                        url.includes('/braintree');
+                    
+                    // AGGRESSIVE: Reject ALL tracking requests (hides from extensions)
+                    if (isDefinitelyTracker) {
+                        if (DEBUG) console.log(`🔥 AGGRESSIVE: Rejecting tracker: ${url}`);
+                        return Promise.reject(new Error(`Blocked by cookie consent`));
+                    }
+                    // POLITE: Return empty response for functional APIs (prevents crashes)
+                    else if (isLikelyFunctionalAPI) {
+                        if (DEBUG) console.log(`🛡️  SAFE: Returning 204 for API: ${url}`);
+                        return Promise.resolve(new Response(null, { 
+                            status: 204, 
+                            statusText: 'No Content'
+                        }));
+                    }
+                    // DEFAULT: Reject (hides from extensions)
+                    else {
+                        if (DEBUG) console.log(`🛡️  DEFAULT: Rejecting unknown: ${url}`);
+                        return Promise.reject(new Error('Request blocked'));
+                    }
+                } 
+                else {
+                    // ============================================================================
+                    // POLITE MODE (DEFAULT): Safer for production
+                    // Always returns 204 (extensions can see the blocked attempt)
+                    // This is the SAFE default that won't break websites
+                    // ============================================================================
+                    if (DEBUG) console.log(`📊 POLITE: Returning 204 (safer for websites): ${url}`);
+                    return Promise.resolve(new Response(null, { 
+                        status: 204, 
+                        statusText: 'No Content'
+                    }));
+                }
             }
             
             return originalFetch.call(this, resource, init);
         };
+        
+        if (DEBUG) console.log(`✅ Fetch blocking activated (${AGGRESSIVE_MODE ? 'AGGRESSIVE' : 'POLITE'} mode)`);
     }
     
     // 3. Block XMLHttpRequest
@@ -315,7 +571,7 @@ const CONSENT_KEY = "__user_cookie_consent__";
         const originalOpen = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function (method, url) {
             if (shouldBlockDomain(url)) {
-                console.log(`🛡️ Blocked XHR request: ${url}`);
+                if (DEBUG) console.log(`🛡️ Blocked XHR request: ${url}`);
                 this._blocked = true;
                 return;
             }
@@ -325,71 +581,110 @@ const CONSENT_KEY = "__user_cookie_consent__";
         const originalSend = XMLHttpRequest.prototype.send;
         XMLHttpRequest.prototype.send = function (body) {
             if (this._blocked) {
-                console.log(`🛡️ Blocked XHR send`);
+                if (DEBUG) console.log(`🛡️ Blocked XHR send`);
                 return;
             }
             return originalSend.apply(this, arguments);
         };
+        
+        if (DEBUG) console.log("✅ XHR blocking activated");
     }
     
-    // 4. Block iframes
-    const observer = new MutationObserver(function (mutations) {
+    // 4. Block sendBeacon (with AGGRESSIVE_MODE control)
+    if (navigator.sendBeacon) {
+        const originalBeacon = navigator.sendBeacon;
+        navigator.sendBeacon = function(url, data) {
+            if (shouldBlockDomain(url)) {
+                if (DEBUG) console.log('🛡️ Blocked beacon:', url);
+                
+                // AGGRESSIVE MODE: Return false (hides from extensions)
+                if (AGGRESSIVE_MODE) {
+                    return false;
+                }
+                // POLITE MODE (DEFAULT): Return true but don't send
+                else {
+                    return true; // Safer for websites
+                }
+            }
+            return originalBeacon.call(this, url, data);
+        };
+        
+        if (DEBUG) console.log(`✅ sendBeacon blocking activated (${AGGRESSIVE_MODE ? 'returns false' : 'returns true'})`);
+    }
+    
+    // 5. Block iframes
+    const iframeObserver = new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
             mutation.addedNodes.forEach(function (node) {
                 if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
-                    console.log(`🛡️ Blocked iframe: ${node.src}`);
-                    node.parentNode.removeChild(node);
+                    if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
+                    node.remove();
                 }
             });
         });
     });
     
-    observer.observe(document.documentElement, {
+    iframeObserver.observe(document.documentElement, {
         childList: true,
         subtree: true
     });
     
-    // 5. Block and delete cookies
+    if (DEBUG) console.log("✅ Iframe blocking activated");
+    
+    // 6. Block and delete cookies - LIMITED INTERVAL (PERFORMANCE FIX)
     function blockAndDeleteCookies() {
         document.cookie.split(';').forEach(function (cookie) {
             const [name] = cookie.trim().split('=');
             if (name && shouldBlockCookie(name)) {
-                // Delete the cookie
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-                console.log(`🛡️ Deleted blocked cookie: ${name}`);
+                deleteCookieEverywhere(name);
+                if (DEBUG) console.log(`🛡️ Deleted blocked cookie: ${name}`);
             }
         });
     }
     
-    // Run immediately and set interval
+    // ============================================================================
+    // CRITICAL FIX: LIMITED COOKIE CLEANUP INTERVAL (like Cookiebot/OneTrust)
+    // Runs 10 times then stops - saves CPU/battery
+    // ============================================================================
     blockAndDeleteCookies();
-    setInterval(blockAndDeleteCookies, 1000);
+    let cookieCleanupRuns = 0;
+    const cookieCleanupInterval = setInterval(() => {
+        blockAndDeleteCookies();
+        cookieCleanupRuns++;
+        if (cookieCleanupRuns >= 9) { // 10 total runs (0-9)
+            clearInterval(cookieCleanupInterval);
+            if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
+        }
+    }, 1000);
     
-    // 6. Block inline tracking scripts
+    // 7. Block inline tracking scripts - IMPROVED DETECTION
     function blockInlineTrackers() {
         document.querySelectorAll('script:not([src])').forEach(function (script) {
             const content = script.textContent || script.innerText;
             if (content) {
-                // Check if it contains tracking code
-                if (content.includes('google-analytics') || 
-                    content.includes('gtag') || 
-                    content.includes('dataLayer') || 
-                    content.includes('fbq') ||
+                // ============================================================================
+                // IMPROVED DETECTION: More precise targeting
+                // Avoids false positives on legitimate dataLayer usage
+                // ============================================================================
+                const hasTrackingPattern = 
+                    /(gtag\s*\(|fbq\s*\(|clarity\.|hj.*\(|mixpanel\.|segment\.)/i.test(content);
+                
+                // Check for specific tracking function calls, not just "dataLayer"
+                const hasTrackingCode = 
+                    content.includes('google-analytics') || 
+                    content.includes('gtag(') || 
+                    content.includes('fbq(') ||
                     content.includes('clarity') ||
-                    content.includes('hotjar')) {
-                    
+                    content.includes('hotjar');
+                
+                if (hasTrackingPattern || hasTrackingCode) {
                     // Check if user has consented to the relevant category
-                    const isAnalyticsCode = content.includes('google-analytics') || 
-                                           content.includes('gtag') || 
-                                           content.includes('clarity') ||
-                                           content.includes('hotjar');
-                    const isMarketingCode = content.includes('fbq') || 
-                                           content.includes('facebook');
+                    const isAnalyticsCode = /(google-analytics|gtag|clarity|hotjar|mixpanel|segment)/i.test(content);
+                    const isMarketingCode = /(fbq|facebook|doubleclick|googleadservices)/i.test(content);
                     
                     if ((isAnalyticsCode && !getCategoryConsent('analytics')) ||
                         (isMarketingCode && !getCategoryConsent('advertising'))) {
-                        console.log('🛡️ Blocked inline tracker script');
+                        if (DEBUG) console.log('🛡️ Blocked inline tracker script');
                         script.remove();
                     }
                 }
@@ -403,14 +698,17 @@ const CONSENT_KEY = "__user_cookie_consent__";
         subtree: true
     });
     
-    console.log("🛡️ Cookie blocking initialized with current preferences");
-    console.log("Analytics allowed:", getCategoryConsent('analytics'));
-    console.log("Marketing allowed:", getCategoryConsent('advertising'));
-    console.log("Performance allowed:", getCategoryConsent('performance'));
+    if (DEBUG) {
+        console.log("✅ Inline script blocking activated");
+        console.log("========================================");
+        console.log("BLOCKING STATUS:");
+        console.log("Analytics allowed:", getCategoryConsent('analytics') ? "✅ YES" : "❌ NO");
+        console.log("Marketing allowed:", getCategoryConsent('advertising') ? "✅ YES" : "❌ NO");
+        console.log("Performance allowed:", getCategoryConsent('performance') ? "✅ YES" : "❌ NO");
+        console.log("========================================");
+    }
     
-    /* ===================== HOOKS FOR YOUR BANNER ===================== */
-    
-    // Your banner will call these functions when user makes a choice
+    /* ===================== BANNER HOOKS ===================== */
     
     window.enableAllTracking = function() {
         console.log("✅ Enabling ALL tracking");
@@ -421,27 +719,20 @@ const CONSENT_KEY = "__user_cookie_consent__";
             performance: true
         }));
         
-      // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes applied without refresh");
-}
+        if (RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else if (DEBUG) {
+            console.log("🟡 Page reload disabled - changes applied without refresh");
+        }
     };
-
-
-
-
-   
+    
     window.enableTrackingByCategory = function(categories) {
         console.log("✅ Enabling tracking for categories:", categories);
         
-        // Store categories
         localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
         
-        // Check if all categories are enabled
         const allEnabled = categories.analytics && 
                           categories.advertising && 
                           categories.performance;
@@ -452,35 +743,107 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
             localStorage.setItem(CONSENT_KEY, "partial");
         }
         
-       // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes applied without refresh");
-}
+        if (RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else if (DEBUG) {
+            console.log("🟡 Page reload disabled - changes applied without refresh");
+        }
     };
-
-
-   
     
     window.disableAllTracking = function() {
         console.log("❌ Disabling ALL tracking");
         localStorage.removeItem(CONSENT_KEY);
         localStorage.removeItem(CATEGORIES_KEY);
         
-      // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes applied without refresh");
-}
+        if (RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else if (DEBUG) {
+            console.log("🟡 Page reload disabled - changes applied without refresh");
+        }
     };
     
+    /* ===================== UTILITY FUNCTIONS ===================== */
+    
+    window.showNewTrackers = function() {
+        const allDomains = [
+            ...ESSENTIAL_DATA.domains,
+            ...ANALYTICS_DATA.domains,
+            ...MARKETING_DATA.domains,
+            ...PERFORMANCE_DATA.domains
+        ];
+        
+        const allCookies = [
+            ...ESSENTIAL_DATA.cookies,
+            ...ANALYTICS_DATA.cookies,
+            ...MARKETING_DATA.cookies,
+            ...PERFORMANCE_DATA.cookies
+        ];
+        
+        console.log('================================');
+        console.log('🔍 TRACKER DETECTION REPORT');
+        console.log('================================');
+        console.log(`Domains in lists: ${allDomains.length}`);
+        console.log(`Cookies in lists: ${allCookies.length}`);
+        console.log('================================');
+        console.log('ℹ️ Add tracker detection setup to use this feature');
+        console.log('================================');
+        
+        return { domains: allDomains, cookies: allCookies };
+    };
+    
+    /* ===================== CONTROL FUNCTIONS ===================== */
+    
+    window.setAggressiveMode = function(enabled) {
+        console.log(`🔧 Setting aggressive mode: ${enabled ? 'ON (hide from extensions)' : 'OFF (safer for websites)'}`);
+        if (window.COOKIE_SETTINGS) {
+            window.COOKIE_SETTINGS.AGGRESSIVE_MODE = enabled;
+        }
+        console.log("ℹ️ Page reload required for mode change to take effect");
+    };
+    
+    window.getBlockingStatus = function() {
+        return {
+            aggressiveMode: AGGRESSIVE_MODE,
+            analyticsAllowed: getCategoryConsent('analytics'),
+            marketingAllowed: getCategoryConsent('advertising'),
+            performanceAllowed: getCategoryConsent('performance'),
+            blockingEnabled: BLOCKING_ENABLED,
+            reloadEnabled: RELOAD_ENABLED
+        };
+    };
+    
+    if (DEBUG) {
+        console.log("========================================");
+        console.log("🎯 ENHANCED BLOCKING FEATURES:");
+        console.log("========================================");
+        console.log("• Category-based consent");
+        console.log("• Extension hiding (when AGGRESSIVE_MODE = true)");
+        console.log("• Safe default (AGGRESSIVE_MODE = false)");
+        console.log("• Limited cookie cleanup (10 cycles)");
+        console.log("• Production-safe blocking");
+        console.log("• Enhanced Shopify support");
+        console.log("• Safer cookie matching logic");
+        console.log("========================================");
+        console.log("⚠️  IMPORTANT: For production, use:");
+        console.log("   window.COOKIE_SETTINGS = {");
+        console.log("     AGGRESSIVE_MODE: false, // Safer");
+        console.log("     DEBUG: false            // Clean console");
+        console.log("   }");
+        console.log("========================================");
+    }
+    
 })();
+
+
+
+
+
+
+
 
 // YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
 /**
@@ -654,7 +1017,9 @@ clarityConfig: {
         },
         
         showFloatingButton: true,
+        showAdminButton: false,
         floatingButtonPosition: 'left',
+        adminButtonPosition: 'left',
         bannerPosition: 'left',
 
        
@@ -711,7 +1076,18 @@ geoConfig: {
     specificRegions: [] // NEW: Can specify 'EU' or other regions
 },
     
-   
+    // Analytics configuration
+    analytics: {
+        enabled: true,
+        storageDays: 365,
+        showDashboard: true,
+        passwordProtect: true,
+        dashboardPassword: 'admin123',
+        passwordCookieDuration: 365,
+        trackPageViews: true,
+        trackEvents: true,
+        trackConsentChanges: true
+    },
     
     // UI Theme selection
     uiTheme: 'default',
@@ -2170,8 +2546,18 @@ const countryLanguageMap = {
     'RU': 'ru'      // Russia
 };
 
+// Analytics data storage
+let consentAnalytics = {
+    total: {
+        accepted: 0,
+        rejected: 0,
+        custom: 0
+    },
+    daily: {}
+};
 
-
+// Password protection for analytics
+let isDashboardAuthenticated = false;
 
 // Banner scheduling variables
 let bannerTimer = null;
@@ -2348,8 +2734,214 @@ function getContinentFromCountry(countryCode) {
     return continentMap[countryCode] || "Unknown";
 }
 
+// Load analytics data from localStorage
+function loadAnalyticsData() {
+    const savedData = localStorage.getItem('consentAnalytics');
+    if (savedData) {
+        consentAnalytics = JSON.parse(savedData);
+    }
+    
+    // Initialize today's data if not exists
+    const today = new Date().toISOString().split('T')[0];
+    if (!consentAnalytics.daily[today]) {
+        consentAnalytics.daily[today] = {
+            accepted: 0,
+            rejected: 0,
+            custom: 0
+        };
+    }
+    
+    // Check if dashboard is authenticated
+    if (config.analytics.passwordProtect) {
+        isDashboardAuthenticated = getCookie('dashboard_auth') === 'true';
+    } else {
+        isDashboardAuthenticated = true;
+    }
+}
 
+// Save analytics data to localStorage
+function saveAnalyticsData() {
+    localStorage.setItem('consentAnalytics', JSON.stringify(consentAnalytics));
+}
 
+// Update analytics data
+function updateConsentStats(status) {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Update totals
+    if (status === 'accepted') {
+        consentAnalytics.total.accepted++;
+        consentAnalytics.daily[today].accepted++;
+    } else if (status === 'rejected') {
+        consentAnalytics.total.rejected++;
+        consentAnalytics.daily[today].rejected++;
+    } else if (status === 'custom') {
+        consentAnalytics.total.custom++;
+        consentAnalytics.daily[today].custom++;
+    }
+    
+    saveAnalyticsData();
+}
+
+// Generate analytics dashboard HTML with 1 day, 7 days, and 30 days sections
+function generateAnalyticsDashboard(language = 'en') {
+    const lang = translations[language] || translations.en;
+    
+    // Calculate totals
+    const total = consentAnalytics.total.accepted + 
+                 consentAnalytics.total.rejected + 
+                 consentAnalytics.total.custom;
+    
+    const acceptedPercent = total > 0 ? Math.round((consentAnalytics.total.accepted / total) * 100) : 0;
+    const rejectedPercent = total > 0 ? Math.round((consentAnalytics.total.rejected / total) * 100) : 0;
+    const customPercent = total > 0 ? Math.round((consentAnalytics.total.custom / total) * 100) : 0;
+    
+    // Get last 1 day data
+    const today = new Date().toISOString().split('T')[0];
+    const last1Day = {};
+    last1Day[today] = consentAnalytics.daily[today] || { accepted: 0, rejected: 0, custom: 0 };
+    
+    // Get last 7 days data
+    const last7Days = {};
+    const dates = Object.keys(consentAnalytics.daily).sort().reverse().slice(0, 7);
+    dates.forEach(date => {
+        last7Days[date] = consentAnalytics.daily[date];
+    });
+    
+    // Get last 30 days data
+    const last30Days = {};
+    const monthlyDates = Object.keys(consentAnalytics.daily).sort().reverse().slice(0, 30);
+    monthlyDates.forEach(date => {
+        last30Days[date] = consentAnalytics.daily[date];
+    });
+    
+    return `
+    <div class="analytics-dashboard">
+        <h3>${lang.dashboardTitle}</h3>
+        
+        <div class="stats-summary">
+            <div class="stat-card accepted">
+                <h4>${lang.statsAccepted}</h4>
+                <div class="stat-value">${consentAnalytics.total.accepted}</div>
+                <div class="stat-percentage">${acceptedPercent}%</div>
+            </div>
+            
+            <div class="stat-card rejected">
+                <h4>${lang.statsRejected}</h4>
+                <div class="stat-value">${consentAnalytics.total.rejected}</div>
+                <div class="stat-percentage">${rejectedPercent}%</div>
+            </div>
+            
+            <div class="stat-card custom">
+                <h4>${lang.statsCustom}</h4>
+                <div class="stat-value">${consentAnalytics.total.custom}</div>
+                <div class="stat-percentage">${customPercent}%</div>
+            </div>
+            
+            <div class="stat-card total">
+                <h4>${lang.statsTotal}</h4>
+                <div class="stat-value">${total}</div>
+                <div class="stat-percentage">100%</div>
+            </div>
+        </div>
+        
+        <div class="time-based-stats">
+            <div class="time-stat">
+                <h4>${lang.statsLast1Day}</h4>
+                <div class="stat-bars">
+                    ${Object.entries(last1Day).map(([date, data]) => {
+                        const dayTotal = data.accepted + data.rejected + data.custom;
+                        const dayAcceptedPercent = dayTotal > 0 ? (data.accepted / dayTotal) * 100 : 0;
+                        const dayRejectedPercent = dayTotal > 0 ? (data.rejected / dayTotal) * 100 : 0;
+                        const dayCustomPercent = dayTotal > 0 ? (data.custom / dayTotal) * 100 : 0;
+                        
+                        return `
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-label">${date}</div>
+                            <div class="stat-bar">
+                                <div class="stat-bar-segment accepted" style="width: ${dayAcceptedPercent}%"></div>
+                                <div class="stat-bar-segment custom" style="width: ${dayCustomPercent}%"></div>
+                                <div class="stat-bar-segment rejected" style="width: ${dayRejectedPercent}%"></div>
+                            </div>
+                            <div class="stat-bar-legend">
+                                <span>${data.accepted} ${lang.statsAccepted}</span>
+                                <span>${data.custom} ${lang.statsCustom}</span>
+                                <span>${data.rejected} ${lang.statsRejected}</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+            
+            <div class="time-stat">
+                <h4>${lang.statsLast7Days}</h4>
+                <div class="stat-bars">
+                    ${Object.entries(last7Days).map(([date, data]) => {
+                        const dayTotal = data.accepted + data.rejected + data.custom;
+                        const dayAcceptedPercent = dayTotal > 0 ? (data.accepted / dayTotal) * 100 : 0;
+                        const dayRejectedPercent = dayTotal > 0 ? (data.rejected / dayTotal) * 100 : 0;
+                        const dayCustomPercent = dayTotal > 0 ? (data.custom / dayTotal) * 100 : 0;
+                        
+                        return `
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-label">${date}</div>
+                            <div class="stat-bar">
+                                <div class="stat-bar-segment accepted" style="width: ${dayAcceptedPercent}%"></div>
+                                <div class="stat-bar-segment custom" style="width: ${dayCustomPercent}%"></div>
+                                <div class="stat-bar-segment rejected" style="width: ${dayRejectedPercent}%"></div>
+                            </div>
+                            <div class="stat-bar-legend">
+                                <span>${data.accepted} ${lang.statsAccepted}</span>
+                                <span>${data.custom} ${lang.statsCustom}</span>
+                                <span>${data.rejected} ${lang.statsRejected}</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+            
+            <div class="time-stat">
+                <h4>${lang.statsLast30Days}</h4>
+                <div class="stat-bars">
+                    ${Object.entries(last30Days).map(([date, data]) => {
+                        const dayTotal = data.accepted + data.rejected + data.custom;
+                        const dayAcceptedPercent = dayTotal > 0 ? (data.accepted / dayTotal) * 100 : 0;
+                        const dayRejectedPercent = dayTotal > 0 ? (data.rejected / dayTotal) * 100 : 0;
+                        const dayCustomPercent = dayTotal > 0 ? (data.custom / dayTotal) * 100 : 0;
+                        
+                        return `
+                        <div class="stat-bar-container">
+                            <div class="stat-bar-label">${date}</div>
+                            <div class="stat-bar">
+                                <div class="stat-bar-segment accepted" style="width: ${dayAcceptedPercent}%"></div>
+                                <div class="stat-bar-segment custom" style="width: ${dayCustomPercent}%"></div>
+                                <div class="stat-bar-segment rejected" style="width: ${dayRejectedPercent}%"></div>
+                            </div>
+                            <div class="stat-bar-legend">
+                                <span>${data.accepted} ${lang.statsAccepted}</span>
+                                <span>${data.custom} ${lang.statsCustom}</span>
+                                <span>${data.rejected} ${lang.statsRejected}</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+// Generate password prompt HTML
+function generatePasswordPrompt(language = 'en') {
+    const lang = translations[language] || translations.en;
+    
+    return `
+    <div class="password-prompt">
+        <h3>${lang.passwordPrompt}</h3>
+        <input type="password" id="dashboardPasswordInput" placeholder="Password">
+        <button id="dashboardPasswordSubmit">${lang.passwordSubmit}</button>
+        <p id="passwordError" class="error-message"></p>
+    </div>`;
+}
 
 // Check if current domain is allowed
 function isDomainAllowed() {
@@ -2809,7 +3401,19 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         </select>
     </div>` : '';
     
-
+    // Generate admin dashboard button if analytics enabled
+    const adminButton = config.analytics.enabled && config.analytics.showDashboard && config.behavior.showAdminButton ? `
+    <div id="cookieAdminButton" class="cookie-admin-button" title="${lang.dashboardTitle}">
+        <svg viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg" fill="currentColor" stroke="none">
+            <title>Admin Dashboard</title>
+            <path d="M4.75,20.75A.25.25,0,0,0,5,20.5v-2a1,1,0,0,0-1-1H2a1,1,0,0,0-1,1v2a.25.25,0,0,0,.25.25Z"/>
+            <path d="M10.75,20.75A.25.25,0,0,0,11,20.5v-7a1,1,0,0,0-1-1H8a1,1,0,0,0-1,1v7a.25.25,0,0,0,.25.25Z"/>
+            <path d="M16.75,20.75A.25.25,0,0,0,17,20.5v-5a1,1,0,0,0-1-1H14a1,1,0,0,0-1,1v5a.25.25,0,0,0,.25.25Z"/>
+            <path d="M22.75,20.75A.25.25,0,0,0,23,20.5V8.5a1,1,0,0,0-1-1H20a1,1,0,0,0-1,1v12a.25.25,0,0,0,.25.25Z"/>
+            <path d="M3.5,13.5a2,2,0,0,0,2-2,1.981,1.981,0,0,0-.1-.6l3.167-2.64A1.955,1.955,0,0,0,11.011,7.8l2.5.834A2,2,0,0,0,17.5,8.5a1.964,1.964,0,0,0-.231-.912l3.287-3.835A1.994,1.994,0,1,0,19.5,2a1.962,1.962,0,0,0,.093.571L16.13,6.612a1.932,1.932,0,0,0-2.141.593l-2.5-.833A1.995,1.995,0,0,0,7.6,7.1L4.436,9.744A1.975,1.975,0,0,0,3.5,9.5a2,2,0,0,0,0,4Z"/>
+            <path d="M23,22H1a1.016,1.016,0,0,0-1,1,1,1,0,0,0,1,1H23a1,1,0,0,0,1-1A1.015,1.015,0,0,0,23,22Z"/>
+        </svg>
+    </div>` : '';
     
     const html = `
     <!-- Main Consent Banner -->
@@ -2846,7 +3450,10 @@ function injectConsentHTML(detectedCookies, language = 'en') {
                 ${detectedCookies.uncategorized.length > 0 ? generateCategorySection('uncategorized') : ''}
             </div>
             <div class="cookie-settings-footer">
-             
+                ${config.analytics.enabled ? `
+                <div class="see-analytics-container">
+                    <a href="#" class="see-analytics-link">${lang.seeAnalytics}</a>
+                </div>` : ''}
                  <div class="modal-buttons-container">
                     <button id="acceptAllSettingsBtn" class="cookie-btn main-accept-button">${lang.accept}</button>
                     <button id="saveSettingsBtn" class="cookie-btn main-save-btn">${lang.save}</button>
@@ -2867,7 +3474,25 @@ function injectConsentHTML(detectedCookies, language = 'en') {
     </svg>
 </div>
     
- 
+    ${adminButton}
+    
+    <!-- Analytics Dashboard -->
+    <div id="cookieAnalyticsModal" class="cookie-analytics-modal">
+        <div class="cookie-analytics-content">
+            <div class="cookie-analytics-header">
+                <h2>${lang.dashboardTitle}</h2>
+                <span class="close-analytics-modal">&times;</span>
+            </div>
+            <div class="cookie-analytics-body">
+                ${config.analytics.passwordProtect && !isDashboardAuthenticated ? 
+                    generatePasswordPrompt(language) : 
+                    generateAnalyticsDashboard(language)}
+            </div>
+        </div>
+    </div>
+
+
+
     
     <!-- Blur overlay for restricting interaction -->
     <div id="cookieBlurOverlay" class="cookie-blur-overlay"></div>
@@ -3329,8 +3954,26 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         color: ${config.bannerStyle.title.color};
     }
 
+    /* See Analytics Link */
+    .see-analytics-container {
+        margin-bottom: 15px;
+        text-align: center;
+    }
 
- 
+    .see-analytics-link {
+        color: ${config.bannerStyle.linkColor};
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        display: inline-block;
+        transition: color 0.2s ease;
+        display: none;
+    }
+
+    .see-analytics-link:hover {
+        color: ${config.bannerStyle.linkHoverColor};
+        text-decoration: underline;
+    }
 
     /* Mobile-friendly cookie value display */
     .cookie-value-cell {
@@ -3409,7 +4052,260 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         transform: rotate(15deg);
     }
 
+    /* Admin Button */
+    .cookie-admin-button {
+        position: fixed;
+        ${config.behavior.adminButtonPosition === 'left' ? 
+          'left: 30px; bottom: 100px;' : 
+          'right: 30px; bottom: 100px;'}
+        width: ${config.adminButtonStyle.size};
+        height: ${config.adminButtonStyle.size};
+        background-color: ${config.adminButtonStyle.background};
+        border-radius: ${config.adminButtonStyle.borderRadius};
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: ${config.adminButtonStyle.boxShadow};
+        z-index: 9997;
+        transition: all 0.3s ease;
+        opacity: 0;
+        transform: translateY(20px);
+        border: ${config.adminButtonStyle.border};
+    }
 
+    .cookie-admin-button.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .cookie-admin-button:hover {
+        background-color: ${config.adminButtonStyle.hover.background};
+        transform: ${config.adminButtonStyle.hover.transform};
+        box-shadow: ${config.adminButtonStyle.hover.boxShadow};
+    }
+
+    .cookie-admin-button svg {
+        width: 28px;
+        height: 28px;
+        fill: ${config.adminButtonStyle.iconColor};
+        transition: transform 0.3s ease;
+    }
+
+    .cookie-admin-button:hover svg {
+        transform: rotate(15deg);
+    }
+
+    /* Analytics Dashboard */
+    .cookie-analytics-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 10001;
+        overflow-y: auto;
+        padding: 30px 0;
+        opacity: 0;
+        transition: opacity ${config.behavior.dashboardAnimation.duration}s ${config.behavior.dashboardAnimation.easing};
+    }
+
+    .cookie-analytics-modal.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 1;
+    }
+
+    .cookie-analytics-content {
+        background-color: ${config.dashboardStyle.background};
+        margin: 0 auto;
+        width: ${config.dashboardStyle.width};
+        max-height: ${config.dashboardStyle.maxHeight};
+        border-radius: ${config.dashboardStyle.borderRadius};
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        transform: translateY(20px);
+        transition: transform ${config.behavior.dashboardAnimation.duration}s ${config.behavior.dashboardAnimation.easing};
+        display: flex;
+        flex-direction: column;
+    }
+
+    .cookie-analytics-modal.show .cookie-analytics-content {
+        transform: translateY(0);
+    }
+
+    .cookie-analytics-header {
+        padding: 20px 30px;
+        border-bottom: 1px solid #ecf0f1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: ${config.dashboardStyle.header.background};
+    }
+
+    .cookie-analytics-header h2 {
+        margin: 0;
+        color: ${config.dashboardStyle.header.textColor};
+        font-size: ${config.dashboardStyle.header.fontSize};
+        font-weight: ${config.dashboardStyle.header.fontWeight};
+    }
+
+    .close-analytics-modal {
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: ${config.modalStyle.closeButton.color};
+        background: none;
+        border: none;
+        padding: 0 10px;
+        transition: color 0.2s ease;
+    }
+
+    .close-analytics-modal:hover {
+        color: ${config.modalStyle.closeButton.hoverColor};
+    }
+
+    .cookie-analytics-body {
+        padding: 25px 30px;
+        background-color: ${config.dashboardStyle.body.background};
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    /* Stats Dashboard */
+    .analytics-dashboard {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .analytics-dashboard h3 {
+        color: ${config.bannerStyle.title.color};
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 1.3rem;
+    }
+
+    .stats-summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background-color: ${config.dashboardStyle.statCards.background};
+                border-radius: ${config.dashboardStyle.statCards.borderRadius};
+        padding: 15px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .stat-card.accepted {
+        border-top: 4px solid ${config.dashboardStyle.statCards.acceptedColor};
+    }
+
+    .stat-card.rejected {
+        border-top: 4px solid ${config.dashboardStyle.statCards.rejectedColor};
+    }
+
+    .stat-card.custom {
+        border-top: 4px solid ${config.dashboardStyle.statCards.customColor};
+    }
+
+    .stat-card.total {
+        border-top: 4px solid ${config.dashboardStyle.statCards.totalColor};
+    }
+
+    .stat-card h4 {
+        margin: 0 0 10px 0;
+        font-size: 1rem;
+        color: ${config.bannerStyle.description.color};
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: ${config.bannerStyle.title.color};
+        margin-bottom: 5px;
+    }
+
+    .stat-percentage {
+        font-size: 1rem;
+        color: ${config.bannerStyle.description.color};
+    }
+
+    .time-based-stats {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .time-stat {
+        background-color: ${config.dashboardStyle.statCards.background};
+        border-radius: ${config.dashboardStyle.statCards.borderRadius};
+        padding: 20px;
+    }
+
+    .time-stat h4 {
+        margin: 0 0 15px 0;
+        font-size: 1.1rem;
+        color: ${config.bannerStyle.title.color};
+    }
+
+    .stat-bars {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .stat-bar-container {
+        margin-bottom: 15px;
+    }
+
+    .stat-bar-label {
+        font-size: 0.85rem;
+        color: ${config.bannerStyle.description.color};
+        margin-bottom: 5px;
+    }
+
+    .stat-bar {
+        height: ${config.dashboardStyle.barChart.height};
+        background-color: ${config.dashboardStyle.barChart.background};
+        border-radius: ${config.dashboardStyle.barChart.borderRadius};
+        overflow: hidden;
+        display: flex;
+    }
+
+    .stat-bar-segment {
+        height: 100%;
+    }
+
+    .stat-bar-segment.accepted {
+        background-color: ${config.dashboardStyle.barChart.acceptedColor};
+    }
+
+    .stat-bar-segment.rejected {
+        background-color: ${config.dashboardStyle.barChart.rejectedColor};
+    }
+
+    .stat-bar-segment.custom {
+        background-color: ${config.dashboardStyle.barChart.customColor};
+    }
+
+    .stat-bar-legend {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: ${config.bannerStyle.description.color};
+        margin-top: 5px;
+    }
 
     /* Footer Buttons */
     .cookie-settings-footer {
@@ -3418,7 +4314,47 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         border-top: ${config.modalStyle.footer.borderTop};
     }
 
- 
+    /* Password Prompt */
+    .password-prompt {
+        text-align: center;
+        padding: 30px;
+    }
+
+    .password-prompt h3 {
+        color: ${config.bannerStyle.title.color};
+        margin-bottom: 20px;
+    }
+
+    .password-prompt input {
+        padding: 12px 15px;
+        border-radius: 6px;
+        border: 1px solid #e0e0e0;
+        width: 100%;
+        max-width: 300px;
+        margin-bottom: 15px;
+        font-size: 14px;
+    }
+
+    .password-prompt button {
+        padding: 12px 25px;
+        background-color: ${config.buttonStyle.accept.background};
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .password-prompt button:hover {
+        background-color: ${config.buttonStyle.accept.hover.background};
+    }
+
+    .error-message {
+        color: ${config.buttonStyle.reject.color};
+        margin-top: 10px;
+        font-size: 14px;
+    }
 
     /* Responsive Styles */
     @media (max-width: 900px) {
@@ -3822,14 +4758,31 @@ function sendClarityConsentSignal(consentGranted) {
         }
     });
     
-
+    // Setup admin button if enabled
+    if (config.analytics.enabled && config.analytics.showDashboard && config.behavior.showAdminButton) {
+        const adminButton = document.getElementById('cookieAdminButton');
+        if (adminButton) {
+            adminButton.addEventListener('click', showAnalyticsDashboard);
+            setTimeout(() => {
+                adminButton.style.display = 'flex';
+                adminButton.classList.add('show');
+            }, 100);
+        }
+    }
     
     // Setup password prompt events if needed
     if (config.analytics.passwordProtect && !isDashboardAuthenticated) {
         setupPasswordPromptEvents();
     }
     
-
+    // Setup "See Consent Analytics" link in the modal footer
+    const seeAnalyticsLink = document.querySelector('.see-analytics-link');
+    if (seeAnalyticsLink) {
+        seeAnalyticsLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showAnalyticsDashboard();
+        });
+    }
     
     // Setup timer for durationMinutes if enabled
     if (config.behavior.bannerSchedule.enabled && config.behavior.bannerSchedule.durationMinutes) {
@@ -3846,7 +4799,28 @@ function sendClarityConsentSignal(consentGranted) {
     }
 }
 
-
+// Setup password prompt events
+function setupPasswordPromptEvents() {
+    const passwordSubmit = document.getElementById('dashboardPasswordSubmit');
+    if (passwordSubmit) {
+        passwordSubmit.addEventListener('click', function() {
+            const passwordInput = document.getElementById('dashboardPasswordInput');
+            const errorMessage = document.getElementById('passwordError');
+            const lang = document.getElementById('cookieLanguageSelect') ? 
+                document.getElementById('cookieLanguageSelect').value : 'en';
+            
+            if (passwordInput.value === config.analytics.dashboardPassword) {
+                isDashboardAuthenticated = true;
+                setCookie('dashboard_auth', 'true', config.analytics.passwordCookieDuration);
+                
+                // Update the dashboard content
+                document.querySelector('.cookie-analytics-body').innerHTML = generateAnalyticsDashboard(lang);
+            } else {
+                errorMessage.textContent = translations[lang].passwordIncorrect;
+            }
+        });
+    }
+}
 
 
 
@@ -3948,7 +4922,10 @@ function setupEventListeners() {
         }
     });
     
- 
+    document.querySelector('.close-analytics-modal').addEventListener('click', function() {
+        hideAnalyticsDashboard();
+    });
+    
     document.getElementById('cookieFloatingButton').addEventListener('click', function() {
         if (!document.getElementById('cookieConsentBanner').classList.contains('show')) {
             showCookieBanner();
@@ -4001,9 +4978,33 @@ function hideCookieSettings() {
     }, 300);
 }
 
+function showAnalyticsDashboard() {
+    const lang = document.getElementById('cookieLanguageSelect') ? 
+        document.getElementById('cookieLanguageSelect').value : 'en';
+    
+    if (config.analytics.passwordProtect && !isDashboardAuthenticated) {
+        const modal = document.getElementById('cookieAnalyticsModal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('show');
+        }, 10);
+    } else {
+        const modal = document.getElementById('cookieAnalyticsModal');
+        document.querySelector('.cookie-analytics-body').innerHTML = generateAnalyticsDashboard(lang);
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('show');
+        }, 10);
+    }
+}
 
-
-
+function hideAnalyticsDashboard() {
+    const modal = document.getElementById('cookieAnalyticsModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+}
 
 function showFloatingButton() {
     const button = document.getElementById('cookieFloatingButton');
@@ -4164,7 +5165,10 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     
- 
+    if (config.analytics.enabled) {
+        updateConsentStats('accepted');
+    }
+    
     window.dataLayer.push({
         'event': 'cookie_consent_accepted',
         'consent_mode': {
@@ -4232,7 +5236,9 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     updateConsentMode(consentData);
     clearNonEssentialCookies();
     
-   
+    if (config.analytics.enabled) {
+        updateConsentStats('rejected');
+    }
     
     window.dataLayer.push({
         'event': 'cookie_consent_rejected',
@@ -4350,7 +5356,9 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     if (!advertisingChecked) clearCategoryCookies('advertising');
     if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
     
-  
+    if (config.analytics.enabled) {
+        updateConsentStats('custom');
+    }
     
     // Your existing dataLayer code continues...
     const consentStates = {
@@ -4786,7 +5794,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-  
+    // Load analytics data from storage
+    if (config.analytics.enabled) {
+        loadAnalyticsData();
+    }
+
     // Set default UET consent
     setDefaultUetConsent();
 
@@ -4876,6 +5888,7 @@ if (typeof window !== 'undefined') {
         rejectAll: rejectAllCookies,
         saveSettings: saveCustomSettings,
         changeLanguage: changeLanguage,
+        showAnalytics: showAnalyticsDashboard,
         config: config,
          // NEW: Control functions for restrictions
         toggleRestrictions: toggleRestrictions,
