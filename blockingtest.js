@@ -812,7 +812,7 @@ window.addEventListener('beforeunload', () => {
         if (RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
-            }, 100);
+            }, 300);
         } else if (DEBUG) {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
@@ -836,7 +836,7 @@ window.addEventListener('beforeunload', () => {
         if (RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
-            }, 100);
+            }, 300);
         } else if (DEBUG) {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
@@ -850,7 +850,7 @@ window.addEventListener('beforeunload', () => {
         if (RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
-            }, 150);
+            }, 300);
         } else if (DEBUG) {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
@@ -1106,7 +1106,7 @@ clarityConfig: {
 
        
         bannerAnimation: {
-            duration: 0.2,
+            duration: 0.4,
             easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
             enterEffect: 'fadeInUp',
             exitEffect: 'fadeOutDown'
@@ -4553,6 +4553,7 @@ function setBlurDensity(density) {
 
 // Cookie consent functions
 function acceptAllCookies() {
+     hideCookieBanner(); // ← ADD THIS LINE
     console.log("✅ Accepting ALL cookies");
     
     // IMPORTANT: Call the blocking script function
