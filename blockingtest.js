@@ -4339,7 +4339,7 @@ function setupEventListeners() {
     });
     
     document.getElementById('rejectAllBtn').addEventListener('click', function() {
-        rejectAllCookies();
+        ;
         hideCookieBanner();
         if (config.behavior.showFloatingButton) {
             showFloatingButton();
@@ -4637,6 +4637,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 
 function rejectAllCookies() {
+    hideCookieBanner();
     console.log("❌ Rejecting ALL cookies");
     
     // IMPORTANT: Call the blocking script function
@@ -4710,6 +4711,9 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 
 function saveCustomSettings() {
+
+      hideCookieBanner();
+    
     // Get current checkbox states
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
