@@ -715,12 +715,29 @@ window.COOKIE_SETTINGS = {
 
 
 
-    // ADD: Cleanup on page unload
+// ADD: Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     clearInterval(cookieCleanupInterval);
     iframeObserver.disconnect();
+    removeAllClickListeners(); // ADD THIS LINE
 });
 
+    // NEW: Add click event listener cleanup system
+let clickListeners = [];
+
+// Function to add click listeners properly
+function addClickHandler(element, event, handler) {
+    element.addEventListener(event, handler);
+    clickListeners.push({ element: element, event: event, handler: handler });
+}
+
+// Function to remove all click listeners
+function removeAllClickListeners() {
+    clickListeners.forEach(listener => {
+        listener.element.removeEventListener(listener.event, listener.handler);
+    });
+    clickListeners = [];
+}
 
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
@@ -785,10 +802,7 @@ window.addEventListener('beforeunload', () => {
     }
 
     // Call this when banner is dismissed
-
-function cleanup() {
-    // Use setTimeout to clean up AFTER current operations complete
-    setTimeout(function() {
+    function cleanup() {
         iframeObserver.disconnect();
         cleanupFunctions.forEach(fn => fn());
         cleanupFunctions = [];
@@ -797,10 +811,8 @@ function cleanup() {
         document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
             script.parentNode.removeChild(script);
         });
-        
-        console.log("✅ Cleanup completed - all event listeners removed");
-    }, 100); // Small delay to ensure button actions complete
-}
+    }
+
 
     
     /* ===================== BANNER HOOKS ===================== */
@@ -4211,21 +4223,12 @@ function sendClarityConsentSignal(consentGranted) {
     changeLanguage(config.languageConfig.defaultLanguage);
     
     // Set the dropdown to the default language
-    // Set the dropdown to the default language
     const languageSelect = document.getElementById('cookieLanguageSelect');
-    let languageChangeHandler;
-    
     if (languageSelect) {
-        languageChangeHandler = function() {
+        languageSelect.value = config.languageConfig.defaultLanguage;
+        // Ensure the change event listener is correctly set up
+        languageSelect.addEventListener('change', function() {
             changeLanguage(this.value);
-        };
-        languageSelect.addEventListener('change', languageChangeHandler);
-        
-        // Register cleanup
-        addCleanup(function() {
-            if (languageSelect) {
-                languageSelect.removeEventListener('change', languageChangeHandler);
-            }
         });
     }
     
@@ -4250,11 +4253,8 @@ function sendClarityConsentSignal(consentGranted) {
         });
     });
     
-   
     // Setup cookie value toggles for mobile
-    let cookieToggleHandler;
-    
-    cookieToggleHandler = function(e) {
+    document.addEventListener('click', function(e) {
         if (e.target.classList.contains('toggle-cookie-value')) {
             const cell = e.target.closest('.cookie-value-cell');
             const full = cell.querySelector('.cookie-value-full');
@@ -4272,12 +4272,6 @@ function sendClarityConsentSignal(consentGranted) {
                 e.target.dataset.state = 'truncated';
             }
         }
-    };
-    document.addEventListener('click', cookieToggleHandler);
-    
-    // Register cleanup
-    addCleanup(function() {
-        document.removeEventListener('click', cookieToggleHandler);
     });
     
 
@@ -4354,7 +4348,7 @@ function setupBannerTriggers() {
 
 // Setup all event listeners
 function setupEventListeners() {
-    document.getElementById('acceptAllBtn').addEventListener('click', function() {
+   addClickHandler(document.getElementById('acceptAllBtn'), 'click', function() {
         acceptAllCookies();
         hideCookieBanner();
         if (config.behavior.showFloatingButton) {
@@ -4362,7 +4356,7 @@ function setupEventListeners() {
         }
     });
     
-    document.getElementById('rejectAllBtn').addEventListener('click', function() {
+   addClickHandler(document.getElementById('rejectAllBtn'), 'click', function() {
         rejectAllCookies();
         hideCookieBanner();
         if (config.behavior.showFloatingButton) {
@@ -4370,12 +4364,12 @@ function setupEventListeners() {
         }
     });
     
-    document.getElementById('adjustConsentBtn').addEventListener('click', function() {
+   addClickHandler(document.getElementById('adjustConsentBtn'), 'click', function() {
         showCookieSettings();
         hideCookieBanner();
     });
     
-    document.getElementById('acceptAllSettingsBtn').addEventListener('click', function() {
+    addClickHandler(document.getElementById('acceptAllSettingsBtn'), 'click', function() {
         acceptAllCookies();
         hideCookieSettings();
         if (config.behavior.showFloatingButton) {
@@ -4383,7 +4377,7 @@ function setupEventListeners() {
         }
     });
     
-    document.getElementById('rejectAllSettingsBtn').addEventListener('click', function() {
+   addClickHandler(document.getElementById('rejectAllSettingsBtn'), 'click', function() {
         rejectAllCookies();
         hideCookieSettings();
         if (config.behavior.showFloatingButton) {
@@ -4391,7 +4385,7 @@ function setupEventListeners() {
         }
     });
     
-    document.getElementById('saveSettingsBtn').addEventListener('click', function() {
+    addClickHandler(document.getElementById('saveSettingsBtn'), 'click', function() {
         saveCustomSettings();
         hideCookieSettings();
         if (config.behavior.showFloatingButton) {
@@ -4399,7 +4393,7 @@ function setupEventListeners() {
         }
     });
     
-    document.querySelector('.close-modal').addEventListener('click', function() {
+   addClickHandler(document.querySelector('.close-modal'), 'click', function() {
         hideCookieSettings();
         if (!getCookie('cookie_consent')) {
             showCookieBanner();
@@ -4407,7 +4401,7 @@ function setupEventListeners() {
     });
     
  
-    document.getElementById('cookieFloatingButton').addEventListener('click', function() {
+   addClickHandler(document.getElementById('cookieFloatingButton'), 'click', function() {
         if (!document.getElementById('cookieConsentBanner').classList.contains('show')) {
             showCookieBanner();
         } else {
@@ -4646,11 +4640,9 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     
     console.log("✅ All cookies accepted, page will reload");
 
-     // MOVE cleanup to the END and use setTimeout
-    setTimeout(function() {
-        cleanup(); // Clean up memory after everything is done
-    }, 50);
-    
+     // ADD THIS LINE:
+    cleanup(); // Clean up memory
+    removeAllClickListeners(); // Clean up click listeners
 }
 
 
@@ -4721,10 +4713,10 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     
     console.log("✅ All cookies rejected, page will reload");
 
-  // MOVE cleanup to the END and use setTimeout
-    setTimeout(function() {
-        cleanup(); // Clean up memory after everything is done
-    }, 50);
+      // ADD THIS LINE:
+    cleanup(); // Clean up memory
+    removeAllClickListeners(); // Clean up click listeners
+    
 }
 
 
@@ -4876,10 +4868,9 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
    
     console.log("✅ Custom settings saved and page will reload");
 
-  // MOVE cleanup to the END and use setTimeout
-    setTimeout(function() {
-        cleanup(); // Clean up memory after everything is done
-    }, 50);
+    // ADD THIS LINE:
+    cleanup(); // Clean up memory
+    removeAllClickListeners(); // Clean up click listeners
     
 }
 
@@ -5287,13 +5278,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize cookie consent
     initializeCookieConsent(detectedCookies, userLanguage);
 
-    
     // Handle scroll acceptance if enabled
-    let scrollHandler;
-    
     if (config.behavior.acceptOnScroll) {
         let scrollTimeout;
-        scrollHandler = function() {
+        window.addEventListener('scroll', function() {
             if (!getCookie('cookie_consent') && bannerShown) {
                 clearTimeout(scrollTimeout);
                 scrollTimeout = setTimeout(function() {
@@ -5307,20 +5295,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 }, 200);
             }
-        };
-        window.addEventListener('scroll', scrollHandler);
-        
-        // Register cleanup
-        addCleanup(function() {
-            window.removeEventListener('scroll', scrollHandler);
         });
     }
 
     // Handle continue button acceptance if enabled
-    let continueClickHandler;
-    
     if (config.behavior.acceptOnContinue) {
-        continueClickHandler = function(e) {
+        document.addEventListener('click', function(e) {
             if (!getCookie('cookie_consent') && bannerShown && 
                 !e.target.closest('#cookieConsentBanner') && 
                 !e.target.closest('#cookieSettingsModal')) {
@@ -5330,12 +5310,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     showFloatingButton();
                 }
             }
-        };
-        document.addEventListener('click', continueClickHandler);
-        
-        // Register cleanup
-        addCleanup(function() {
-            document.removeEventListener('click', continueClickHandler);
         });
     }
 });
