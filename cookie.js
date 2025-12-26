@@ -716,28 +716,30 @@ window.COOKIE_SETTINGS = {
 
 
 // ADD: Cleanup on page unload
-window.addEventListener('beforeunload', () => {
+const beforeUnloadHandler = () => {
     clearInterval(cookieCleanupInterval);
     iframeObserver.disconnect();
-    removeAllClickListeners(); // ADD THIS LINE
-});
+    
+    // Clean up all mutation observers
+    if (typeof blockInlineTrackersObserver !== 'undefined') {
+        blockInlineTrackersObserver.disconnect();
+    }
+    
+    // Clean up document event listeners
+    if (typeof cleanupEventListeners === 'function') {
+        cleanupEventListeners();
+    }
+};
 
-    // NEW: Add click event listener cleanup system
-let clickListeners = [];
+window.addEventListener('beforeunload', beforeUnloadHandler);
 
-// Function to add click listeners properly
-function addClickHandler(element, event, handler) {
-    element.addEventListener(event, handler);
-    clickListeners.push({ element: element, event: event, handler: handler });
-}
-
-// Function to remove all click listeners
-function removeAllClickListeners() {
-    clickListeners.forEach(listener => {
-        listener.element.removeEventListener(listener.event, listener.handler);
+// Also add to cleanupFunctions array
+if (typeof cleanupFunctions !== 'undefined') {
+    cleanupFunctions.push(() => {
+        window.removeEventListener('beforeunload', beforeUnloadHandler);
     });
-    clickListeners = [];
 }
+
 
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
@@ -794,25 +796,82 @@ function removeAllClickListeners() {
 
 
  /* ===================== CLEANUP SYSTEM ===================== */
-    // FIX: Clean up event listeners and observers
-    let cleanupFunctions = [];
 
-    function addCleanup(fn) {
-        cleanupFunctions.push(fn);
+let cleanupFunctions = [];
+
+// Store references to all event listeners
+let eventListeners = [];
+
+function addCleanup(fn) {
+    cleanupFunctions.push(fn);
+}
+
+// Function to add tracked event listeners
+function addTrackedEventListener(element, event, handler) {
+    element.addEventListener(event, handler);
+    eventListeners.push({ element, event, handler });
+}
+
+// Function to remove all tracked event listeners
+function cleanupEventListeners() {
+    eventListeners.forEach(listener => {
+        listener.element.removeEventListener(listener.event, listener.handler);
+    });
+    eventListeners = [];
+}
+
+// Call this when banner is dismissed
+function cleanup() {
+    // Clean up observers
+    iframeObserver.disconnect();
+    
+    if (typeof blockInlineTrackersObserver !== 'undefined') {
+        blockInlineTrackersObserver.disconnect();
     }
-
-    // Call this when banner is dismissed
-    function cleanup() {
-        iframeObserver.disconnect();
-        cleanupFunctions.forEach(fn => fn());
-        cleanupFunctions = [];
-        
-        // Clean up mutation observers
-        document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
+    
+    // Clean up all tracked event listeners
+    cleanupEventListeners();
+    
+    // Clean up all functions
+    cleanupFunctions.forEach(fn => fn());
+    cleanupFunctions = [];
+    
+    // Clean up interval
+    clearInterval(cookieCleanupInterval);
+    
+    // Clean up DOM elements
+    document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
+        if (script.parentNode) {
             script.parentNode.removeChild(script);
-        });
-    }
+        }
+    });
+}
 
+// Make sure cleanup is called when consent is given
+const originalAcceptAllCookies = acceptAllCookies;
+const originalRejectAllCookies = rejectAllCookies;
+const originalSaveCustomSettings = saveCustomSettings;
+
+if (typeof acceptAllCookies !== 'undefined') {
+    acceptAllCookies = function() {
+        cleanup();
+        return originalAcceptAllCookies.apply(this, arguments);
+    };
+}
+
+if (typeof rejectAllCookies !== 'undefined') {
+    rejectAllCookies = function() {
+        cleanup();
+        return originalRejectAllCookies.apply(this, arguments);
+    };
+}
+
+if (typeof saveCustomSettings !== 'undefined') {
+    saveCustomSettings = function() {
+        cleanup();
+        return originalSaveCustomSettings.apply(this, arguments);
+    };
+}
 
     
     /* ===================== BANNER HOOKS ===================== */
@@ -4348,7 +4407,7 @@ function setupBannerTriggers() {
 
 // Setup all event listeners
 function setupEventListeners() {
-   addClickHandler(document.getElementById('acceptAllBtn'), 'click', function() {
+    document.getElementById('acceptAllBtn').addEventListener('click', function() {
         acceptAllCookies();
         hideCookieBanner();
         if (config.behavior.showFloatingButton) {
@@ -4356,7 +4415,7 @@ function setupEventListeners() {
         }
     });
     
-   addClickHandler(document.getElementById('rejectAllBtn'), 'click', function() {
+    document.getElementById('rejectAllBtn').addEventListener('click', function() {
         rejectAllCookies();
         hideCookieBanner();
         if (config.behavior.showFloatingButton) {
@@ -4364,12 +4423,12 @@ function setupEventListeners() {
         }
     });
     
-   addClickHandler(document.getElementById('adjustConsentBtn'), 'click', function() {
+    document.getElementById('adjustConsentBtn').addEventListener('click', function() {
         showCookieSettings();
         hideCookieBanner();
     });
     
-    addClickHandler(document.getElementById('acceptAllSettingsBtn'), 'click', function() {
+    document.getElementById('acceptAllSettingsBtn').addEventListener('click', function() {
         acceptAllCookies();
         hideCookieSettings();
         if (config.behavior.showFloatingButton) {
@@ -4377,7 +4436,7 @@ function setupEventListeners() {
         }
     });
     
-   addClickHandler(document.getElementById('rejectAllSettingsBtn'), 'click', function() {
+    document.getElementById('rejectAllSettingsBtn').addEventListener('click', function() {
         rejectAllCookies();
         hideCookieSettings();
         if (config.behavior.showFloatingButton) {
@@ -4385,7 +4444,7 @@ function setupEventListeners() {
         }
     });
     
-    addClickHandler(document.getElementById('saveSettingsBtn'), 'click', function() {
+    document.getElementById('saveSettingsBtn').addEventListener('click', function() {
         saveCustomSettings();
         hideCookieSettings();
         if (config.behavior.showFloatingButton) {
@@ -4393,7 +4452,7 @@ function setupEventListeners() {
         }
     });
     
-   addClickHandler(document.querySelector('.close-modal'), 'click', function() {
+    document.querySelector('.close-modal').addEventListener('click', function() {
         hideCookieSettings();
         if (!getCookie('cookie_consent')) {
             showCookieBanner();
@@ -4401,7 +4460,7 @@ function setupEventListeners() {
     });
     
  
-   addClickHandler(document.getElementById('cookieFloatingButton'), 'click', function() {
+    document.getElementById('cookieFloatingButton').addEventListener('click', function() {
         if (!document.getElementById('cookieConsentBanner').classList.contains('show')) {
             showCookieBanner();
         } else {
@@ -4642,7 +4701,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
      // ADD THIS LINE:
     cleanup(); // Clean up memory
-    removeAllClickListeners(); // Clean up click listeners
+    
 }
 
 
@@ -4715,7 +4774,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
       // ADD THIS LINE:
     cleanup(); // Clean up memory
-    removeAllClickListeners(); // Clean up click listeners
     
 }
 
@@ -4870,7 +4928,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
     // ADD THIS LINE:
     cleanup(); // Clean up memory
-    removeAllClickListeners(); // Clean up click listeners
     
 }
 
