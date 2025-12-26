@@ -169,8 +169,7 @@ clarityConfig: {
         bannerDelay: 0, // Desktop delay (seconds)
         bannerDelayMobile: 0, // Mobile delay (seconds) - add this line
         rememberLanguage: true,
-        acceptOnScroll: false,
-        acceptOnContinue: false,
+     
         
         // NEW: Restrict user interaction when banner is visible
         restrictInteraction: {
@@ -4629,40 +4628,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize cookie consent
     initializeCookieConsent(detectedCookies, userLanguage);
 
-    // Handle scroll acceptance if enabled
-    if (config.behavior.acceptOnScroll) {
-        let scrollTimeout;
-        window.addEventListener('scroll', function() {
-            if (!getCookie('cookie_consent') && bannerShown) {
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(function() {
-                    const scrollPercentage = (window.scrollY + window.innerHeight) / document.body.scrollHeight * 100;
-                    if (scrollPercentage > 30) {
-                        acceptAllCookies();
-                        hideCookieBanner();
-                        if (config.behavior.showFloatingButton) {
-                            showFloatingButton();
-                        }
-                    }
-                }, 200);
-            }
-        });
-    }
 
-    // Handle continue button acceptance if enabled
-    if (config.behavior.acceptOnContinue) {
-        document.addEventListener('click', function(e) {
-            if (!getCookie('cookie_consent') && bannerShown && 
-                !e.target.closest('#cookieConsentBanner') && 
-                !e.target.closest('#cookieSettingsModal')) {
-                acceptAllCookies();
-                hideCookieBanner();
-                if (config.behavior.showFloatingButton) {
-                    showFloatingButton();
-                }
-            }
-        });
-    }
 });
 
 
