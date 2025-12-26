@@ -12,9 +12,7 @@ window.COOKIE_SETTINGS = {
    ENHANCED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
 /* ============================================================
    FIXED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
-
-
-
+============================================================ */
 (function () {
     'use strict';
 
@@ -837,14 +835,6 @@ window.COOKIE_SETTINGS = {
     }
     
 })();
-
-
-
-
-
-
-
-
 // YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
 /**
  * Microsoft Clarity Configuration
