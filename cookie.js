@@ -1089,7 +1089,7 @@ clarityConfig: {
         bannerDelay: 0, // Desktop delay (seconds)
         bannerDelayMobile: 0, // Mobile delay (seconds) - add this line
         rememberLanguage: true,
-        acceptOnContinue: false,
+       
         
         // NEW: Restrict user interaction when banner is visible
         restrictInteraction: {
