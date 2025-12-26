@@ -1106,7 +1106,7 @@ clarityConfig: {
 
        
         bannerAnimation: {
-            duration: 0.3,
+            duration: 0.2,
             easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
             enterEffect: 'fadeInUp',
             exitEffect: 'fadeOutDown'
