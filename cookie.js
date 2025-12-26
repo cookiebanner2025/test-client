@@ -793,11 +793,7 @@ window.addEventListener('beforeunload', () => {
         console.log("✅ Removed continue acceptance listener");
     }
     
-    // 3. Clean up scroll acceptance listener
-    if (typeof scrollAcceptHandler !== 'undefined' && scrollAcceptHandler !== null) {
-        window.removeEventListener('scroll', scrollAcceptHandler);
-        console.log("✅ Removed scroll acceptance listener");
-    }
+ 
     
     // 4. Clean up beforeunload listener
     if (typeof beforeUnloadHandler !== 'undefined') {
@@ -1121,7 +1117,6 @@ clarityConfig: {
         bannerDelay: 0, // Desktop delay (seconds)
         bannerDelayMobile: 0, // Mobile delay (seconds) - add this line
         rememberLanguage: true,
-        acceptOnScroll: false,
         acceptOnContinue: false,
         
         // NEW: Restrict user interaction when banner is visible
@@ -5299,25 +5294,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize cookie consent
     initializeCookieConsent(detectedCookies, userLanguage);
 
-    // Handle scroll acceptance if enabled
-    if (config.behavior.acceptOnScroll) {
-        let scrollTimeout;
-        window.addEventListener('scroll', function() {
-            if (!getCookie('cookie_consent') && bannerShown) {
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(function() {
-                    const scrollPercentage = (window.scrollY + window.innerHeight) / document.body.scrollHeight * 100;
-                    if (scrollPercentage > 30) {
-                        acceptAllCookies();
-                        hideCookieBanner();
-                        if (config.behavior.showFloatingButton) {
-                            showFloatingButton();
-                        }
-                    }
-                }, 200);
-            }
-        });
-    }
+
 
     // Handle continue button acceptance if enabled
  // FIXED: Continue button acceptance - named function for cleanup
