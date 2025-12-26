@@ -1107,7 +1107,7 @@ clarityConfig: {
        
         bannerAnimation: {
             duration: 0.4,
-            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
             enterEffect: 'fadeInUp',
             exitEffect: 'fadeOutDown'
         },
@@ -4339,7 +4339,7 @@ function setupEventListeners() {
     });
     
     document.getElementById('rejectAllBtn').addEventListener('click', function() {
-        ;
+        rejectAllCookies();
         hideCookieBanner();
         if (config.behavior.showFloatingButton) {
             showFloatingButton();
@@ -4408,23 +4408,13 @@ function showCookieBanner() {
 
 function hideCookieBanner() {
     const banner = document.getElementById('cookieConsentBanner');
-    
-    // ADD THIS CHECK:
-    if (!banner) return; // If banner doesn't exist, exit early
-    
-    // Fast fade out (0.2 seconds instead of 0.4)
-    banner.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
-    banner.style.opacity = '0';
-    banner.style.transform = 'translateY(20px)';
-    
-    // Remove from DOM after animation completes
+    banner.classList.remove('show');
     setTimeout(() => {
         banner.style.display = 'none';
-    }, 200); // Matches the 0.2s animation
-    
+    }, 400);
     bannerShown = false;
     
-    // Disable interaction restrictions when banner hides
+    // NEW: Disable interaction restrictions when banner hides
     disableInteractionRestrictions();
 }
 
@@ -4563,7 +4553,8 @@ function setBlurDensity(density) {
 
 // Cookie consent functions
 function acceptAllCookies() {
-     hideCookieBanner(); // ← ADD THIS LINE
+    
+    hideCookieBanner(); // ← Add this line
     console.log("✅ Accepting ALL cookies");
     
     // IMPORTANT: Call the blocking script function
@@ -4640,7 +4631,8 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 
 function rejectAllCookies() {
-     hideCookieBanner();  // ← This is correct
+
+    hideCookieBanner(); // ← Add this line
     console.log("❌ Rejecting ALL cookies");
     
     // IMPORTANT: Call the blocking script function
@@ -4715,8 +4707,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 function saveCustomSettings() {
 
-       hideCookieBanner();  // ← This is correct
-    
+    hideCookieBanner(); // ← Add this line
     // Get current checkbox states
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
