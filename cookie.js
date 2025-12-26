@@ -1,83 +1,14 @@
-
-/* ============================================================
-   GLOBAL SETTINGS - CONTROLS FOR BOTH SCRIPTS
-============================================================ */
 window.COOKIE_SETTINGS = {
     BLOCKING_ENABLED: true,    // Set to false to turn OFF blocking
     RELOAD_ENABLED: true       // Set to false to turn OFF page reloads
 };
-/* ============================================================
-   ULTRA-EARLY DEFAULT CONSENT SETTING
-   This MUST run before any tags can read consent state
-============================================================ */
-(function() {
-    'use strict';
-    
-    // Initialize dataLayer for Google Tag Manager
-    window.dataLayer = window.dataLayer || [];
-    
-    // Initialize gtag function
-    function gtag() { window.dataLayer.push(arguments); }
-    window.gtag = window.gtag || gtag;
-    
-    // ============ GOOGLE CONSENT DEFAULT ============
-    gtag('consent', 'default', {
-        'ad_storage': 'denied',
-        'analytics_storage': 'denied',
-        'ad_user_data': 'denied',
-        'ad_personalization': 'denied',
-        'personalization_storage': 'denied',
-        'functionality_storage': 'denied',
-        'security_storage': 'granted'
-    });
-    
-    // Push initial GCS signal (G100)
-    window.dataLayer.push({
-        'event': 'ultra_early_consent_state',
-        'consent_mode': {
-            'ad_storage': 'denied',
-            'analytics_storage': 'denied',
-            'ad_user_data': 'denied',
-            'ad_personalization': 'denied',
-            'personalization_storage': 'denied',
-            'functionality_storage': 'denied',
-            'security_storage': 'granted'
-        },
-        'gcs': 'G100',
-        'timestamp': new Date().toISOString(),
-        'note': 'Set at page load start'
-    });
-    
-    // ============ MICROSOFT UET CONSENT DEFAULT ============
-    // Initialize UET queue if not exists
-    window.uetq = window.uetq || [];
-    
-    // Set default UET consent (denied)
-    window.uetq.push('consent', 'default', {
-        'ad_storage': 'denied',
-        'data_processing': ['GDPR']
-    });
-    
-    // Push UET default event
-    window.dataLayer.push({
-        'event': 'ultra_early_uet_consent',
-        'uet_consent': {
-            'ad_storage': 'denied',
-            'status': 'default',
-            'src': 'ultra_early',
-            'asc': 'D'
-        },
-        'timestamp': new Date().toISOString()
-    });
-    
-    console.log("✅ ULTRA-EARLY: Default consent set for Google & Microsoft at: " + new Date().toISOString());
-})();
 
 
 /* ============================================================
    COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
    This blocks all cookies and trackers BEFORE consent is given
 ============================================================ */
+
 
 
 
@@ -782,12 +713,15 @@ window.COOKIE_SETTINGS = {
     }, 1000);
 
 
-   // ADD: Cleanup on page unload
+
+
+    // ADD: Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     clearInterval(cookieCleanupInterval);
     iframeObserver.disconnect();
 });
-   
+
+
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
     function blockInlineTrackers() {
@@ -841,7 +775,8 @@ window.addEventListener('beforeunload', () => {
     }
 
 
-    /* ===================== CLEANUP SYSTEM ===================== */
+
+ /* ===================== CLEANUP SYSTEM ===================== */
     // FIX: Clean up event listeners and observers
     let cleanupFunctions = [];
 
@@ -862,7 +797,7 @@ window.addEventListener('beforeunload', () => {
     }
 
 
-   
+    
     /* ===================== BANNER HOOKS ===================== */
     
     window.enableAllTracking = function() {
@@ -993,9 +928,6 @@ window.addEventListener('beforeunload', () => {
     }
     
 })();
-
-
-
 
 
 
@@ -1227,7 +1159,7 @@ geoConfig: {
     specificRegions: [] // NEW: Can specify 'EU' or other regions
 },
     
-
+   
     
     // UI Theme selection
     uiTheme: 'default',
@@ -1419,7 +1351,7 @@ geoConfig: {
 // ============== IMPLEMENTATION SECTION ============== //
 // ============== IMPLEMENTATION SECTION ============== //
 // Initialize dataLayer for Google Tag Manager
-
+window.dataLayer = window.dataLayer || [];
 
 // Initialize UET queue with msd parameter if not already exists
 if (typeof window.uetq === 'undefined') {
@@ -1441,11 +1373,34 @@ if (typeof window.uetq === 'undefined') {
     }
 }
 
+function gtag() { dataLayer.push(arguments); }
 
+// Set default consent (deny all except security) AND initial GCS signal
+gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'analytics_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'personalization_storage': 'denied',
+    'functionality_storage': 'denied',
+    'security_storage': 'granted'
+});
 
-
-
-
+// Push initial GCS signal (G100) immediately after default consent
+window.dataLayer.push({
+    'event': 'initial_consent_state',
+    'consent_mode': {
+        'ad_storage': 'denied',
+        'analytics_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'personalization_storage': 'denied',
+        'functionality_storage': 'denied',
+        'security_storage': 'granted'
+    },
+    'gcs': 'G100', // Explicit initial GCS signal
+    'timestamp': new Date().toISOString()
+});
 
 // Set default UET consent
 function setDefaultUetConsent() {
@@ -2830,6 +2785,7 @@ function getContinentFromCountry(countryCode) {
 
 
 
+
 // Check if current domain is allowed
 function isDomainAllowed() {
     if (config.allowedDomains.length === 0) return true;
@@ -2842,8 +2798,6 @@ function isDomainAllowed() {
         return currentDomain === domain;
     });
 }
-
-
 
 // Check geo-targeting restrictions
 // Replace the existing checkGeoTargeting function with this:
@@ -3349,7 +3303,6 @@ function injectConsentHTML(detectedCookies, language = 'en') {
 </div>
     
  
-
     
     <!-- Blur overlay for restricting interaction -->
     <div id="cookieBlurOverlay" class="cookie-blur-overlay"></div>
@@ -3572,7 +3525,7 @@ function injectConsentHTML(detectedCookies, language = 'en') {
     /* When restricting clicks, make overlay block clicks */
     .cookie-blur-overlay.block-clicks {
         pointer-events: auto;
-        cursor: default; 
+        cursor: default;  <-- CHANGED TO "default"
     }
     
     /* When preventing scroll */
@@ -3812,6 +3765,7 @@ function injectConsentHTML(detectedCookies, language = 'en') {
     }
 
 
+ 
 
     /* Mobile-friendly cookie value display */
     .cookie-value-cell {
@@ -3892,7 +3846,6 @@ function injectConsentHTML(detectedCookies, language = 'en') {
 
 
 
-  
     /* Footer Buttons */
     .cookie-settings-footer {
         padding: 20px 30px;
@@ -3900,7 +3853,7 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         border-top: ${config.modalStyle.footer.borderTop};
     }
 
-
+ 
 
     /* Responsive Styles */
     @media (max-width: 900px) {
@@ -4253,12 +4206,21 @@ function sendClarityConsentSignal(consentGranted) {
     changeLanguage(config.languageConfig.defaultLanguage);
     
     // Set the dropdown to the default language
+    // Set the dropdown to the default language
     const languageSelect = document.getElementById('cookieLanguageSelect');
+    let languageChangeHandler;
+    
     if (languageSelect) {
-        languageSelect.value = config.languageConfig.defaultLanguage;
-        // Ensure the change event listener is correctly set up
-        languageSelect.addEventListener('change', function() {
+        languageChangeHandler = function() {
             changeLanguage(this.value);
+        };
+        languageSelect.addEventListener('change', languageChangeHandler);
+        
+        // Register cleanup
+        addCleanup(function() {
+            if (languageSelect) {
+                languageSelect.removeEventListener('change', languageChangeHandler);
+            }
         });
     }
     
@@ -4283,8 +4245,11 @@ function sendClarityConsentSignal(consentGranted) {
         });
     });
     
+   
     // Setup cookie value toggles for mobile
-    document.addEventListener('click', function(e) {
+    let cookieToggleHandler;
+    
+    cookieToggleHandler = function(e) {
         if (e.target.classList.contains('toggle-cookie-value')) {
             const cell = e.target.closest('.cookie-value-cell');
             const full = cell.querySelector('.cookie-value-full');
@@ -4302,16 +4267,22 @@ function sendClarityConsentSignal(consentGranted) {
                 e.target.dataset.state = 'truncated';
             }
         }
+    };
+    document.addEventListener('click', cookieToggleHandler);
+    
+    // Register cleanup
+    addCleanup(function() {
+        document.removeEventListener('click', cookieToggleHandler);
     });
     
- 
+
     
     // Setup password prompt events if needed
     if (config.analytics.passwordProtect && !isDashboardAuthenticated) {
         setupPasswordPromptEvents();
     }
     
- 
+
     
     // Setup timer for durationMinutes if enabled
     if (config.behavior.bannerSchedule.enabled && config.behavior.bannerSchedule.durationMinutes) {
@@ -4327,6 +4298,8 @@ function sendClarityConsentSignal(consentGranted) {
         }, config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
     }
 }
+
+
 
 
 
@@ -4428,8 +4401,7 @@ function setupEventListeners() {
         }
     });
     
-  
-    
+ 
     document.getElementById('cookieFloatingButton').addEventListener('click', function() {
         if (!document.getElementById('cookieConsentBanner').classList.contains('show')) {
             showCookieBanner();
@@ -4481,6 +4453,7 @@ function hideCookieSettings() {
         modal.style.display = 'none';
     }, 300);
 }
+
 
 
 
@@ -4613,14 +4586,14 @@ function acceptAllCookies() {
             performance: true
         }));
         
-        // Only reload if reload feature is enabled
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
-        } else {
-            console.log("🟡 Page reload disabled - changes saved without refresh");
-        }
+      // Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes saved without refresh");
+}
     }
     
     // Your existing code continues...
@@ -4644,6 +4617,7 @@ function acceptAllCookies() {
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     
+ 
     window.dataLayer.push({
         'event': 'cookie_consent_accepted',
         'consent_mode': {
@@ -4667,13 +4641,10 @@ function acceptAllCookies() {
     
     console.log("✅ All cookies accepted, page will reload");
 
-    // ADD THIS LINE:
+     // ADD THIS LINE:
     cleanup(); // Clean up memory
-   
+    
 }
-
-
-
 
 
 function rejectAllCookies() {
@@ -4687,14 +4658,14 @@ function rejectAllCookies() {
         localStorage.removeItem("__user_cookie_consent__");
         localStorage.removeItem("__user_cookie_categories__");
         
-        // Only reload if reload feature is enabled
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
-        } else {
-            console.log("🟡 Page reload disabled - changes saved without refresh");
-        }
+       // Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes saved without refresh");
+}
     }
     
     // Your existing code continues...
@@ -4717,6 +4688,8 @@ function rejectAllCookies() {
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     clearNonEssentialCookies();
+    
+   
     
     window.dataLayer.push({
         'event': 'cookie_consent_rejected',
@@ -4741,12 +4714,10 @@ function rejectAllCookies() {
     
     console.log("✅ All cookies rejected, page will reload");
 
-    // ADD THIS LINE:
+      // ADD THIS LINE:
     cleanup(); // Clean up memory
+    
 }
-
-
-
 
 
 function saveCustomSettings() {
@@ -4779,15 +4750,18 @@ function saveCustomSettings() {
         const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
         localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
         
-        // Only reload if reload feature is enabled
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
-        } else {
-            console.log("🟡 Page reload disabled - changes saved without refresh");
-        }
+      // Only reload if reload feature is enabled
+if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
+} else {
+    console.log("🟡 Page reload disabled - changes saved without refresh");
+}
     }
+    
+    // Continue with your existing analytics code...
+    // Rest of your function stays the same...
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -4836,6 +4810,8 @@ function saveCustomSettings() {
     if (!performanceChecked) clearCategoryCookies('performance');
     if (!advertisingChecked) clearCategoryCookies('advertising');
     if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
+    
+  
     
     // Your existing dataLayer code continues...
     const consentStates = {
@@ -4887,16 +4863,15 @@ function saveCustomSettings() {
         });
     }
    
-    // NEW: Disable interaction restrictions when user saves custom settings
+        // NEW: Disable interaction restrictions when user saves custom settings
     disableInteractionRestrictions();
    
     console.log("✅ Custom settings saved and page will reload");
 
     // ADD THIS LINE:
     cleanup(); // Clean up memory
-   
+    
 }
-
 
 
 
@@ -5276,7 +5251,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-
+  
     // Set default UET consent
     setDefaultUetConsent();
 
@@ -5302,10 +5277,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize cookie consent
     initializeCookieConsent(detectedCookies, userLanguage);
 
+    
     // Handle scroll acceptance if enabled
+    let scrollHandler;
+    
     if (config.behavior.acceptOnScroll) {
         let scrollTimeout;
-        window.addEventListener('scroll', function() {
+        scrollHandler = function() {
             if (!getCookie('cookie_consent') && bannerShown) {
                 clearTimeout(scrollTimeout);
                 scrollTimeout = setTimeout(function() {
@@ -5319,12 +5297,20 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 }, 200);
             }
+        };
+        window.addEventListener('scroll', scrollHandler);
+        
+        // Register cleanup
+        addCleanup(function() {
+            window.removeEventListener('scroll', scrollHandler);
         });
     }
 
     // Handle continue button acceptance if enabled
+    let continueClickHandler;
+    
     if (config.behavior.acceptOnContinue) {
-        document.addEventListener('click', function(e) {
+        continueClickHandler = function(e) {
             if (!getCookie('cookie_consent') && bannerShown && 
                 !e.target.closest('#cookieConsentBanner') && 
                 !e.target.closest('#cookieSettingsModal')) {
@@ -5334,6 +5320,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     showFloatingButton();
                 }
             }
+        };
+        document.addEventListener('click', continueClickHandler);
+        
+        // Register cleanup
+        addCleanup(function() {
+            document.removeEventListener('click', continueClickHandler);
         });
     }
 });
@@ -5378,6 +5370,10 @@ if (typeof window !== 'undefined') {
 
 
 
+/* ============================================================
+   ADMIN CONTROL FUNCTIONS
+   You can call these from browser console to control blocking
+============================================================ */
 
 // 1. Function to temporarily disable blocking (for testing)
 window.disableBlocking = function() {
