@@ -1107,7 +1107,7 @@ clarityConfig: {
        
         bannerAnimation: {
             duration: 0.4,
-            easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
+            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
             enterEffect: 'fadeInUp',
             exitEffect: 'fadeOutDown'
         },
@@ -4408,13 +4408,20 @@ function showCookieBanner() {
 
 function hideCookieBanner() {
     const banner = document.getElementById('cookieConsentBanner');
-    banner.classList.remove('show');
+    
+    // Fast fade out (0.2 seconds instead of 0.4)
+    banner.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+    banner.style.opacity = '0';
+    banner.style.transform = 'translateY(20px)';
+    
+    // Remove from DOM after animation completes
     setTimeout(() => {
         banner.style.display = 'none';
-    }, 400);
+    }, 200); // Matches the 0.2s animation
+    
     bannerShown = false;
     
-    // NEW: Disable interaction restrictions when banner hides
+    // Disable interaction restrictions when banner hides
     disableInteractionRestrictions();
 }
 
