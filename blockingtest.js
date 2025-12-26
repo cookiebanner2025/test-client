@@ -812,7 +812,7 @@ window.addEventListener('beforeunload', () => {
         if (RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
-            }, 150);
+            }, 100);
         } else if (DEBUG) {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
@@ -836,7 +836,7 @@ window.addEventListener('beforeunload', () => {
         if (RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
-            }, 150);
+            }, 100);
         } else if (DEBUG) {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
