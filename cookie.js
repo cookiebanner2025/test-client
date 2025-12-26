@@ -78,11 +78,12 @@ window.COOKIE_SETTINGS = {
    COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
    This blocks all cookies and trackers BEFORE consent is given
 ============================================================ */
-/* ============================================================
-   ENHANCED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
-/* ============================================================
-   FIXED COOKIE BLOCKING FIREWALL WITH CATEGORY SUPPORT
-============================================================ */
+
+
+
+
+
+
 
 
 
@@ -913,9 +914,9 @@ window.COOKIE_SETTINGS = {
 
 
 
-// YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
 
-// YOUR EXISTING CUSTOM COOKIE BANNER CODE CONTINUES BELOW...
+
+
 /**
  * Microsoft Clarity Configuration
  * IMPORTANT: From Oct 31, 2025, Microsoft Clarity requires explicit consent signals
