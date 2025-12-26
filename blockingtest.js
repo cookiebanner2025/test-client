@@ -4351,29 +4351,32 @@ function setupEventListeners() {
         hideCookieBanner();
     });
     
-    document.getElementById('acceptAllSettingsBtn').addEventListener('click', function() {
-        acceptAllCookies();
-        hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
-    });
+ document.getElementById('acceptAllSettingsBtn').addEventListener('click', function() {
+    hideCookieSettings(); // ← Move this to TOP
+    acceptAllCookies();   // ← This will now hide banner too
+    // Remove hideCookieSettings() from here
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+});
     
-    document.getElementById('rejectAllSettingsBtn').addEventListener('click', function() {
-        rejectAllCookies();
-        hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
-    });
+ document.getElementById('rejectAllSettingsBtn').addEventListener('click', function() {
+    hideCookieSettings(); // ← Move this to TOP
+    rejectAllCookies();   // ← This will now hide banner too
+    // Remove hideCookieSettings() from here
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+});
     
-    document.getElementById('saveSettingsBtn').addEventListener('click', function() {
-        saveCustomSettings();
-        hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
-    });
+   document.getElementById('saveSettingsBtn').addEventListener('click', function() {
+    hideCookieSettings(); // ← Move this to TOP
+    saveCustomSettings(); // ← This will now hide banner too
+    // Remove hideCookieSettings() from here
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+});
     
     document.querySelector('.close-modal').addEventListener('click', function() {
         hideCookieSettings();
