@@ -4637,7 +4637,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 
 function rejectAllCookies() {
-    hideCookieBanner();
+     hideCookieBanner();  // ← This is correct
     console.log("❌ Rejecting ALL cookies");
     
     // IMPORTANT: Call the blocking script function
@@ -4712,7 +4712,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 function saveCustomSettings() {
 
-      hideCookieBanner();
+       hideCookieBanner();  // ← This is correct
     
     // Get current checkbox states
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
