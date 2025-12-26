@@ -1,3 +1,7 @@
+
+// Add this at the VERY TOP of your script, before everything else
+const cleanupFunctions = [];
+
 window.COOKIE_SETTINGS = {
     BLOCKING_ENABLED: true,    // Set to false to turn OFF blocking
     RELOAD_ENABLED: true       // Set to false to turn OFF page reloads
@@ -777,54 +781,53 @@ window.addEventListener('beforeunload', () => {
 
 
  /* ===================== CLEANUP SYSTEM ===================== */
-    // FIX: Clean up event listeners and observers
-   function cleanup() {
+/* ===================== CLEANUP SYSTEM ===================== */
+function cleanup() {
     console.log("🧹 Cleaning up event listeners...");
     
-    // 1. Clean up the toggle cookie value listener (we fixed this earlier)
+    // 1. Clean up the toggle cookie value listener
     if (typeof toggleCookieValueHandler !== 'undefined') {
         document.removeEventListener('click', toggleCookieValueHandler);
         console.log("✅ Removed cookie toggle listener");
     }
     
-    // 2. Clean up continue acceptance listener (we fixed this earlier)
+    // 2. Clean up continue acceptance listener
     if (typeof continueAcceptHandler !== 'undefined' && continueAcceptHandler !== null) {
         document.removeEventListener('click', continueAcceptHandler);
         console.log("✅ Removed continue acceptance listener");
     }
     
- 
+    // 3. The EASY FIX: Just remove the HTML elements!
+    // This automatically removes ALL their event listeners
+    const banner = document.getElementById('cookieConsentBanner');
+    const modal = document.getElementById('cookieSettingsModal');
+    const floatingButton = document.getElementById('cookieFloatingButton');
     
-    // 4. Clean up beforeunload listener
-    if (typeof beforeUnloadHandler !== 'undefined') {
-        window.removeEventListener('beforeunload', beforeUnloadHandler);
-        console.log("✅ Removed beforeunload listener");
+    if (banner) banner.remove();
+    if (modal) modal.remove();
+    if (floatingButton) floatingButton.remove();
+    
+    console.log("✅ Removed HTML elements (and all their listeners)");
+    
+    // 4. Clean up other observers
+    iframeObserver.disconnect();
+    
+    // 5. Clean up intervals
+    clearInterval(cookieCleanupInterval);
+    
+    // 6. Clean up any stored cleanup functions
+    if (cleanupFunctions && Array.isArray(cleanupFunctions)) {
+        cleanupFunctions.forEach(fn => fn());
+        cleanupFunctions = [];
     }
     
-    // 5. Clean up banner button click listeners
-    const acceptBtn = document.getElementById('acceptAllBtn');
-    const rejectBtn = document.getElementById('rejectAllBtn');
-    const adjustBtn = document.getElementById('adjustConsentBtn');
-    
-    if (acceptBtn) acceptBtn.removeEventListener('click', acceptAllCookies);
-    if (rejectBtn) rejectBtn.removeEventListener('click', rejectAllCookies);
-    if (adjustBtn) adjustBtn.removeEventListener('click', showCookieSettings);
-    
-    console.log("✅ Removed banner button listeners");
-    
-    // Your existing cleanup code continues...
-    iframeObserver.disconnect();
-    cleanupFunctions.forEach(fn => fn());
-    cleanupFunctions = [];
-    
-    // Clean up mutation observers
+    // 7. Clean up mutation observers
     document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
         script.parentNode.removeChild(script);
     });
     
     console.log("✅ Cleanup complete!");
 }
-
     
     /* ===================== BANNER HOOKS ===================== */
     
@@ -4362,20 +4365,17 @@ function setupBannerTriggers() {
 
 // Setup all event listeners
 function setupEventListeners() {
+    // Add ALL event listeners like normal
     document.getElementById('acceptAllBtn').addEventListener('click', function() {
         acceptAllCookies();
         hideCookieBanner();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
+        if (config.behavior.showFloatingButton) showFloatingButton();
     });
     
     document.getElementById('rejectAllBtn').addEventListener('click', function() {
         rejectAllCookies();
         hideCookieBanner();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
+        if (config.behavior.showFloatingButton) showFloatingButton();
     });
     
     document.getElementById('adjustConsentBtn').addEventListener('click', function() {
@@ -4386,25 +4386,19 @@ function setupEventListeners() {
     document.getElementById('acceptAllSettingsBtn').addEventListener('click', function() {
         acceptAllCookies();
         hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
+        if (config.behavior.showFloatingButton) showFloatingButton();
     });
     
     document.getElementById('rejectAllSettingsBtn').addEventListener('click', function() {
         rejectAllCookies();
         hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
+        if (config.behavior.showFloatingButton) showFloatingButton();
     });
     
     document.getElementById('saveSettingsBtn').addEventListener('click', function() {
         saveCustomSettings();
         hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
+        if (config.behavior.showFloatingButton) showFloatingButton();
     });
     
     document.querySelector('.close-modal').addEventListener('click', function() {
@@ -4414,7 +4408,6 @@ function setupEventListeners() {
         }
     });
     
- 
     document.getElementById('cookieFloatingButton').addEventListener('click', function() {
         if (!document.getElementById('cookieConsentBanner').classList.contains('show')) {
             showCookieBanner();
