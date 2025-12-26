@@ -511,201 +511,161 @@ window.COOKIE_SETTINGS = {
     }
     
     // 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
-// 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
-if (window.fetch && !window.__cookieFetchPatched) {
-    window.__cookieFetchPatched = true;
-    const originalFetch = window.fetch;
-    
-    // Create named function for easier removal
-    const fetchInterceptor = function (resource, init) {
-        const url = typeof resource === 'string' ? resource : resource?.url;
-        
-        if (shouldBlockDomain(url)) {
-            if (DEBUG) console.log(`🛡️ Blocked fetch request: ${url}`);
+    if (window.fetch) {
+        const originalFetch = window.fetch;
+        window.fetch = function (resource, init) {
+            const url = typeof resource === 'string' ? resource : resource?.url;
             
-            // ============================================================================
-            // CRITICAL FIX: AGGRESSIVE_MODE default = false (safer for websites)
-            // ============================================================================
-            if (AGGRESSIVE_MODE) {
+            if (shouldBlockDomain(url)) {
+                if (DEBUG) console.log(`🛡️ Blocked fetch request: ${url}`);
+                
                 // ============================================================================
-                // AGGRESSIVE MODE: Hides from extensions
-                // Returns Promise.reject() for trackers (invisible to extensions)
-                // Returns 204 for functional APIs (prevents website crashes)
+                // CRITICAL FIX: AGGRESSIVE_MODE default = false (safer for websites)
                 // ============================================================================
-                
-                // List of KNOWN TRACKER PATTERNS (these get rejected)
-                const isDefinitelyTracker = 
-                    // Meta/Facebook
-                    url.includes('facebook.com') || 
-                    url.includes('connect.facebook.net') ||
-                    url.includes('fbcdn.net') ||
-                    // Google Analytics/Ads
-                    url.includes('google-analytics.com') ||
-                    url.includes('doubleclick.net') ||
-                    url.includes('googleadservices.com') ||
-                    url.includes('googlesyndication.com') ||
-                    // TikTok
-                    url.includes('tiktok.com') ||
-                    // Microsoft/UET
-                    url.includes('bing.com') ||
-                    // Pinterest
-                    url.includes('pinterest.com') ||
-                    // Common tracker endpoints
-                    url.includes('/collect') ||
-                    url.includes('/tr/') ||
-                    url.includes('/gtag/') ||
-                    url.includes('/beacon') ||
-                    url.includes('/event') ||
-                    url.includes('/track') ||
-                    url.includes('/pixel') ||
-                    url.includes('/conversion') ||
-                    url.includes('/ads') ||
-                    url.includes('/adserver');
-                
-                // List of FUNCTIONAL API PATTERNS (these get 204 responses)
-                const isLikelyFunctionalAPI = 
-                    // Standard API patterns
-                    (url.includes('/api/') && !url.includes('/api/event')) || 
-                    url.includes('/graphql') ||
-                    url.includes('/rest/') ||
-                    url.includes('/ajax/') ||
-                    // WordPress
-                    url.includes('/wp-admin/admin-ajax.php') ||
-                    // E-commerce
-                    url.includes('/checkout') ||
-                    url.includes('/cart') ||
-                    url.includes('/add-to-cart') ||
-                    url.includes('/update-cart') ||
-                    // User actions
-                    url.includes('/login') ||
-                    url.includes('/register') ||
-                    url.includes('/contact') ||
-                    url.includes('/newsletter') ||
-                    // Payment processors
-                    url.includes('/stripe') ||
-                    url.includes('/paypal') ||
-                    url.includes('/braintree');
-                
-                // AGGRESSIVE: Reject ALL tracking requests (hides from extensions)
-                if (isDefinitelyTracker) {
-                    if (DEBUG) console.log(`🔥 AGGRESSIVE: Rejecting tracker: ${url}`);
-                    return Promise.reject(new Error(`Blocked by cookie consent`));
-                }
-                // POLITE: Return empty response for functional APIs (prevents crashes)
-                else if (isLikelyFunctionalAPI) {
-                    if (DEBUG) console.log(`🛡️  SAFE: Returning 204 for API: ${url}`);
+                if (AGGRESSIVE_MODE) {
+                    // ============================================================================
+                    // AGGRESSIVE MODE: Hides from extensions
+                    // Returns Promise.reject() for trackers (invisible to extensions)
+                    // Returns 204 for functional APIs (prevents website crashes)
+                    // ============================================================================
+                    
+                    // List of KNOWN TRACKER PATTERNS (these get rejected)
+                    const isDefinitelyTracker = 
+                        // Meta/Facebook
+                        url.includes('facebook.com') || 
+                        url.includes('connect.facebook.net') ||
+                        url.includes('fbcdn.net') ||
+                        // Google Analytics/Ads
+                        url.includes('google-analytics.com') ||
+                        url.includes('doubleclick.net') ||
+                        url.includes('googleadservices.com') ||
+                        url.includes('googlesyndication.com') ||
+                        // TikTok
+                        url.includes('tiktok.com') ||
+                        // Microsoft/UET
+                        url.includes('bing.com') ||
+                        // Pinterest
+                        url.includes('pinterest.com') ||
+                        // Common tracker endpoints
+                        url.includes('/collect') ||
+                        url.includes('/tr/') ||
+                        url.includes('/gtag/') ||
+                        url.includes('/beacon') ||
+                        url.includes('/event') ||
+                        url.includes('/track') ||
+                        url.includes('/pixel') ||
+                        url.includes('/conversion') ||
+                        url.includes('/ads') ||
+                        url.includes('/adserver');
+                    
+                    // List of FUNCTIONAL API PATTERNS (these get 204 responses)
+                    const isLikelyFunctionalAPI = 
+                        // Standard API patterns
+                        (url.includes('/api/') && !url.includes('/api/event')) || 
+                        url.includes('/graphql') ||
+                        url.includes('/rest/') ||
+                        url.includes('/ajax/') ||
+                        // WordPress
+                        url.includes('/wp-admin/admin-ajax.php') ||
+                        // E-commerce
+                        url.includes('/checkout') ||
+                        url.includes('/cart') ||
+                        url.includes('/add-to-cart') ||
+                        url.includes('/update-cart') ||
+                        // User actions
+                        url.includes('/login') ||
+                        url.includes('/register') ||
+                        url.includes('/contact') ||
+                        url.includes('/newsletter') ||
+                        // Payment processors
+                        url.includes('/stripe') ||
+                        url.includes('/paypal') ||
+                        url.includes('/braintree');
+                    
+                    // AGGRESSIVE: Reject ALL tracking requests (hides from extensions)
+                    if (isDefinitelyTracker) {
+                        if (DEBUG) console.log(`🔥 AGGRESSIVE: Rejecting tracker: ${url}`);
+                        return Promise.reject(new Error(`Blocked by cookie consent`));
+                    }
+                    // POLITE: Return empty response for functional APIs (prevents crashes)
+                    else if (isLikelyFunctionalAPI) {
+                        if (DEBUG) console.log(`🛡️  SAFE: Returning 204 for API: ${url}`);
+                        return Promise.resolve(new Response(null, { 
+                            status: 204, 
+                            statusText: 'No Content'
+                        }));
+                    }
+                    // DEFAULT: Reject (hides from extensions)
+                    else {
+                        if (DEBUG) console.log(`🛡️  DEFAULT: Rejecting unknown: ${url}`);
+                        return Promise.reject(new Error('Request blocked'));
+                    }
+                } 
+                else {
+                    // ============================================================================
+                    // POLITE MODE (DEFAULT): Safer for production
+                    // Always returns 204 (extensions can see the blocked attempt)
+                    // This is the SAFE default that won't break websites
+                    // ============================================================================
+                    if (DEBUG) console.log(`📊 POLITE: Returning 204 (safer for websites): ${url}`);
                     return Promise.resolve(new Response(null, { 
                         status: 204, 
                         statusText: 'No Content'
                     }));
                 }
-                // DEFAULT: Reject (hides from extensions)
-                else {
-                    if (DEBUG) console.log(`🛡️  DEFAULT: Rejecting unknown: ${url}`);
-                    return Promise.reject(new Error('Request blocked'));
-                }
-            } 
-            else {
-                // ============================================================================
-                // POLITE MODE (DEFAULT): Safer for production
-                // Always returns 204 (extensions can see the blocked attempt)
-                // This is the SAFE default that won't break websites
-                // ============================================================================
-                if (DEBUG) console.log(`📊 POLITE: Returning 204 (safer for websites): ${url}`);
-                return Promise.resolve(new Response(null, { 
-                    status: 204, 
-                    statusText: 'No Content'
-                }));
             }
-        }
-        
-        return originalFetch.call(this, resource, init);
-    };
-    
-    window.fetch = fetchInterceptor;
-    
-    // Register cleanup function
-    addCleanup(() => {
-        if (window.fetch === fetchInterceptor) {
-            window.fetch = originalFetch;
-            delete window.__cookieFetchPatched;
-            if (DEBUG) console.log("✅ Fetch interceptor cleaned up");
-        }
-    });
-    
-    if (DEBUG) console.log(`✅ Fetch blocking activated (${AGGRESSIVE_MODE ? 'AGGRESSIVE' : 'POLITE'} mode)`);
-}
-    
- 
-  // 3. Block XMLHttpRequest
-if (window.XMLHttpRequest && !window.__cookieXHRPatched) {
-    window.__cookieXHRPatched = true;
-    const originalOpen = XMLHttpRequest.prototype.open;
-    const originalSend = XMLHttpRequest.prototype.send;
-    
-    XMLHttpRequest.prototype.open = function (method, url) {
-        if (shouldBlockDomain(url)) {
-            if (DEBUG) console.log(`🛡️ Blocked XHR request: ${url}`);
-            this._blocked = true;
-            return;
-        }
-        return originalOpen.apply(this, arguments);
-    };
-    
-    XMLHttpRequest.prototype.send = function (body) {
-        if (this._blocked) {
-            if (DEBUG) console.log(`🛡️ Blocked XHR send`);
-            return;
-        }
-        return originalSend.apply(this, arguments);
-    };
-    
-    // Register cleanup function
-    addCleanup(() => {
-        XMLHttpRequest.prototype.open = originalOpen;
-        XMLHttpRequest.prototype.send = originalSend;
-        delete window.__cookieXHRPatched;
-        if (DEBUG) console.log("✅ XHR interceptor cleaned up");
-    });
-    
-    if (DEBUG) console.log("✅ XHR blocking activated");
-}
-    
-  
-// 4. Block sendBeacon (with AGGRESSIVE_MODE control)
-if (navigator.sendBeacon && !window.__cookieBeaconPatched) {
-    window.__cookieBeaconPatched = true;
-    const originalBeacon = navigator.sendBeacon;
-    
-    const beaconInterceptor = function(url, data) {
-        if (shouldBlockDomain(url)) {
-            if (DEBUG) console.log('🛡️ Blocked beacon:', url);
             
-            // AGGRESSIVE MODE: Return false (hides from extensions)
-            if (AGGRESSIVE_MODE) {
-                return false;
+            return originalFetch.call(this, resource, init);
+        };
+        
+        if (DEBUG) console.log(`✅ Fetch blocking activated (${AGGRESSIVE_MODE ? 'AGGRESSIVE' : 'POLITE'} mode)`);
+    }
+    
+    // 3. Block XMLHttpRequest
+    if (window.XMLHttpRequest) {
+        const originalOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (method, url) {
+            if (shouldBlockDomain(url)) {
+                if (DEBUG) console.log(`🛡️ Blocked XHR request: ${url}`);
+                this._blocked = true;
+                return;
             }
-            // POLITE MODE (DEFAULT): Return true but don't send
-            else {
-                return true; // Safer for websites
+            return originalOpen.apply(this, arguments);
+        };
+        
+        const originalSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.send = function (body) {
+            if (this._blocked) {
+                if (DEBUG) console.log(`🛡️ Blocked XHR send`);
+                return;
             }
-        }
-        return originalBeacon.call(this, url, data);
-    };
+            return originalSend.apply(this, arguments);
+        };
+        
+        if (DEBUG) console.log("✅ XHR blocking activated");
+    }
     
-    navigator.sendBeacon = beaconInterceptor;
-    
-    // Register cleanup function
-    addCleanup(() => {
-        if (navigator.sendBeacon === beaconInterceptor) {
-            navigator.sendBeacon = originalBeacon;
-            delete window.__cookieBeaconPatched;
-            if (DEBUG) console.log("✅ sendBeacon interceptor cleaned up");
-        }
-    });
-    
-    if (DEBUG) console.log(`✅ sendBeacon blocking activated (${AGGRESSIVE_MODE ? 'returns false' : 'returns true'})`);
-}
+    // 4. Block sendBeacon (with AGGRESSIVE_MODE control)
+    if (navigator.sendBeacon) {
+        const originalBeacon = navigator.sendBeacon;
+        navigator.sendBeacon = function(url, data) {
+            if (shouldBlockDomain(url)) {
+                if (DEBUG) console.log('🛡️ Blocked beacon:', url);
+                
+                // AGGRESSIVE MODE: Return false (hides from extensions)
+                if (AGGRESSIVE_MODE) {
+                    return false;
+                }
+                // POLITE MODE (DEFAULT): Return true but don't send
+                else {
+                    return true; // Safer for websites
+                }
+            }
+            return originalBeacon.call(this, url, data);
+        };
+        
+        if (DEBUG) console.log(`✅ sendBeacon blocking activated (${AGGRESSIVE_MODE ? 'returns false' : 'returns true'})`);
+    }
     
     // 5. Block iframes
     const iframeObserver = new MutationObserver(function (mutations) {
@@ -755,53 +715,24 @@ if (navigator.sendBeacon && !window.__cookieBeaconPatched) {
 
 
 
-// ===================== CLEANUP SYSTEM ===================== 
+// Cleanup functions storage
 let cleanupFunctions = [];
 
-function addCleanup(fn) {
-    cleanupFunctions.push(fn);
-}
-
-// Call this when consent is given or banner is dismissed
-function cleanup() {
-    console.log("🧹 Cleaning up event listeners and observers");
-    
-    // 1. Stop cookie cleanup interval
-    if (cookieCleanupInterval) {
-        clearInterval(cookieCleanupInterval);
-    }
-    
-    // 2. Disconnect all observers
+// Named function for beforeunload cleanup
+function handleBeforeUnload() {
+    clearInterval(cookieCleanupInterval);
     iframeObserver.disconnect();
     
-    // 3. Call all cleanup functions
-    cleanupFunctions.forEach(fn => {
-        try {
-            fn();
-        } catch (e) {
-            console.warn("Error in cleanup function:", e);
-        }
-    });
-    
-    // 4. Clear the array
+    // Clean all registered cleanup functions
+    cleanupFunctions.forEach(fn => fn());
     cleanupFunctions = [];
-    
-    // 5. Clean up mutation observers
-    document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
-        script.parentNode.removeChild(script);
-    });
-    
-    // 6. Remove our cleanup listener (so it doesn't run again)
-    window.removeEventListener('beforeunload', handlePageUnload);
 }
 
-// Handle page unload
-function handlePageUnload() {
-    cleanup();
-}
-
-// Register cleanup on page unload
-window.addEventListener('beforeunload', handlePageUnload);
+// ADD: Cleanup on page unload with named function
+window.addEventListener('beforeunload', handleBeforeUnload);
+cleanupFunctions.push(() => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+});
 
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
@@ -858,24 +789,42 @@ window.addEventListener('beforeunload', handlePageUnload);
 
 
  /* ===================== CLEANUP SYSTEM ===================== */
-    // FIX: Clean up event listeners and observers
+/* ===================== CLEANUP SYSTEM ===================== */
+    // Store all cleanup functions
     let cleanupFunctions = [];
 
+    // Register cleanup functions
     function addCleanup(fn) {
         cleanupFunctions.push(fn);
     }
 
-    // Call this when banner is dismissed
+    // Main cleanup function to call when banner is dismissed
     function cleanup() {
+        // Disconnect all observers
         iframeObserver.disconnect();
-        cleanupFunctions.forEach(fn => fn());
-        cleanupFunctions = [];
         
         // Clean up mutation observers
         document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
             script.parentNode.removeChild(script);
         });
+        
+        // Execute all cleanup functions
+        cleanupFunctions.forEach(fn => {
+            try {
+                fn();
+            } catch (e) {
+                console.warn('Error during cleanup:', e);
+            }
+        });
+        
+        // Clear the array
+        cleanupFunctions = [];
+        
+        if (DEBUG) console.log("✅ All event listeners and observers cleaned up");
     }
+
+    // Register the cleanup function globally
+    window.cleanupCookieConsent = cleanup;
 
 
     
@@ -898,30 +847,7 @@ window.addEventListener('beforeunload', handlePageUnload);
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
     };
-
-
-/* ===================== CLEANUP HOOKS ===================== */
     
-    window.cleanupCookieBlocking = function() {
-        console.log("🧹 Cleaning up cookie blocking resources");
-        cleanup();
-    };
-    
-    window.getActiveListeners = function() {
-        return {
-            fetchPatched: !!window.__cookieFetchPatched,
-            xhrPatched: !!window.__cookieXHRPatched,
-            beaconPatched: !!window.__cookieBeaconPatched,
-            cleanupFunctions: cleanupFunctions.length
-        };
-    };
-
-
-
-
-
-
-  
     window.enableTrackingByCategory = function(categories) {
         console.log("✅ Enabling tracking for categories:", categories);
         
@@ -4432,26 +4358,70 @@ function setupBannerTriggers() {
     }
 }
 
-// ===================== EVENT LISTENER MANAGEMENT ===================== 
-let bannerEventListeners = [];
-
-function addBannerEventListener(element, event, handler) {
-    element.addEventListener(event, handler);
-    bannerEventListeners.push({ element, event, handler });
+// Setup all event listeners
+// Named event handler functions
+function handleAcceptAllClick() {
+    acceptAllCookies();
+    hideCookieBanner();
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
 }
 
-function removeAllBannerEventListeners() {
-    bannerEventListeners.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-    });
-    bannerEventListeners = [];
+function handleRejectAllClick() {
+    rejectAllCookies();
+    hideCookieBanner();
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+}
+
+function handleAdjustConsentClick() {
+    showCookieSettings();
+    hideCookieBanner();
+}
+
+function handleAcceptAllSettingsClick() {
+    hideCookieSettings();
+    acceptAllCookies();
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+}
+
+function handleRejectAllSettingsClick() {
+    hideCookieSettings();
+    rejectAllCookies();
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+}
+
+function handleSaveSettingsClick() {
+    hideCookieSettings();
+    saveCustomSettings();
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+}
+
+function handleCloseModalClick() {
+    hideCookieSettings();
+    if (!getCookie('cookie_consent')) {
+        showCookieBanner();
+    }
+}
+
+function handleFloatingButtonClick() {
+    if (!document.getElementById('cookieConsentBanner').classList.contains('show')) {
+        showCookieBanner();
+    } else {
+        hideCookieBanner();
+    }
 }
 
 // Setup all event listeners
 function setupEventListeners() {
-    // Clear any existing listeners first
-    removeAllBannerEventListeners();
-    
     const acceptAllBtn = document.getElementById('acceptAllBtn');
     const rejectAllBtn = document.getElementById('rejectAllBtn');
     const adjustConsentBtn = document.getElementById('adjustConsentBtn');
@@ -4460,90 +4430,104 @@ function setupEventListeners() {
     const saveSettingsBtn = document.getElementById('saveSettingsBtn');
     const closeModalBtn = document.querySelector('.close-modal');
     const floatingButton = document.getElementById('cookieFloatingButton');
-    const languageSelect = document.getElementById('cookieLanguageSelect');
     
+    // Add event listeners
     if (acceptAllBtn) {
-        addBannerEventListener(acceptAllBtn, 'click', function() {
-            acceptAllCookies();
-            hideCookieBanner();
-            if (config.behavior.showFloatingButton) {
-                showFloatingButton();
-            }
-        });
+        acceptAllBtn.addEventListener('click', handleAcceptAllClick);
+        cleanupFunctions.push(() => acceptAllBtn.removeEventListener('click', handleAcceptAllClick));
     }
     
     if (rejectAllBtn) {
-        addBannerEventListener(rejectAllBtn, 'click', function() {
-            rejectAllCookies();
-            hideCookieBanner();
-            if (config.behavior.showFloatingButton) {
-                showFloatingButton();
-            }
-        });
+        rejectAllBtn.addEventListener('click', handleRejectAllClick);
+        cleanupFunctions.push(() => rejectAllBtn.removeEventListener('click', handleRejectAllClick));
     }
     
     if (adjustConsentBtn) {
-        addBannerEventListener(adjustConsentBtn, 'click', function() {
-            showCookieSettings();
-            hideCookieBanner();
-        });
+        adjustConsentBtn.addEventListener('click', handleAdjustConsentClick);
+        cleanupFunctions.push(() => adjustConsentBtn.removeEventListener('click', handleAdjustConsentClick));
     }
     
     if (acceptAllSettingsBtn) {
-        addBannerEventListener(acceptAllSettingsBtn, 'click', function() {
-            hideCookieSettings();
-            acceptAllCookies();
-            if (config.behavior.showFloatingButton) {
-                showFloatingButton();
-            }
-        });
+        acceptAllSettingsBtn.addEventListener('click', handleAcceptAllSettingsClick);
+        cleanupFunctions.push(() => acceptAllSettingsBtn.removeEventListener('click', handleAcceptAllSettingsClick));
     }
     
     if (rejectAllSettingsBtn) {
-        addBannerEventListener(rejectAllSettingsBtn, 'click', function() {
-            hideCookieSettings();
-            rejectAllCookies();
-            if (config.behavior.showFloatingButton) {
-                showFloatingButton();
-            }
-        });
+        rejectAllSettingsBtn.addEventListener('click', handleRejectAllSettingsClick);
+        cleanupFunctions.push(() => rejectAllSettingsBtn.removeEventListener('click', handleRejectAllSettingsClick));
     }
     
     if (saveSettingsBtn) {
-        addBannerEventListener(saveSettingsBtn, 'click', function() {
-            hideCookieSettings();
-            saveCustomSettings();
-            if (config.behavior.showFloatingButton) {
-                showFloatingButton();
-            }
-        });
+        saveSettingsBtn.addEventListener('click', handleSaveSettingsClick);
+        cleanupFunctions.push(() => saveSettingsBtn.removeEventListener('click', handleSaveSettingsClick));
     }
     
     if (closeModalBtn) {
-        addBannerEventListener(closeModalBtn, 'click', function() {
-            hideCookieSettings();
-            if (!getCookie('cookie_consent')) {
-                showCookieBanner();
-            }
-        });
+        closeModalBtn.addEventListener('click', handleCloseModalClick);
+        cleanupFunctions.push(() => closeModalBtn.removeEventListener('click', handleCloseModalClick));
     }
     
     if (floatingButton) {
-        addBannerEventListener(floatingButton, 'click', function() {
-            if (!document.getElementById('cookieConsentBanner').classList.contains('show')) {
-                showCookieBanner();
-            } else {
-                hideCookieBanner();
-            }
-        });
+        floatingButton.addEventListener('click', handleFloatingButtonClick);
+        cleanupFunctions.push(() => floatingButton.removeEventListener('click', handleFloatingButtonClick));
     }
     
+    // Language selector cleanup
+    const languageSelect = document.getElementById('cookieLanguageSelect');
     if (languageSelect) {
-        addBannerEventListener(languageSelect, 'change', function() {
+        function handleLanguageChange() {
             changeLanguage(this.value);
-        });
+        }
+        
+        languageSelect.addEventListener('change', handleLanguageChange);
+        cleanupFunctions.push(() => languageSelect.removeEventListener('change', handleLanguageChange));
     }
+    
+    // Cookie details toggle cleanup
+    document.querySelectorAll('.cookie-details-header').forEach(header => {
+        function handleHeaderClick() {
+            const content = this.nextElementSibling;
+            const toggle = this.querySelector('.toggle-details');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '−';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '+';
+            }
+        }
+        
+        header.addEventListener('click', handleHeaderClick);
+        cleanupFunctions.push(() => header.removeEventListener('click', handleHeaderClick));
+    });
+    
+    // Cookie value toggle cleanup
+    function handleCookieValueToggle(e) {
+        if (e.target.classList.contains('toggle-cookie-value')) {
+            const cell = e.target.closest('.cookie-value-cell');
+            const full = cell.querySelector('.cookie-value-full');
+            const truncated = cell.querySelector('.cookie-value-truncated');
+            
+            if (e.target.dataset.state === 'truncated') {
+                full.style.display = 'inline';
+                truncated.style.display = 'none';
+                e.target.textContent = 'Hide full';
+                e.target.dataset.state = 'full';
+            } else {
+                full.style.display = 'none';
+                truncated.style.display = 'inline';
+                e.target.textContent = 'Show full';
+                e.target.dataset.state = 'truncated';
+            }
+        }
+    }
+    
+    document.addEventListener('click', handleCookieValueToggle);
+    cleanupFunctions.push(() => document.removeEventListener('click', handleCookieValueToggle));
 }
+
+
+
 
 // Show/hide functions with animations
 function showCookieBanner() {
@@ -4588,6 +4572,10 @@ function hideCookieSettings() {
     }, 300);
 }
 
+
+
+
+
 function showFloatingButton() {
     const button = document.getElementById('cookieFloatingButton');
     button.style.display = 'flex';
@@ -4604,6 +4592,13 @@ function hideFloatingButton() {
     }, 300);
 }
 
+
+// NEW: Enable/disable interaction restrictions
+// Named click handler for overlay
+function handleOverlayClick(e) {
+    e.stopPropagation();
+    e.preventDefault();
+}
 
 // NEW: Enable/disable interaction restrictions
 function enableInteractionRestrictions() {
@@ -4627,12 +4622,27 @@ function enableInteractionRestrictions() {
     if (config.behavior.restrictInteraction.preventClick) {
         overlay.classList.add('block-clicks');
         
-        // Only allow clicks on the banner
-        overlay.addEventListener('click', function(e) {
-            e.stopPropagation();
-            e.preventDefault();
-        }, true);
+        // Use named function for cleanup
+        overlay.addEventListener('click', handleOverlayClick, true);
+        cleanupFunctions.push(() => overlay.removeEventListener('click', handleOverlayClick, true));
     }
+}
+
+// NEW: Disable interaction restrictions
+function disableInteractionRestrictions() {
+    const overlay = document.getElementById('cookieBlurOverlay');
+    
+    // Remove blur effect
+    overlay.style.display = 'none';
+    
+    // Enable scrolling
+    document.body.classList.remove('no-scroll');
+    
+    // Enable clicking
+    overlay.classList.remove('block-clicks');
+    
+    // Remove click blocker using named function
+    overlay.removeEventListener('click', handleOverlayClick, true);
 }
 
 // NEW: Disable interaction restrictions
@@ -4702,11 +4712,6 @@ function setBlurDensity(density) {
 
 // Cookie consent functions
 function acceptAllCookies() {
-
-   // Call blocking script cleanup
-    if (typeof window.cleanupCookieBlocking === 'function') {
-        window.cleanupCookieBlocking();
-    }
     
     hideCookieBanner(); // ← Add this line
     console.log("✅ Accepting ALL cookies");
@@ -4786,12 +4791,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 function rejectAllCookies() {
 
-    // Call blocking script cleanup
-    if (typeof window.cleanupCookieBlocking === 'function') {
-        window.cleanupCookieBlocking();
-    }
-    
-
     hideCookieBanner(); // ← Add this line
     console.log("❌ Rejecting ALL cookies");
     
@@ -4866,11 +4865,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 
 function saveCustomSettings() {
-
-    // Call blocking script cleanup
-    if (typeof window.cleanupCookieBlocking === 'function') {
-        window.cleanupCookieBlocking();
-    }
 
     hideCookieBanner(); // ← Add this line
     // Get current checkbox states
@@ -5438,63 +5432,6 @@ function checkExistingClarityConsent() {
         return null;
     }
 }
-
-
-
-
-// ===================== BANNER CLEANUP ===================== 
-function cleanupBanner() {
-    console.log("🧹 Cleaning up cookie banner resources");
-    
-    // 1. Remove all event listeners
-    removeAllBannerEventListeners();
-    
-    // 2. Clear any timers
-    if (bannerTimer) {
-        clearTimeout(bannerTimer);
-        bannerTimer = null;
-    }
-    
-    // 3. Remove DOM elements
-    const elementsToRemove = [
-        'cookieConsentBanner',
-        'cookieSettingsModal',
-        'cookieFloatingButton',
-        'cookieBlurOverlay'
-    ];
-    
-    elementsToRemove.forEach(id => {
-        const element = document.getElementById(id);
-        if (element && element.parentNode) {
-            element.parentNode.removeChild(element);
-        }
-    });
-    
-    // 4. Remove inline styles
-    document.body.classList.remove('no-scroll');
-}
-
-// Add cleanup to existing consent functions
-const originalAcceptAllCookies = acceptAllCookies;
-acceptAllCookies = function() {
-    cleanupBanner();
-    return originalAcceptAllCookies.apply(this, arguments);
-};
-
-const originalRejectAllCookies = rejectAllCookies;
-rejectAllCookies = function() {
-    cleanupBanner();
-    return originalRejectAllCookies.apply(this, arguments);
-};
-
-const originalSaveCustomSettings = saveCustomSettings;
-saveCustomSettings = function() {
-    cleanupBanner();
-    return originalSaveCustomSettings.apply(this, arguments);
-};
-
-
-
 
 
 // Export functions for global access if needed
