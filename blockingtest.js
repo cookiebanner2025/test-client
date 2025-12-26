@@ -11,7 +11,6 @@ window.COOKIE_SETTINGS = {
 
 
 
-
 (function () {
     'use strict';
 
