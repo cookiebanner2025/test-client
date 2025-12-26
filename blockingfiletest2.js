@@ -4396,29 +4396,32 @@ function setupEventListeners() {
         hideCookieBanner();
     });
     
-    document.getElementById('acceptAllSettingsBtn').addEventListener('click', function() {
-        acceptAllCookies();
-        hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
-    });
+ document.getElementById('acceptAllSettingsBtn').addEventListener('click', function() {
+    hideCookieSettings(); // ← Move this to TOP
+    acceptAllCookies();   // ← This will now hide banner too
+    // Remove hideCookieSettings() from here
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+});
     
-    document.getElementById('rejectAllSettingsBtn').addEventListener('click', function() {
-        rejectAllCookies();
-        hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
-    });
-    
-    document.getElementById('saveSettingsBtn').addEventListener('click', function() {
-        saveCustomSettings();
-        hideCookieSettings();
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
-        }
-    });
+ document.getElementById('rejectAllSettingsBtn').addEventListener('click', function() {
+    hideCookieSettings(); // ← Move this to TOP
+    rejectAllCookies();   // ← This will now hide banner too
+    // Remove hideCookieSettings() from here
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+});
+   
+ document.getElementById('saveSettingsBtn').addEventListener('click', function() {
+    hideCookieSettings(); // ← Move this to TOP
+    saveCustomSettings(); // ← This will now hide banner too
+    // Remove hideCookieSettings() from here
+    if (config.behavior.showFloatingButton) {
+        showFloatingButton();
+    }
+});
     
     document.querySelector('.close-modal').addEventListener('click', function() {
         hideCookieSettings();
@@ -4598,6 +4601,8 @@ function setBlurDensity(density) {
 
 // Cookie consent functions
 function acceptAllCookies() {
+   
+    hideCookieBanner(); // ← Add this line
     console.log("✅ Accepting ALL cookies");
     
     // IMPORTANT: Call the blocking script function
@@ -4676,6 +4681,8 @@ function acceptAllCookies() {
 
 
 function rejectAllCookies() {
+
+      hideCookieBanner(); // ← Add this line
     console.log("❌ Rejecting ALL cookies");
     
     // IMPORTANT: Call the blocking script function
@@ -4749,6 +4756,8 @@ function rejectAllCookies() {
 
 
 function saveCustomSettings() {
+
+   hideCookieBanner(); // ← Add this line
     // Get current checkbox states
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
