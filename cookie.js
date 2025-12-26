@@ -165,7 +165,7 @@ clarityConfig: {
         bannerDelay: 0, // Desktop delay (seconds)
         bannerDelayMobile: 0, // Mobile delay (seconds) - add this line
         rememberLanguage: true,
-      
+    
         
         // NEW: Restrict user interaction when banner is visible
         restrictInteraction: {
@@ -4825,17 +4825,17 @@ function loadPerformanceCookies() {
     // This would typically load performance optimization scripts
 }
 
-
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
     // Ensure location data is loaded first
     try {
         if (!sessionStorage.getItem('locationData')) {
             console.log('Fetching fresh location data...');
-            locationData = await fetchLocationData();
+            locationData = await fetchLocationData(); // This will now push to dataLayer
         } else {
             console.log('Using cached location data');
             locationData = JSON.parse(sessionStorage.getItem('locationData'));
+            // Push cached data to dataLayer
             pushGeoDataToDataLayer(locationData);
         }
         
@@ -4844,11 +4844,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Failed to load location data:', e);
     }
 
-    // Check existing consent for Clarity compliance
+      // Check existing consent for Clarity compliance
     checkExistingClarityConsent();
 
+  
     // Store query parameters on page load
     storeQueryParams();
+   
 
     // Check existing consent on page load and apply to Clarity
     const existingConsent = getClarityConsentState();
@@ -4856,10 +4858,22 @@ document.addEventListener('DOMContentLoaded', async function() {
         ensureClarityConsentSignal(existingConsent);
     }
 
-    // Check if domain is allowed
+
+
+
+
+
+
+  
+ // Check if domain is allowed
     if (!isDomainAllowed()) {
         console.log('Cookie consent banner not shown - domain not allowed');
         return;
+    }
+
+    // Load analytics data from storage
+    if (config.analytics.enabled) {
+        loadAnalyticsData();
     }
 
     // Set default UET consent
@@ -4868,7 +4882,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Fetch location data asynchronously
     await fetchLocationData();
     
-    // Check geo-targeting before proceeding
+      // Check geo-targeting before proceeding
     const geoAllowed = checkGeoTargeting(locationData);
     if (!geoAllowed) {
         console.log('Cookie consent banner not shown - geo-targeting restriction');
@@ -4886,6 +4900,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Initialize cookie consent
     initializeCookieConsent(detectedCookies, userLanguage);
+
+
 });
 
 
