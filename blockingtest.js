@@ -812,7 +812,7 @@ window.addEventListener('beforeunload', () => {
         if (RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
-            }, 300);
+            }, 150);
         } else if (DEBUG) {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
@@ -836,7 +836,7 @@ window.addEventListener('beforeunload', () => {
         if (RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
-            }, 300);
+            }, 150);
         } else if (DEBUG) {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
@@ -850,7 +850,7 @@ window.addEventListener('beforeunload', () => {
         if (RELOAD_ENABLED) {
             setTimeout(() => {
                 window.location.reload();
-            }, 300);
+            }, 150);
         } else if (DEBUG) {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
@@ -1089,8 +1089,7 @@ clarityConfig: {
         bannerDelay: 0, // Desktop delay (seconds)
         bannerDelayMobile: 0, // Mobile delay (seconds) - add this line
         rememberLanguage: true,
-        acceptOnScroll: false,
-        acceptOnContinue: false,
+       
         
         // NEW: Restrict user interaction when banner is visible
         restrictInteraction: {
@@ -1107,7 +1106,7 @@ clarityConfig: {
 
        
         bannerAnimation: {
-            duration: 0.4,
+            duration: 0.3,
             easing: 'cubic-bezier(0.25, 0.8, 0.25, 1)',
             enterEffect: 'fadeInUp',
             exitEffect: 'fadeOutDown'
@@ -5193,11 +5192,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
         if (!sessionStorage.getItem('locationData')) {
             console.log('Fetching fresh location data...');
-            locationData = await fetchLocationData(); // This will now push to dataLayer
+            locationData = await fetchLocationData();
         } else {
             console.log('Using cached location data');
             locationData = JSON.parse(sessionStorage.getItem('locationData'));
-            // Push cached data to dataLayer
             pushGeoDataToDataLayer(locationData);
         }
         
@@ -5206,13 +5204,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Failed to load location data:', e);
     }
 
-      // Check existing consent for Clarity compliance
+    // Check existing consent for Clarity compliance
     checkExistingClarityConsent();
 
-  
     // Store query parameters on page load
     storeQueryParams();
-   
 
     // Check existing consent on page load and apply to Clarity
     const existingConsent = getClarityConsentState();
@@ -5220,27 +5216,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         ensureClarityConsentSignal(existingConsent);
     }
 
-
-
-
-
-
-
-  
- // Check if domain is allowed
+    // Check if domain is allowed
     if (!isDomainAllowed()) {
         console.log('Cookie consent banner not shown - domain not allowed');
         return;
     }
 
-  
     // Set default UET consent
     setDefaultUetConsent();
 
     // Fetch location data asynchronously
     await fetchLocationData();
     
-      // Check geo-targeting before proceeding
+    // Check geo-targeting before proceeding
     const geoAllowed = checkGeoTargeting(locationData);
     if (!geoAllowed) {
         console.log('Cookie consent banner not shown - geo-targeting restriction');
@@ -5258,42 +5246,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Initialize cookie consent
     initializeCookieConsent(detectedCookies, userLanguage);
-
-    // Handle scroll acceptance if enabled
-    if (config.behavior.acceptOnScroll) {
-        let scrollTimeout;
-        window.addEventListener('scroll', function() {
-            if (!getCookie('cookie_consent') && bannerShown) {
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(function() {
-                    const scrollPercentage = (window.scrollY + window.innerHeight) / document.body.scrollHeight * 100;
-                    if (scrollPercentage > 30) {
-                        acceptAllCookies();
-                        hideCookieBanner();
-                        if (config.behavior.showFloatingButton) {
-                            showFloatingButton();
-                        }
-                    }
-                }, 200);
-            }
-        });
-    }
-
-    // Handle continue button acceptance if enabled
-    if (config.behavior.acceptOnContinue) {
-        document.addEventListener('click', function(e) {
-            if (!getCookie('cookie_consent') && bannerShown && 
-                !e.target.closest('#cookieConsentBanner') && 
-                !e.target.closest('#cookieSettingsModal')) {
-                acceptAllCookies();
-                hideCookieBanner();
-                if (config.behavior.showFloatingButton) {
-                    showFloatingButton();
-                }
-            }
-        });
-    }
 });
+
+
+
 
 
 
