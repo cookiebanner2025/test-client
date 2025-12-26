@@ -785,7 +785,10 @@ window.addEventListener('beforeunload', () => {
     }
 
     // Call this when banner is dismissed
-    function cleanup() {
+
+function cleanup() {
+    // Use setTimeout to clean up AFTER current operations complete
+    setTimeout(function() {
         iframeObserver.disconnect();
         cleanupFunctions.forEach(fn => fn());
         cleanupFunctions = [];
@@ -794,8 +797,10 @@ window.addEventListener('beforeunload', () => {
         document.querySelectorAll('script[data-cookie-observer]').forEach(script => {
             script.parentNode.removeChild(script);
         });
-    }
-
+        
+        console.log("✅ Cleanup completed - all event listeners removed");
+    }, 100); // Small delay to ensure button actions complete
+}
 
     
     /* ===================== BANNER HOOKS ===================== */
@@ -4641,8 +4646,10 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     
     console.log("✅ All cookies accepted, page will reload");
 
-     // ADD THIS LINE:
-    cleanup(); // Clean up memory
+     // MOVE cleanup to the END and use setTimeout
+    setTimeout(function() {
+        cleanup(); // Clean up memory after everything is done
+    }, 50);
     
 }
 
@@ -4714,9 +4721,10 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     
     console.log("✅ All cookies rejected, page will reload");
 
-      // ADD THIS LINE:
-    cleanup(); // Clean up memory
-    
+  // MOVE cleanup to the END and use setTimeout
+    setTimeout(function() {
+        cleanup(); // Clean up memory after everything is done
+    }, 50);
 }
 
 
@@ -4868,8 +4876,10 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
    
     console.log("✅ Custom settings saved and page will reload");
 
-    // ADD THIS LINE:
-    cleanup(); // Clean up memory
+  // MOVE cleanup to the END and use setTimeout
+    setTimeout(function() {
+        cleanup(); // Clean up memory after everything is done
+    }, 50);
     
 }
 
