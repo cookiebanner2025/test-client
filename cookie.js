@@ -842,9 +842,7 @@ function cleanup() {
     }
 }
 
-    // Register the cleanup function globally
-    window.cleanupCookieConsent = cleanup;
-
+ 
     
     /* ===================== BANNER HOOKS ===================== */
     
