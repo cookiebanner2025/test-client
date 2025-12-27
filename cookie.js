@@ -4567,10 +4567,10 @@ function handleCookieValueToggle(e) {
     }
 }
 
-// Setup all event listeners - SIMPLIFIED VERSION
+
 // Setup all event listeners
 function setupEventListeners() {
-    console.log('🔧 DEBUG: Setting up event listeners...');
+    
     
     // Clear any existing listeners first
     if (typeof cleanupAllGlobalHandlers === 'function') {
@@ -4594,83 +4594,72 @@ function setupEventListeners() {
     // Language selector
     const languageSelect = document.getElementById('cookieLanguageSelect');
     
-    // Debug log all found elements
-    console.log('🔧 DEBUG: Found elements:', {
-        acceptAllBtn: acceptAllBtn ? 'FOUND' : 'NOT FOUND',
-        rejectAllBtn: rejectAllBtn ? 'FOUND' : 'NOT FOUND',
-        adjustConsentBtn: adjustConsentBtn ? 'FOUND' : 'NOT FOUND',
-        acceptAllSettingsBtn: acceptAllSettingsBtn ? 'FOUND' : 'NOT FOUND',
-        rejectAllSettingsBtn: rejectAllSettingsBtn ? 'FOUND' : 'NOT FOUND',
-        saveSettingsBtn: saveSettingsBtn ? 'FOUND' : 'NOT FOUND',
-        closeModalBtn: closeModalBtn ? 'FOUND' : 'NOT FOUND',
-        floatingButton: floatingButton ? 'FOUND' : 'NOT FOUND',
-        languageSelect: languageSelect ? 'FOUND' : 'NOT FOUND'
-    });
+
     
     // Add click listeners with better error handling
     if (acceptAllBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Accept All button');
+        
         acceptAllBtn.addEventListener('click', handleAcceptAllClick);
     }
     
     if (rejectAllBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Reject All button');
+       
         rejectAllBtn.addEventListener('click', handleRejectAllClick);
     }
     
     if (adjustConsentBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Adjust Consent button');
+        
         adjustConsentBtn.addEventListener('click', handleAdjustConsentClick);
     }
     
     if (acceptAllSettingsBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Accept All Settings button');
+        
         acceptAllSettingsBtn.addEventListener('click', handleAcceptAllSettingsClick);
     }
     
     if (rejectAllSettingsBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Reject All Settings button');
+       
         rejectAllSettingsBtn.addEventListener('click', handleRejectAllSettingsClick);
     }
     
     if (saveSettingsBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Save Settings button');
+        
         saveSettingsBtn.addEventListener('click', handleSaveSettingsClick);
     }
     
     if (closeModalBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Close Modal button');
+       
         closeModalBtn.addEventListener('click', handleCloseModalClick);
     }
     
     if (floatingButton) {
-        console.log('🔧 DEBUG: Adding click listener to Floating Button');
+        
         floatingButton.addEventListener('click', handleFloatingButtonClick);
     }
     
     if (languageSelect) {
-        console.log('🔧 DEBUG: Adding change listener to Language Select');
+       
         languageSelect.addEventListener('change', handleLanguageChange);
     }
     
     // Cookie details toggle
     document.querySelectorAll('.cookie-details-header').forEach((header, index) => {
-        console.log(`🔧 DEBUG: Adding click listener to cookie details header ${index + 1}`);
+        
         header.addEventListener('click', handleHeaderClick);
     });
     
     // Cookie value toggle
-    console.log('🔧 DEBUG: Adding click listener for cookie value toggles');
+   
     document.addEventListener('click', handleCookieValueToggle);
     
     // Add to the blur overlay
     const overlay = document.getElementById('cookieBlurOverlay');
     if (overlay) {
-        console.log('🔧 DEBUG: Adding click listener to overlay');
+        
         overlay.addEventListener('click', handleOverlayClick);
     }
     
-    console.log('✅ DEBUG: All event listeners set up successfully');
+    
 }
 
 
