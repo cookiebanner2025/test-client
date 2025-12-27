@@ -686,6 +686,8 @@ window.COOKIE_SETTINGS = {
         childList: true,
         subtree: true
     });
+
+    addGlobalObserver(iframeObserver);
     
     if (DEBUG) console.log("✅ Iframe blocking activated");
     
@@ -706,25 +708,35 @@ window.COOKIE_SETTINGS = {
     // ============================================================================
     blockAndDeleteCookies();
     let cookieCleanupRuns = 0;
-    const cookieCleanupInterval = setInterval(() => {
-        blockAndDeleteCookies();
-        cookieCleanupRuns++;
-        if (cookieCleanupRuns >= 9) { // 10 total runs (0-9)
-            clearInterval(cookieCleanupInterval);
-            if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
-        }
-    }, 1000);
+const cookieCleanupInterval = addGlobalInterval(setInterval(() => {
+    blockAndDeleteCookies();
+    cookieCleanupRuns++;
+    if (cookieCleanupRuns >= 9) {
+        clearInterval(cookieCleanupInterval);
+        cleanupResources.intervals.delete(cookieCleanupInterval);
+        if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
+    }
+}, 1000));
 
 
 
 
 // Cleanup functions storage
 // SINGLE SOURCE OF TRUTH: Global event handler management
+/* ===================== FIXED CLEANUP SYSTEM ===================== */
+// SINGLE SOURCE OF TRUTH: Global event handler management
 if (typeof window.cookieConsentHandlers === 'undefined') {
     window.cookieConsentHandlers = new Map();
 }
 
-// Function to add managed handlers
+// Track all cleanup resources
+const cleanupResources = {
+    observers: new Set(),
+    intervals: new Set(),
+    timeouts: new Set()
+};
+
+// Add managed handler
 function addGlobalHandler(element, event, handler) {
     if (!element || !event || !handler) return null;
     
@@ -734,7 +746,25 @@ function addGlobalHandler(element, event, handler) {
     return key;
 }
 
-// Function to remove managed handlers
+// Add managed observer
+function addGlobalObserver(observer) {
+    cleanupResources.observers.add(observer);
+    return observer;
+}
+
+// Add managed interval
+function addGlobalInterval(interval) {
+    cleanupResources.intervals.add(interval);
+    return interval;
+}
+
+// Add managed timeout
+function addGlobalTimeout(timeout) {
+    cleanupResources.timeouts.add(timeout);
+    return timeout;
+}
+
+// Remove managed handler
 function removeGlobalHandler(key) {
     if (window.cookieConsentHandlers.has(key)) {
         const { element, event, handler } = window.cookieConsentHandlers.get(key);
@@ -744,7 +774,8 @@ function removeGlobalHandler(key) {
 }
 
 // Consolidated cleanup function
-function cleanupAllGlobalHandlers() {
+function cleanupAllResources() {
+    // 1. Clean up all event handlers
     if (window.cookieConsentHandlers && window.cookieConsentHandlers.size > 0) {
         window.cookieConsentHandlers.forEach(({ element, event, handler }) => {
             element.removeEventListener(event, handler);
@@ -752,9 +783,46 @@ function cleanupAllGlobalHandlers() {
         window.cookieConsentHandlers.clear();
     }
     
-    if (DEBUG) console.log("✅ All global event handlers cleaned up");
+    // 2. Clean up all observers
+    cleanupResources.observers.forEach(observer => {
+        try {
+            if (observer && typeof observer.disconnect === 'function') {
+                observer.disconnect();
+            }
+        } catch (e) {
+            // Observer already disconnected
+        }
+    });
+    cleanupResources.observers.clear();
+    
+    // 3. Clean up all intervals
+    cleanupResources.intervals.forEach(interval => {
+        try {
+            if (interval) clearInterval(interval);
+        } catch (e) {
+            // Interval already cleared
+        }
+    });
+    cleanupResources.intervals.clear();
+    
+    // 4. Clean up all timeouts
+    cleanupResources.timeouts.forEach(timeout => {
+        try {
+            if (timeout) clearTimeout(timeout);
+        } catch (e) {
+            // Timeout already cleared
+        }
+    });
+    cleanupResources.timeouts.clear();
+    
+    // 5. Clean up global references
+    delete window.cookieConsentHandlers;
+    
+    if (DEBUG) console.log("✅ Complete cleanup performed");
 }
 
+// Register the cleanup function globally
+window.cleanupCookieConsent = cleanupAllResources;
 
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
@@ -811,44 +879,9 @@ function cleanupAllGlobalHandlers() {
 
 
  /* ===================== CLEANUP SYSTEM ===================== */
-/* ===================== CLEANUP SYSTEM ===================== */
-/* ===================== CLEANUP SYSTEM ===================== */
- /* ===================== CLEANUP SYSTEM ===================== */
-// Consolidated cleanup function
 function cleanup() {
-    // Disconnect iframe observer and nullify
-    try {
-        if (iframeObserver) {
-            iframeObserver.disconnect();
-            iframeObserver = null;
-        }
-    } catch (e) {
-        if (DEBUG) console.log('Iframe observer already disconnected');
-    }
-    
-    // Clear cookie cleanup interval and nullify
-    try {
-        if (cookieCleanupInterval) {
-            clearInterval(cookieCleanupInterval);
-            cookieCleanupInterval = null;
-        }
-    } catch (e) {
-        if (DEBUG) console.log('Cookie cleanup interval already cleared');
-    }
-    
-    // Clean up all event listeners using consolidated system
-    cleanupAllGlobalHandlers();
-    
-    // Clean up any remaining global functions
-// Clean up using consolidated system (already handled by cleanupAllGlobalHandlers())
-// No need for separate cleanupFunctions array
-    
-    // Clean up global references
-    if (window.cookieConsentHandlers) {
-        window.cookieConsentHandlers.clear();
-    }
-    
-    if (DEBUG) console.log("✅ Complete cleanup performed");
+    // Use the consolidated cleanup system
+    cleanupAllResources();
 }
 
 // Register the cleanup function globally
@@ -4319,11 +4352,11 @@ function initializeClarity(consentGranted) {
             clearTimeout(bannerTimer);
         }
         
-        bannerTimer = setTimeout(() => {
-            if (!getCookie('cookie_consent')) {
-                hideCookieBanner();
-            }
-        }, config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
+        bannerTimer = addGlobalTimeout(setTimeout(() => {
+    if (!getCookie('cookie_consent')) {
+        hideCookieBanner();
+    }
+}, config.behavior.bannerSchedule.durationMinutes * 60 * 1000));
     }
 }
 
@@ -4428,6 +4461,19 @@ function handleSaveSettingsClick() {
     }
 }
 
+function handleHeaderClick() {
+    console.log('Cookie details header clicked');
+    const content = this.nextElementSibling;
+    const toggle = this.querySelector('.toggle-details');
+    if (content.style.display === 'none' || !content.style.display) {
+        content.style.display = 'block';
+        toggle.textContent = '−';
+    } else {
+        content.style.display = 'none';
+        toggle.textContent = '+';
+    }
+}
+
 function handleCloseModalClick() {
     console.log('Close Modal clicked');
     hideCookieSettings();
@@ -4484,110 +4530,80 @@ function handleCookieValueToggle(e) {
     }
 }
 
+
+
 // Setup all event listeners - SIMPLIFIED VERSION
 // Setup all event listeners
 function setupEventListeners() {
     console.log('🔧 DEBUG: Setting up event listeners...');
     
     // Clear any existing listeners first
-    if (typeof cleanupAllGlobalHandlers === 'function') {
-        cleanupAllGlobalHandlers();
+    if (typeof cleanupAllResources === 'function') {
+        cleanupAllResources();
     }
     
-    // Main banner buttons
+    // Get all elements
     const acceptAllBtn = document.getElementById('acceptAllBtn');
     const rejectAllBtn = document.getElementById('rejectAllBtn');
     const adjustConsentBtn = document.getElementById('adjustConsentBtn');
-    
-    // Modal buttons
     const acceptAllSettingsBtn = document.getElementById('acceptAllSettingsBtn');
     const rejectAllSettingsBtn = document.getElementById('rejectAllSettingsBtn');
     const saveSettingsBtn = document.getElementById('saveSettingsBtn');
     const closeModalBtn = document.querySelector('.close-modal');
-    
-    // Floating button
     const floatingButton = document.getElementById('cookieFloatingButton');
-    
-    // Language selector
     const languageSelect = document.getElementById('cookieLanguageSelect');
+    const overlay = document.getElementById('cookieBlurOverlay');
     
-    // Debug log all found elements
-    console.log('🔧 DEBUG: Found elements:', {
-        acceptAllBtn: acceptAllBtn ? 'FOUND' : 'NOT FOUND',
-        rejectAllBtn: rejectAllBtn ? 'FOUND' : 'NOT FOUND',
-        adjustConsentBtn: adjustConsentBtn ? 'FOUND' : 'NOT FOUND',
-        acceptAllSettingsBtn: acceptAllSettingsBtn ? 'FOUND' : 'NOT FOUND',
-        rejectAllSettingsBtn: rejectAllSettingsBtn ? 'FOUND' : 'NOT FOUND',
-        saveSettingsBtn: saveSettingsBtn ? 'FOUND' : 'NOT FOUND',
-        closeModalBtn: closeModalBtn ? 'FOUND' : 'NOT FOUND',
-        floatingButton: floatingButton ? 'FOUND' : 'NOT FOUND',
-        languageSelect: languageSelect ? 'FOUND' : 'NOT FOUND'
-    });
-    
-    // Add click listeners with better error handling
+    // Add ALL event listeners using consolidated system
     if (acceptAllBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Accept All button');
-        acceptAllBtn.addEventListener('click', handleAcceptAllClick);
+        addGlobalHandler(acceptAllBtn, 'click', handleAcceptAllClick);
     }
     
     if (rejectAllBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Reject All button');
-        rejectAllBtn.addEventListener('click', handleRejectAllClick);
+        addGlobalHandler(rejectAllBtn, 'click', handleRejectAllClick);
     }
     
     if (adjustConsentBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Adjust Consent button');
-        adjustConsentBtn.addEventListener('click', handleAdjustConsentClick);
+        addGlobalHandler(adjustConsentBtn, 'click', handleAdjustConsentClick);
     }
     
     if (acceptAllSettingsBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Accept All Settings button');
-        acceptAllSettingsBtn.addEventListener('click', handleAcceptAllSettingsClick);
+        addGlobalHandler(acceptAllSettingsBtn, 'click', handleAcceptAllSettingsClick);
     }
     
     if (rejectAllSettingsBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Reject All Settings button');
-        rejectAllSettingsBtn.addEventListener('click', handleRejectAllSettingsClick);
+        addGlobalHandler(rejectAllSettingsBtn, 'click', handleRejectAllSettingsClick);
     }
     
     if (saveSettingsBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Save Settings button');
-        saveSettingsBtn.addEventListener('click', handleSaveSettingsClick);
+        addGlobalHandler(saveSettingsBtn, 'click', handleSaveSettingsClick);
     }
     
     if (closeModalBtn) {
-        console.log('🔧 DEBUG: Adding click listener to Close Modal button');
-        closeModalBtn.addEventListener('click', handleCloseModalClick);
+        addGlobalHandler(closeModalBtn, 'click', handleCloseModalClick);
     }
     
     if (floatingButton) {
-        console.log('🔧 DEBUG: Adding click listener to Floating Button');
-        floatingButton.addEventListener('click', handleFloatingButtonClick);
+        addGlobalHandler(floatingButton, 'click', handleFloatingButtonClick);
     }
     
     if (languageSelect) {
-        console.log('🔧 DEBUG: Adding change listener to Language Select');
-        languageSelect.addEventListener('change', handleLanguageChange);
+        addGlobalHandler(languageSelect, 'change', handleLanguageChange);
+    }
+    
+    if (overlay) {
+        addGlobalHandler(overlay, 'click', handleOverlayClick);
     }
     
     // Cookie details toggle
     document.querySelectorAll('.cookie-details-header').forEach((header, index) => {
-        console.log(`🔧 DEBUG: Adding click listener to cookie details header ${index + 1}`);
-        header.addEventListener('click', handleHeaderClick);
+        addGlobalHandler(header, 'click', handleHeaderClick);
     });
     
-    // Cookie value toggle
-    console.log('🔧 DEBUG: Adding click listener for cookie value toggles');
-    document.addEventListener('click', handleCookieValueToggle);
+    // Cookie value toggle (use event delegation)
+    addGlobalHandler(document, 'click', handleCookieValueToggle);
     
-    // Add to the blur overlay
-    const overlay = document.getElementById('cookieBlurOverlay');
-    if (overlay) {
-        console.log('🔧 DEBUG: Adding click listener to overlay');
-        overlay.addEventListener('click', handleOverlayClick);
-    }
-    
-    console.log('✅ DEBUG: All event listeners set up successfully');
+    console.log('✅ DEBUG: All event listeners set up using consolidated system');
 }
 
 
@@ -4689,11 +4705,6 @@ function handleOverlayClick(e) {
 }
 
 
-// Named function for overlay click handling
-function handleOverlayClick(e) {
-    e.stopPropagation();
-    e.preventDefault();
-}
 
 
 // NEW: Enable/disable interaction restrictions
@@ -4722,37 +4733,35 @@ if (config.behavior.restrictInteraction.preventClick) {
 }
 }
 
-// NEW: Disable interaction restrictions
 function disableInteractionRestrictions() {
     const overlay = document.getElementById('cookieBlurOverlay');
     
     // Remove blur effect
-    overlay.style.display = 'none';
+    if (overlay) {
+        overlay.style.display = 'none';
+        overlay.classList.remove('block-clicks');
+    }
     
     // Enable scrolling
     document.body.classList.remove('no-scroll');
     
-    // Enable clicking
-    overlay.classList.remove('block-clicks');
-    
-    // Remove click blocker using named function
-    overlay.removeEventListener('click', handleOverlayClick, true);
+    // Note: The click handler will be removed by cleanupAllResources()
+    // No need to manually remove it here
 }
-// NEW: Disable interaction restrictions
 function disableInteractionRestrictions() {
     const overlay = document.getElementById('cookieBlurOverlay');
     
     // Remove blur effect
-    overlay.style.display = 'none';
+    if (overlay) {
+        overlay.style.display = 'none';
+        overlay.classList.remove('block-clicks');
+    }
     
     // Enable scrolling
     document.body.classList.remove('no-scroll');
     
-    // Enable clicking
-    overlay.classList.remove('block-clicks');
-    
-    // Remove click blocker using named function reference
-    // Note: We don't remove it from eventHandlers here since cleanupAllListeners will handle it
+    // Note: The click handler will be removed by cleanupAllResources()
+    // No need to manually remove it here
 }
 
 // NEW: Toggle functions for manual control
@@ -4874,8 +4883,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ All cookies accepted, page will reload");
 
      // ADD THIS LINE:
-    cleanup(); // Clean up memory using consolidated system
-    
+    cleanupAllResources();    
 }
 
 
@@ -4949,7 +4957,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ All cookies rejected, page will reload");
 
       // ADD THIS LINE:
-   cleanup(); // Clean up memory using consolidated system
+  cleanupAllResources();
     
 }
 
@@ -5105,7 +5113,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ Custom settings saved and page will reload");
 
     // ADD THIS LINE:
-    cleanup(); // Clean up memory using consolidated system
+   cleanupAllResources();
     
 }
 
