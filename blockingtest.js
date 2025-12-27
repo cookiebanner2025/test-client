@@ -718,6 +718,24 @@ window.COOKIE_SETTINGS = {
 
 
 
+// Cleanup functions storage
+let cleanupFunctions = [];
+
+// Named function for beforeunload cleanup
+function handleBeforeUnload() {
+    clearInterval(cookieCleanupInterval);
+    iframeObserver.disconnect();
+    
+    // Clean all registered cleanup functions
+    cleanupFunctions.forEach(fn => fn());
+    cleanupFunctions = [];
+}
+
+// ADD: Cleanup on page unload with named function
+window.addEventListener('beforeunload', handleBeforeUnload);
+cleanupFunctions.push(() => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+});
 
 
     
@@ -777,89 +795,50 @@ window.COOKIE_SETTINGS = {
  /* ===================== CLEANUP SYSTEM ===================== */
 /* ===================== CLEANUP SYSTEM ===================== */
 /* ===================== CLEANUP SYSTEM ===================== */
-/* ===================== CLEANUP SYSTEM ===================== */
     // Ensure cleanupFunctions exists
     if (typeof window.cleanupFunctions === 'undefined') {
         window.cleanupFunctions = [];
     }
     
     // Simple cleanup function
-    function cleanup() {
-        // Disconnect iframe observer
-        try {
-            iframeObserver.disconnect();
-        } catch (e) {
-            console.log('Iframe observer already disconnected');
-        }
-        
-        // Clear cookie cleanup interval
-        try {
-            clearInterval(cookieCleanupInterval);
-        } catch (e) {
-            console.log('Cookie cleanup interval already cleared');
-        }
-        
-        // Clean up event listeners
-        try {
-            cleanupEventListeners();
-        } catch (e) {
-            console.warn('Error cleaning up event listeners:', e);
-        }
-        
-        // Clear any pending timers
-        try {
-            if (bannerTimer) {
-                clearTimeout(bannerTimer);
-                bannerTimer = null;
-            }
-        } catch (e) {
-            console.warn('Error clearing banner timer:', e);
-        }
-        
-        // Clear reload guard
-        try {
-            sessionStorage.removeItem('reload_guard');
-        } catch (e) {
-            // Ignore
-        }
-        
-        // Execute cleanup functions if they exist
-        if (window.cleanupFunctions && window.cleanupFunctions.length > 0) {
-            window.cleanupFunctions.forEach(fn => {
-                try {
-                    if (typeof fn === 'function') {
-                        fn();
-                    }
-                } catch (e) {
-                    console.warn('Error in cleanup function:', e);
-                }
-            });
-            window.cleanupFunctions = [];
-        }
-        
-        if (DEBUG) console.log("✅ Cleanup completed");
+function cleanup() {
+    // Disconnect iframe observer
+    try {
+        iframeObserver.disconnect();
+    } catch (e) {
+        console.log('Iframe observer already disconnected');
     }
+    
+    // Clear cookie cleanup interval
+    try {
+        clearInterval(cookieCleanupInterval);
+    } catch (e) {
+        console.log('Cookie cleanup interval already cleared');
+    }
+    
+    // NEW: Clean up all event listeners
+    cleanupAllListeners();
+    
+    // Execute cleanup functions if they exist
+    if (window.cleanupFunctions && window.cleanupFunctions.length > 0) {
+        window.cleanupFunctions.forEach(fn => {
+            try {
+                if (typeof fn === 'function') {
+                    fn();
+                }
+            } catch (e) {
+                console.warn('Error in cleanup function:', e);
+            }
+        });
+        window.cleanupFunctions = [];
+    }
+    
+    if (DEBUG) console.log("✅ Cleanup completed");
+}
 
     // Register the cleanup function globally
     window.cleanupCookieConsent = cleanup;
-    
-    // Add cleanup on window unload
-    function handleWindowUnload() {
-        cleanup();
-        // Also remove this event listener
-        window.removeEventListener('beforeunload', handleWindowUnload);
-        window.removeEventListener('unload', handleWindowUnload);
-    }
-    
-    // Add multiple unload listeners for cross-browser compatibility
-    window.addEventListener('beforeunload', handleWindowUnload);
-    window.addEventListener('unload', handleWindowUnload);
-    
-    // Store cleanup for removal
-    window.cleanupFunctions.push(() => {
-        window.removeEventListener('beforeunload', handleWindowUnload);
-        window.removeEventListener('unload', handleWindowUnload);
-    });
+
     
     /* ===================== BANNER HOOKS ===================== */
     
@@ -1413,8 +1392,38 @@ geoConfig: {
 
 
 
+// ... end of config object
+
+/* ===================== EVENT HANDLER MANAGEMENT ===================== */
+const eventHandlers = new Map();
+
+function addManagedListener(element, event, handler) {
+    element.addEventListener(event, handler);
+    const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    eventHandlers.set(key, { element, event, handler });
+    return key;
+}
+
+function removeManagedListener(key) {
+    if (eventHandlers.has(key)) {
+        const { element, event, handler } = eventHandlers.get(key);
+        element.removeEventListener(event, handler);
+        eventHandlers.delete(key);
+    }
+}
+
+function cleanupAllListeners() {
+    eventHandlers.forEach(({ element, event, handler }) => {
+        element.removeEventListener(event, handler);
+    });
+    eventHandlers.clear();
+    console.log('✅ All event listeners cleaned up');
+}
+
 // ============== IMPLEMENTATION SECTION ============== //
-// ============== IMPLEMENTATION SECTION ============== //
+
+
+
 // Initialize dataLayer for Google Tag Manager
 window.dataLayer = window.dataLayer || [];
 
@@ -4510,14 +4519,11 @@ function handleCookieValueToggle(e) {
 }
 
 // Setup all event listeners - SIMPLIFIED VERSION
-// Global array to store event listener references
-const eventListeners = [];
-
 function setupEventListeners() {
-    console.log('Setting up event listeners...');
+    console.log('Setting up event listeners with proper cleanup...');
     
     // Clear any existing listeners first
-    cleanupEventListeners();
+    cleanupAllListeners();
     
     // Main banner buttons
     const acceptAllBtn = document.getElementById('acceptAllBtn');
@@ -4533,91 +4539,74 @@ function setupEventListeners() {
     // Floating button
     const floatingButton = document.getElementById('cookieFloatingButton');
     
-    // Add event listeners WITH cleanup tracking
+    // Language selector
+    const languageSelect = document.getElementById('cookieLanguageSelect');
+    
+    // Add managed listeners
     if (acceptAllBtn) {
-        acceptAllBtn.addEventListener('click', handleAcceptAllClick);
-        eventListeners.push({ element: acceptAllBtn, type: 'click', handler: handleAcceptAllClick });
-        console.log('✓ Accept All button listener added');
+        addManagedListener(acceptAllBtn, 'click', handleAcceptAllClick);
+        console.log('✓ Accept All button listener added (managed)');
     }
     
     if (rejectAllBtn) {
-        rejectAllBtn.addEventListener('click', handleRejectAllClick);
-        eventListeners.push({ element: rejectAllBtn, type: 'click', handler: handleRejectAllClick });
-        console.log('✓ Reject All button listener added');
+        addManagedListener(rejectAllBtn, 'click', handleRejectAllClick);
+        console.log('✓ Reject All button listener added (managed)');
     }
     
     if (adjustConsentBtn) {
-        adjustConsentBtn.addEventListener('click', handleAdjustConsentClick);
-        eventListeners.push({ element: adjustConsentBtn, type: 'click', handler: handleAdjustConsentClick });
-        console.log('✓ Adjust Consent button listener added');
+        addManagedListener(adjustConsentBtn, 'click', handleAdjustConsentClick);
+        console.log('✓ Adjust Consent button listener added (managed)');
     }
     
     if (acceptAllSettingsBtn) {
-        acceptAllSettingsBtn.addEventListener('click', handleAcceptAllSettingsClick);
-        eventListeners.push({ element: acceptAllSettingsBtn, type: 'click', handler: handleAcceptAllSettingsClick });
-        console.log('✓ Accept All Settings button listener added');
+        addManagedListener(acceptAllSettingsBtn, 'click', handleAcceptAllSettingsClick);
+        console.log('✓ Accept All Settings button listener added (managed)');
     }
     
     if (rejectAllSettingsBtn) {
-        rejectAllSettingsBtn.addEventListener('click', handleRejectAllSettingsClick);
-        eventListeners.push({ element: rejectAllSettingsBtn, type: 'click', handler: handleRejectAllSettingsClick });
-        console.log('✓ Reject All Settings button listener added');
+        addManagedListener(rejectAllSettingsBtn, 'click', handleRejectAllSettingsClick);
+        console.log('✓ Reject All Settings button listener added (managed)');
     }
     
     if (saveSettingsBtn) {
-        saveSettingsBtn.addEventListener('click', handleSaveSettingsClick);
-        eventListeners.push({ element: saveSettingsBtn, type: 'click', handler: handleSaveSettingsClick });
-        console.log('✓ Save Settings button listener added');
+        addManagedListener(saveSettingsBtn, 'click', handleSaveSettingsClick);
+        console.log('✓ Save Settings button listener added (managed)');
     }
     
     if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', handleCloseModalClick);
-        eventListeners.push({ element: closeModalBtn, type: 'click', handler: handleCloseModalClick });
-        console.log('✓ Close Modal button listener added');
+        addManagedListener(closeModalBtn, 'click', handleCloseModalClick);
+        console.log('✓ Close Modal button listener added (managed)');
     }
     
     if (floatingButton) {
-        floatingButton.addEventListener('click', handleFloatingButtonClick);
-        eventListeners.push({ element: floatingButton, type: 'click', handler: handleFloatingButtonClick });
-        console.log('✓ Floating Button listener added');
+        addManagedListener(floatingButton, 'click', handleFloatingButtonClick);
+        console.log('✓ Floating Button listener added (managed)');
     }
     
-    // Language selector
-    const languageSelect = document.getElementById('cookieLanguageSelect');
     if (languageSelect) {
-        languageSelect.addEventListener('change', handleLanguageChange);
-        eventListeners.push({ element: languageSelect, type: 'change', handler: handleLanguageChange });
-        console.log('✓ Language Selector listener added');
+        addManagedListener(languageSelect, 'change', handleLanguageChange);
+        console.log('✓ Language Selector listener added (managed)');
     }
     
-    // Cookie details toggle
+    // Cookie details toggle - handle dynamically added elements
     document.querySelectorAll('.cookie-details-header').forEach(header => {
-        header.addEventListener('click', handleHeaderClick);
-        eventListeners.push({ element: header, type: 'click', handler: handleHeaderClick });
-        console.log('✓ Cookie details header listener added');
+        addManagedListener(header, 'click', handleHeaderClick);
     });
     
-    // Cookie value toggle
-    document.addEventListener('click', handleCookieValueToggle);
-    eventListeners.push({ element: document, type: 'click', handler: handleCookieValueToggle });
-    console.log('✓ Cookie value toggle listener added');
+    // Cookie value toggle - add to document with event delegation
+    addManagedListener(document, 'click', handleCookieValueToggle);
     
-    console.log('✅ All event listeners set up successfully');
-}
-
-// New cleanup function
-function cleanupEventListeners() {
-    if (eventListeners && eventListeners.length > 0) {
-        eventListeners.forEach(({ element, type, handler }) => {
-            try {
-                if (element && element.removeEventListener) {
-                    element.removeEventListener(type, handler);
-                }
-            } catch (e) {
-                console.warn('Error removing event listener:', e);
-            }
-        });
-        eventListeners.length = 0;
+    // Also add to the blur overlay
+    const overlay = document.getElementById('cookieBlurOverlay');
+    if (overlay) {
+        addManagedListener(overlay, 'click', handleOverlayClick);
+    }
+    
+    console.log(`✅ All event listeners set up (${eventHandlers.size} total)`);
+    
+    // Add cleanup to your existing cleanupFunctions array
+    if (typeof window.cleanupFunctions !== 'undefined') {
+        window.cleanupFunctions.push(cleanupAllListeners);
     }
 }
 
@@ -4718,6 +4707,14 @@ function handleOverlayClick(e) {
     e.preventDefault();
 }
 
+
+// Named function for overlay click handling
+function handleOverlayClick(e) {
+    e.stopPropagation();
+    e.preventDefault();
+}
+
+
 // NEW: Enable/disable interaction restrictions
 function enableInteractionRestrictions() {
     if (!config.behavior.restrictInteraction.enabled) return;
@@ -4737,13 +4734,10 @@ function enableInteractionRestrictions() {
     }
     
     // Prevent clicking outside banner
-    if (config.behavior.restrictInteraction.preventClick) {
-        overlay.classList.add('block-clicks');
-        
-        // Use named function for cleanup
-        overlay.addEventListener('click', handleOverlayClick, true);
-        cleanupFunctions.push(() => overlay.removeEventListener('click', handleOverlayClick, true));
-    }
+if (config.behavior.restrictInteraction.preventClick) {
+    overlay.classList.add('block-clicks');
+    addManagedListener(overlay, 'click', handleOverlayClick);
+}
 }
 
 // NEW: Disable interaction restrictions
@@ -4775,11 +4769,8 @@ function disableInteractionRestrictions() {
     // Enable clicking
     overlay.classList.remove('block-clicks');
     
-    // Remove click blocker
-    overlay.removeEventListener('click', function(e) {
-        e.stopPropagation();
-        e.preventDefault();
-    }, true);
+    // Remove click blocker using named function reference
+    // Note: We don't remove it from eventHandlers here since cleanupAllListeners will handle it
 }
 
 // NEW: Toggle functions for manual control
@@ -4847,19 +4838,9 @@ function acceptAllCookies() {
         
       // Only reload if reload feature is enabled
 if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    // Add reload guard to prevent infinite loops
-    if (!sessionStorage.getItem('reload_guard')) {
-        sessionStorage.setItem('reload_guard', 'true');
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
-        // Clean up reload guard after a second
-        setTimeout(() => {
-            sessionStorage.removeItem('reload_guard');
-        }, 1000);
-    } else {
-        console.log("🛡️ Reload prevented - guard already set");
-    }
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
 } else {
     console.log("🟡 Page reload disabled - changes saved without refresh");
 }
@@ -4931,19 +4912,9 @@ function rejectAllCookies() {
         
        // Only reload if reload feature is enabled
 if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    // Add reload guard to prevent infinite loops
-    if (!sessionStorage.getItem('reload_guard')) {
-        sessionStorage.setItem('reload_guard', 'true');
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
-        // Clean up reload guard after a second
-        setTimeout(() => {
-            sessionStorage.removeItem('reload_guard');
-        }, 1000);
-    } else {
-        console.log("🛡️ Reload prevented - guard already set");
-    }
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
 } else {
     console.log("🟡 Page reload disabled - changes saved without refresh");
 }
@@ -5035,19 +5006,9 @@ function saveCustomSettings() {
         
       // Only reload if reload feature is enabled
 if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    // Add reload guard to prevent infinite loops
-    if (!sessionStorage.getItem('reload_guard')) {
-        sessionStorage.setItem('reload_guard', 'true');
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
-        // Clean up reload guard after a second
-        setTimeout(() => {
-            sessionStorage.removeItem('reload_guard');
-        }, 1000);
-    } else {
-        console.log("🛡️ Reload prevented - guard already set");
-    }
+    setTimeout(() => {
+        window.location.reload();
+    }, 300);
 } else {
     console.log("🟡 Page reload disabled - changes saved without refresh");
 }
@@ -5352,40 +5313,28 @@ function initializeClarity(consentGranted) {
 
 
 // Function to send consent signal to Microsoft Clarity
-function sendClarityConsentSignal(consentGranted, retryCount = 0) {
+function sendClarityConsentSignal(consentGranted) {
     if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
     
     try {
-        if (typeof window.clarity === 'function') {
-            // Send consent signal to Clarity
-            window.clarity('consent', consentGranted);
-            console.log('Microsoft Clarity consent signal sent:', consentGranted);
-            
-            // Push to dataLayer for tracking
-            window.dataLayer.push({
-                'event': 'clarity_consent_signal',
-                'clarity_consent': consentGranted,
-                'timestamp': new Date().toISOString(),
-                'location_data': locationData
-            });
-        } else if (retryCount < 3) {
-            // Clarity not loaded yet, retry after delay
-            console.log(`Clarity not loaded, retrying... (attempt ${retryCount + 1}/3)`);
-            setTimeout(() => {
-                sendClarityConsentSignal(consentGranted, retryCount + 1);
-            }, 500 * (retryCount + 1)); // 500ms, 1000ms, 1500ms
-        } else {
-            console.warn('Microsoft Clarity not loaded after 3 attempts');
-            // Store consent signal to send when Clarity loads
-            if (!window.pendingClarityConsent) {
-                window.pendingClarityConsent = [];
-            }
-            window.pendingClarityConsent.push(consentGranted);
-        }
+        ensureClarityConsentSignal(consentGranted);
+        
+        // Enhanced logging
+        console.log('Microsoft Clarity consent signal sent:', consentGranted, 
+                   'for region:', locationData?.country || 'unknown');
+        
+        window.dataLayer.push({
+            'event': 'clarity_consent_signal',
+            'clarity_consent': consentGranted,
+            'clarity_region': locationData?.country || 'unknown',
+            'timestamp': new Date().toISOString(),
+            'location_data': locationData
+        });
     } catch (error) {
         console.error('Failed to send Clarity consent signal:', error);
     }
 }
+
 
 
 
@@ -5494,11 +5443,9 @@ function sanitizeParamValue(value) {
     if (typeof value !== 'string') return '';
     // Trim and limit length
     return value.trim().substring(0, config.queryParamsConfig.maxLength)
-        .replace(/[<>"'`&;]/g, '') // Remove dangerous characters
-        .replace(/javascript:/gi, 'no-script-') // Block javascript: protocol
-        .replace(/data:/gi, 'no-data-') // Block data: protocol
-        .replace(/vbscript:/gi, 'no-vbscript-'); // Block vbscript
+        .replace(/[<>"'`]/g, ''); // Basic XSS prevention
 }
+
 // Load analytics cookies function
 function loadAdvertisingCookies() {
     console.log('Loading advertising cookies');
@@ -5616,41 +5563,7 @@ if (typeof window !== 'undefined') {
 
 
 
-// ⬇️⬇️⬇️ ADD THE CLARITY FIX CODE RIGHT HERE ⬇️⬇️⬇️
-    // Check for pending Clarity consent signals when Clarity loads
-    // Store original clarity function if it exists
-    const originalClarity = window.clarity;
-    
-    Object.defineProperty(window, 'clarity', {
-        set: function(newValue) {
-            // Store the new value
-            this._clarity = newValue;
-            
-            // If there are pending consent signals, send them
-            if (window.pendingClarityConsent && window.pendingClarityConsent.length > 0) {
-                setTimeout(() => {
-                    window.pendingClarityConsent.forEach(consent => {
-                        if (typeof newValue === 'function') {
-                            newValue('consent', consent);
-                        }
-                    });
-                    window.pendingClarityConsent = [];
-                }, 1000);
-            }
-        },
-        get: function() {
-            return this._clarity;
-        }
-    });
-    
-    // If clarity was already set, trigger the setter
-    if (originalClarity) {
-        window.clarity = originalClarity;
-    }
-    // ⬆️⬆️⬆️ END OF CLARITY FIX CODE ⬆️⬆️⬆️
 
-
-    
 /* ============================================================
    ADMIN CONTROL FUNCTIONS
    You can call these from browser console to control blocking
@@ -5715,7 +5628,27 @@ window.showBlockingSettings = function() {
 };
 
 
+// Clean up event listeners on page unload
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', cleanupAllListeners);
+    window.addEventListener('pagehide', cleanupAllListeners);
+}
 
+// Optional: Debug function for testing
+if (typeof window !== 'undefined') {
+    window.debugEventListeners = function() {
+        console.log('📊 Event Handler Debug:');
+        console.log(`Total managed listeners: ${eventHandlers.size}`);
+        
+        eventHandlers.forEach(({ element, event, handler }, key) => {
+            console.log(key, {
+                element: element.id || element.className || element.tagName,
+                event: event,
+                handler: handler.name || 'anonymous'
+            });
+        });
+    };
+}
 
 
   
