@@ -16,8 +16,7 @@ window.COOKIE_SETTINGS = {
     'use strict';
 
 
-// DEBUG: Log that script is loading
-console.log('🔧 Cookie Consent Script Loading...');
+
 
 // STEP 1: Initialize cleanup registry (ONE SINGLE PLACE)
 window.cookieBlockingCleanup = window.cookieBlockingCleanup || {};
