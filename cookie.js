@@ -1208,15 +1208,18 @@ clarityConfig: {
     loadBeforeConsent: false // NEW: Prevent loading before consent in regulated regions
 },
 
- // Microsoft UET Configuration
-uetConfig: {
-    enabled: true,
-    defaultTagId: '137027166', // Fallback if auto-detection fails
-    autoDetectTagId: true,     // Set this to TRUE for auto-detection
-    defaultConsent: 'denied',  // 'denied' or 'granted'
-    enforceInEEA: true,        // Enforce consent mode in EEA countries
-    msd: window.location.hostname // Microsoft Domain handling
-},
+    
+  
+    // Microsoft UET Configuration
+    // Microsoft UET Configuration
+    uetConfig: {
+        enabled: true,
+        defaultTagId: '137027166', // Fallback if auto-detection fails
+        autoDetectTagId: true,     // Try to detect UET tag ID automatically
+        defaultConsent: 'denied',  // 'denied' or 'granted'
+        enforceInEEA: true,        // Enforce consent mode in EEA countries
+        msd: window.location.hostname // Add this line for Microsoft Domain handling
+    },
     
     // Behavior configuration
     // Behavior configuration
@@ -1554,173 +1557,16 @@ window.dataLayer.push({
     'timestamp': new Date().toISOString()
 });
 
-
-
-
-
-/* ===================== UET TAG AUTO-DETECTION ===================== */
-function detectUetTagId() {
-    // Method 1: Check for UET script tags already on the page
-    const scripts = document.querySelectorAll('script[src*="bat.bing.com"], script[src*="batbing.com"]');
-    
-    for (const script of scripts) {
-        const src = script.src;
-        // Look for "ti=" parameter in the URL
-        const tiMatch = src.match(/ti=(\d+)/);
-        if (tiMatch && tiMatch[1]) {
-            console.log(`🔍 UET Tag ID detected from script tag: ${tiMatch[1]}`);
-            return tiMatch[1];
-        }
-    }
-    
-    // Method 2: Check for inline UET initialization
-    const inlineScripts = document.querySelectorAll('script:not([src])');
-    for (const script of inlineScripts) {
-        const content = script.textContent || script.innerText;
-        if (content.includes('bat.bing.com') || content.includes('batbing.com')) {
-            // Look for UET parameters in inline scripts
-            const tiMatch = content.match(/ti['"]?\s*[:=]\s*['"]?(\d+)['"]?/);
-            if (tiMatch && tiMatch[1]) {
-                console.log(`🔍 UET Tag ID detected from inline script: ${tiMatch[1]}`);
-                return tiMatch[1];
-            }
-            
-            // Look for UET tag in URLs
-            const urlMatch = content.match(/bat\.bing\.com[^"']*ti=(\d+)/);
-            if (urlMatch && urlMatch[1]) {
-                console.log(`🔍 UET Tag ID detected from URL pattern: ${urlMatch[1]}`);
-                return urlMatch[1];
-            }
-        }
-    }
-    
-    // Method 3: Check for UET data attributes in HTML
-    const uetElements = document.querySelectorAll('[data-uet-id], [data-uet-tag], [data-microsoft-uet]');
-    for (const element of uetElements) {
-        const uetId = element.getAttribute('data-uet-id') || 
-                     element.getAttribute('data-uet-tag') || 
-                     element.getAttribute('data-microsoft-uet');
-        if (uetId && /^\d+$/.test(uetId)) {
-            console.log(`🔍 UET Tag ID detected from data attribute: ${uetId}`);
-            return uetId;
-        }
-    }
-    
-    // Method 4: Look for Microsoft UET in global variables
-    if (window.uetq && window.uetq.push) {
-        // Check if UET queue has initialization with tag ID
-        for (let i = 0; i < window.uetq.length; i++) {
-            if (Array.isArray(window.uetq[i]) && window.uetq[i][0] === 'set') {
-                // UET configuration might be in the queue
-                if (window.uetq[i][1] === 'ti' && window.uetq[i][2]) {
-                    console.log(`🔍 UET Tag ID detected from uetq queue: ${window.uetq[i][2]}`);
-                    return window.uetq[i][2].toString();
-                }
-            }
-        }
-    }
-    
-    // Method 5: Check for UET in dataLayer
-    if (window.dataLayer) {
-        for (let i = 0; i < window.dataLayer.length; i++) {
-            const item = window.dataLayer[i];
-            if (item && typeof item === 'object') {
-                if (item.uet_tag_id) {
-                    console.log(`🔍 UET Tag ID detected from dataLayer: ${item.uet_tag_id}`);
-                    return item.uet_tag_id.toString();
-                }
-                if (item.uet_id) {
-                    console.log(`🔍 UET Tag ID detected from dataLayer: ${item.uet_id}`);
-                    return item.uet_id.toString();
-                }
-            }
-        }
-    }
-    
-    console.log('🔍 No UET Tag ID detected automatically, using default');
-    return null;
-}
-
-/* ===================== UET CONFIGURATION ===================== */
-function configureUET() {
-    if (!config.uetConfig.enabled) return;
-    
-    let tagId = config.uetConfig.defaultTagId;
-    
-    // Try auto-detection if enabled
-    if (config.uetConfig.autoDetectTagId) {
-        const detectedId = detectUetTagId();
-        if (detectedId) {
-            tagId = detectedId;
-            console.log(`✅ Using auto-detected UET Tag ID: ${tagId}`);
-            
-            // Store the detected ID for future use
-            config.uetConfig.detectedTagId = tagId;
-            
-            // Push detection event to dataLayer
-            window.dataLayer.push({
-                'event': 'uet_tag_detected',
-                'uet_tag_id': tagId,
-                'detection_method': 'auto',
-                'timestamp': new Date().toISOString()
-            });
-        } else {
-            console.log('⚠️ UET auto-detection failed, using default ID');
-            
-            window.dataLayer.push({
-                'event': 'uet_tag_detection_failed',
-                'default_tag_id': config.uetConfig.defaultTagId,
-                'detection_method': 'auto',
-                'timestamp': new Date().toISOString()
-            });
-        }
-    }
-    
-    // Initialize UET queue if not exists
-    if (typeof window.uetq === 'undefined') {
-        window.uetq = [];
-    }
-    
-    // Set UET configuration with the tag ID
-    window.uetq.push('set', 'ti', tagId);
-    
-    // Set msd parameter if available
-    if (config.uetConfig.msd) {
-        window.uetq.push('set', 'msd', config.uetConfig.msd);
-    }
-    
-    console.log(`✅ UET configured with Tag ID: ${tagId}`);
-    
-    // Log UET configuration
-    window.dataLayer.push({
-        'event': 'uet_configured',
-        'uet_config': {
-            'tag_id': tagId,
-            'auto_detect': config.uetConfig.autoDetectTagId,
-            'msd': config.uetConfig.msd,
-            'detected': !!config.uetConfig.detectedTagId
-        },
-        'timestamp': new Date().toISOString()
-    });
-    
-    return tagId;
-}
-
-
-
-
-
-
-// Set default UET consent with auto-detection
+// Set default UET consent
 function setDefaultUetConsent() {
     if (!config.uetConfig.enabled) return;
     
-    // Configure UET with auto-detection first
-    const tagId = configureUET();
-    
-    // Initialize UET queue if not exists
+    // Initialize UET queue if not exists with msd parameter
     if (typeof window.uetq === 'undefined') {
         window.uetq = [];
+        if (config.uetConfig.msd) {
+            window.uetq.push('set', 'msd', config.uetConfig.msd);
+        }
     }
     
     const consentState = config.uetConfig.defaultConsent === 'granted' ? 'granted' : 'denied';
@@ -1742,7 +1588,6 @@ function setDefaultUetConsent() {
             'ad_personalization': 'denied'
         },
         'uet_config': {
-            'tag_id': tagId,
             'msd': config.uetConfig.msd || window.location.hostname,
             'enforce_eea': config.uetConfig.enforceInEEA,
             'data_processing': config.uetConfig.enforceInEEA && EU_COUNTRIES.includes(locationData?.country || '') ? 
