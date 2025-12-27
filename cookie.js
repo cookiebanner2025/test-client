@@ -1210,11 +1210,12 @@ clarityConfig: {
 
     
   
- // Microsoft UET Configuration
+
+// Microsoft UET Configuration
 uetConfig: {
     enabled: true,
-    defaultTagId: '', // Leave empty - will be filled if auto-detection fails
-    autoDetectTagId: true, // Enable auto-detection
+    defaultTagId: '', // Leave empty - will show blank if not detected
+    autoDetectTagId: true,
     defaultConsent: 'denied',
     enforceInEEA: true,
     msd: window.location.hostname
@@ -1560,14 +1561,18 @@ window.dataLayer.push({
 function setDefaultUetConsent() {
     if (!config.uetConfig.enabled) return;
     
-    // Auto-detect UET tag ID if enabled
+    console.log('⚙️ Setting up UET...');
+    
+    // Try to find UET tag ID
     let detectedTagId = null;
     if (config.uetConfig.autoDetectTagId) {
         detectedTagId = autoDetectUetTagId();
     }
     
-    // Use detected tag ID or default
+    // What to show in dataLayer
     const tagId = detectedTagId || config.uetConfig.defaultTagId;
+    const tagIdSource = detectedTagId ? 'auto_detected' : (config.uetConfig.defaultTagId ? 'default' : 'not_detected');
+    const consentState = config.uetConfig.defaultConsent === 'granted' ? 'granted' : 'denied';
     
     // Initialize UET queue if not exists with msd parameter
     if (typeof window.uetq === 'undefined') {
@@ -1580,8 +1585,6 @@ function setDefaultUetConsent() {
         }
     }
     
-    const consentState = config.uetConfig.defaultConsent === 'granted' ? 'granted' : 'denied';
-    
     // Push consent update with additional parameters
     window.uetq.push('consent', 'default', {
         'ad_storage': consentState,
@@ -1589,7 +1592,7 @@ function setDefaultUetConsent() {
             ['LDU'] : ['GDPR']
     });
     
-    // Enhanced dataLayer push for UET consent with real tag ID
+    // Enhanced dataLayer push for UET consent WITH REAL TAG ID
     window.dataLayer.push({
         'event': 'uet_consent_default',
         'consent_mode': {
@@ -1600,8 +1603,9 @@ function setDefaultUetConsent() {
         },
         'uet_config': {
             'msd': config.uetConfig.msd || window.location.hostname,
-            'tag_id': tagId || 'not_detected',
-            'tag_id_source': detectedTagId ? 'auto_detected' : 'default',
+            'tag_id': tagId || '',
+            'tag_id_source': tagIdSource,
+            'auto_detect': config.uetConfig.autoDetectTagId,
             'enforce_eea': config.uetConfig.enforceInEEA,
             'data_processing': config.uetConfig.enforceInEEA && EU_COUNTRIES.includes(locationData?.country || '') ? 
                 'LDU' : 'GDPR'
@@ -1611,12 +1615,20 @@ function setDefaultUetConsent() {
         'location_data': locationData
     });
     
-    // Log what we detected
-    if (tagId) {
-        console.log(`✅ UET configured with tag ID: ${tagId} (${detectedTagId ? 'auto-detected' : 'default'})`);
-    }
+    // Also push the simple format for backward compatibility
+    window.dataLayer.push({
+        'event': 'uet_initialized',
+        'uet_params': {
+            'msd': config.uetConfig.msd || window.location.hostname,
+            'tag_id': tagId || '',
+            'auto_detect': config.uetConfig.autoDetectTagId,
+            'tag_id_source': tagIdSource
+        },
+        'timestamp': new Date().toISOString()
+    });
+    
+    console.log(`📊 UET initialized. Tag ID: "${tagId || 'empty'}" (${tagIdSource})`);
 }
-
 
 // Enhanced cookie database with detailed descriptions
 const cookieDatabase = {
@@ -1930,64 +1942,40 @@ const cookieDatabase = {
 
 
 
-// ============== UET TAG ID AUTO-DETECTION FUNCTION ==============
+
+// SIMPLE UET Tag ID Detector - Looks in HTML source
 function autoDetectUetTagId() {
+    console.log('🔍 Looking for UET tag ID...');
+    
     try {
-        // Method 1: Look for UET tag in scripts
-        const scripts = document.querySelectorAll('script');
-        for (const script of scripts) {
-            if (script.src && script.src.includes('bat.bing.com')) {
-                const match = script.src.match(/id=([^&]+)/);
-                if (match && match[1]) {
-                    console.log('🔍 Auto-detected UET tag ID from script:', match[1]);
-                    return match[1];
-                }
+        // Method 1: Check the entire page HTML for UET patterns
+        const html = document.documentElement.outerHTML;
+        
+        // Look for common UET patterns
+        const patterns = [
+            /bat\.bing\.com.*[\?&]id=([^&\s'"<>]+)/i,  // bat.bing.com?id=...
+            /uetq.*push.*['"]id['"].*['"]([^'"\s]+)['"]/i, // uetq.push('id', '...')
+            /tag.*id.*['"]([0-9]+)['"]/i, // tag id="..."
+            /data-uet-tag-id=['"]([^'"]+)['"]/i, // data-uet-tag-id="..."
+            /data-bing-id=['"]([^'"]+)['"]/i, // data-bing-id="..."
+            /Microsoft.*Tag.*ID.*[:=]\s*([0-9]+)/i // Microsoft Tag ID: 123
+        ];
+        
+        for (const pattern of patterns) {
+            const match = html.match(pattern);
+            if (match && match[1]) {
+                console.log('✅ Found UET tag ID:', match[1]);
+                return match[1];
             }
         }
         
-        // Method 2: Look for UET data attribute
-        const uetElements = document.querySelectorAll('[data-uet-tag-id], [data-bing-id], [data-msclkid]');
-        for (const element of uetElements) {
-            const tagId = element.getAttribute('data-uet-tag-id') || 
-                         element.getAttribute('data-bing-id') || 
-                         element.getAttribute('data-msclkid');
-            if (tagId) {
-                console.log('🔍 Auto-detected UET tag ID from data attribute:', tagId);
-                return tagId;
-            }
-        }
-        
-        // Method 3: Look in dataLayer/Google Tag Manager
-        if (window.dataLayer) {
-            for (let i = window.dataLayer.length - 1; i >= 0; i--) {
-                const item = window.dataLayer[i];
-                if (item.uet_tag_id || item.bing_tag_id || item.msclkid) {
-                    const tagId = item.uet_tag_id || item.bing_tag_id || item.msclkid;
-                    console.log('🔍 Auto-detected UET tag ID from dataLayer:', tagId);
-                    return tagId;
-                }
-            }
-        }
-        
-        // Method 4: Look for global UET variable
-        if (window.uetq && window.uetq.length > 0) {
-            for (let i = 0; i < window.uetq.length; i++) {
-                if (Array.isArray(window.uetq[i]) && window.uetq[i][0] === 'set' && window.uetq[i][1] === 'id') {
-                    console.log('🔍 Auto-detected UET tag ID from uetq:', window.uetq[i][2]);
-                    return window.uetq[i][2];
-                }
-            }
-        }
-        
-        console.log('⚠️ No UET tag ID auto-detected, using default');
+        console.log('⚠️ No UET tag ID found in HTML');
         return null;
     } catch (error) {
-        console.error('Error auto-detecting UET tag ID:', error);
+        console.log('❌ Error detecting UET:', error);
         return null;
     }
 }
-// ============== END UET AUTO-DETECTION ==============
-
 
 
 
@@ -5500,40 +5488,41 @@ function updateConsentMode(consentData) {
 if (config.uetConfig.enabled) {
     const uetConsentState = consentData.categories.advertising ? 'granted' : 'denied';
     
-    // Auto-detect tag ID on each update
+    // Try to detect tag ID again (in case it was added after consent)
     let detectedTagId = null;
     if (config.uetConfig.autoDetectTagId) {
         detectedTagId = autoDetectUetTagId();
     }
     const tagId = detectedTagId || config.uetConfig.defaultTagId;
+    const tagIdSource = detectedTagId ? 'auto_detected' : (config.uetConfig.defaultTagId ? 'default' : 'not_detected');
     
-    // Set tag ID if detected
-    if (tagId && typeof window.uetq !== 'undefined') {
-        window.uetq.push('set', 'id', tagId);
+    // Update UET queue
+    if (typeof window.uetq !== 'undefined') {
+        window.uetq.push('consent', 'update', {
+            'ad_storage': uetConsentState
+        });
+        if (tagId) {
+            window.uetq.push('set', 'id', tagId);
+        }
     }
     
-    window.uetq.push('consent', 'update', {
-        'ad_storage': uetConsentState
-    });
-    
-    // Push UET consent event to dataLayer with the exact requested format
+    // Simple dataLayer push
     window.dataLayer.push({
         'event': 'uet_consent_update',
         'uet_consent': {
             'ad_storage': uetConsentState,
-            'status': consentData.status,
-            'src': 'update',
-            'asc': uetConsentState === 'granted' ? 'G' : 'D',
-            'timestamp': new Date().toISOString()
+            'status': consentData.status
         },
         'uet_params': {
-            'msd': config.uetConfig.msd || window.location.hostname,
-            'tag_id': tagId || 'not_detected',
+            'msd': window.location.hostname,
+            'tag_id': tagId || '',
             'auto_detect': config.uetConfig.autoDetectTagId,
-            'tag_id_source': detectedTagId ? 'auto_detected' : 'default'
+            'tag_id_source': tagIdSource
         },
-        'location_data': locationData
+        'timestamp': new Date().toISOString()
     });
+    
+    console.log(`📊 UET consent updated to: ${uetConsentState}, Tag ID: "${tagId || 'empty'}"`);
 }
     
     // Update Microsoft Clarity consent
