@@ -4790,9 +4790,10 @@ function enableInteractionRestrictions() {
 // Prevent clicking outside banner
 if (config.behavior.restrictInteraction.preventClick) {
     overlay.classList.add('block-clicks');
-    addGlobalHandler(overlay, 'click', handleOverlayClick);
+    overlay.addEventListener('click', handleOverlayClick);
 }
 }
+
 
 // NEW: Disable interaction restrictions
 function disableInteractionRestrictions() {
@@ -4807,24 +4808,8 @@ function disableInteractionRestrictions() {
     // Enable clicking
     overlay.classList.remove('block-clicks');
     
-    // Remove click blocker using named function
-    overlay.removeEventListener('click', handleOverlayClick, true);
-}
-// NEW: Disable interaction restrictions
-function disableInteractionRestrictions() {
-    const overlay = document.getElementById('cookieBlurOverlay');
-    
-    // Remove blur effect
-    overlay.style.display = 'none';
-    
-    // Enable scrolling
-    document.body.classList.remove('no-scroll');
-    
-    // Enable clicking
-    overlay.classList.remove('block-clicks');
-    
-    // Remove click blocker using named function reference
-    // Note: We don't remove it from eventHandlers here since cleanupAllListeners will handle it
+    // Remove click blocker
+    overlay.removeEventListener('click', handleOverlayClick);
 }
 
 // NEW: Toggle functions for manual control
