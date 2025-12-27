@@ -4859,33 +4859,13 @@ function setBlurDensity(density) {
 
 // Cookie consent functions
 function acceptAllCookies() {
-    
-    hideCookieBanner(); // ← Add this line
+    hideCookieBanner();
     console.log("✅ Accepting ALL cookies");
     
-    // IMPORTANT: Call the blocking script function
-    if (typeof window.enableAllTracking === 'function') {
-        window.enableAllTracking();
-    } else {
-        // Fallback
-        localStorage.setItem("__user_cookie_consent__", "granted");
-        localStorage.setItem("__user_cookie_categories__", JSON.stringify({
-            analytics: true,
-            advertising: true,
-            performance: true
-        }));
-        
-      // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
-    }
+    // REMOVE THIS LINE: window.enableAllTracking();
+    // DO NOT call the blocking script function - it causes conflicts
     
-    // Your existing code continues...
+    // KEEP all your original code but REMOVE the reload:
     initializeClarity(true);
     sendClarityConsentSignal(true);
     
@@ -4906,7 +4886,14 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     
- 
+    // ALSO update localStorage for the blocking script
+    localStorage.setItem("__user_cookie_consent__", "granted");
+    localStorage.setItem("__user_cookie_categories__", JSON.stringify({
+        analytics: true,
+        advertising: true,
+        performance: true
+    }));
+    
     window.dataLayer.push({
         'event': 'cookie_consent_accepted',
         'consent_mode': {
@@ -4928,38 +4915,23 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     // NEW: Disable interaction restrictions when user accepts
     disableInteractionRestrictions();
     
-    console.log("✅ All cookies accepted, page will reload");
-
-     // ADD THIS LINE:
-    cleanup(); // Clean up memory using consolidated system
+    console.log("✅ All cookies accepted");
     
+    // IMPORTANT: REMOVE this reload line - the blocking script handles it
+    // setTimeout(() => { window.location.reload(); }, 300);
+    
+    // ADD THIS LINE:
+    cleanup(); // Clean up memory using consolidated system
 }
 
 
 function rejectAllCookies() {
-
     hideCookieBanner(); // ← Add this line
     console.log("❌ Rejecting ALL cookies");
     
-    // IMPORTANT: Call the blocking script function
-    if (typeof window.disableAllTracking === 'function') {
-        window.disableAllTracking();
-    } else {
-        // Fallback
-        localStorage.removeItem("__user_cookie_consent__");
-        localStorage.removeItem("__user_cookie_categories__");
-        
-       // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
-    }
+    // DO NOT call window.disableAllTracking() - causes conflicts
     
-    // Your existing code continues...
+    // KEEP your original code:
     initializeClarity(false);
     sendClarityConsentSignal(false);
     
@@ -4980,7 +4952,9 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     updateConsentMode(consentData);
     clearNonEssentialCookies();
     
-   
+    // ALSO update localStorage for the blocking script
+    localStorage.removeItem("__user_cookie_consent__");
+    localStorage.removeItem("__user_cookie_categories__");
     
     window.dataLayer.push({
         'event': 'cookie_consent_rejected',
@@ -5003,16 +4977,17 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     // Add this at the end of rejectAllCookies function
     disableInteractionRestrictions();
     
-    console.log("✅ All cookies rejected, page will reload");
-
-      // ADD THIS LINE:
-   cleanup(); // Clean up memory using consolidated system
+    console.log("✅ All cookies rejected");
     
+    // IMPORTANT: REMOVE this reload line
+    // setTimeout(() => { window.location.reload(); }, 300);
+    
+    // ADD THIS LINE:
+    cleanup(); // Clean up memory using consolidated system
 }
 
 
 function saveCustomSettings() {
-
     hideCookieBanner(); // ← Add this line
     // Get current checkbox states
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
@@ -5032,30 +5007,16 @@ function saveCustomSettings() {
         performance: performanceChecked
     };
     
-    // IMPORTANT: Call the blocking script function
-    if (typeof window.enableTrackingByCategory === 'function') {
-        window.enableTrackingByCategory(categories);
-    } else {
-        // Fallback if function doesn't exist yet
-        localStorage.setItem("__user_cookie_categories__", JSON.stringify(categories));
-        
-        // Set partial consent
-        const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
-        localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
-        
-      // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
-    }
+    // DO NOT call window.enableTrackingByCategory() - causes conflicts
     
-    // Continue with your existing analytics code...
-    // Rest of your function stays the same...
+    // Store in localStorage for blocking script
+    localStorage.setItem("__user_cookie_categories__", JSON.stringify(categories));
     
+    // Set partial consent
+    const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
+    localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
+    
+    // KEEP the rest of your original code:
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
     
@@ -5103,8 +5064,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     if (!performanceChecked) clearCategoryCookies('performance');
     if (!advertisingChecked) clearCategoryCookies('advertising');
     if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
-    
-  
     
     // Your existing dataLayer code continues...
     const consentStates = {
@@ -5156,14 +5115,16 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         });
     }
    
-        // NEW: Disable interaction restrictions when user saves custom settings
+    // NEW: Disable interaction restrictions when user saves custom settings
     disableInteractionRestrictions();
    
-    console.log("✅ Custom settings saved and page will reload");
-
+    console.log("✅ Custom settings saved");
+    
+    // IMPORTANT: REMOVE this reload line
+    // setTimeout(() => { window.location.reload(); }, 300);
+    
     // ADD THIS LINE:
     cleanup(); // Clean up memory using consolidated system
-    
 }
 
 
