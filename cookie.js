@@ -1213,11 +1213,13 @@ clarityConfig: {
 // Microsoft UET Configuration
 uetConfig: {
     enabled: true,
-    defaultTagId: '', // ← Change to empty string instead of '137027166'
-    autoDetectTagId: true,     // This will try to detect real UET tag
-    defaultConsent: 'denied',  // 'denied' or 'granted'
-    enforceInEEA: true,        // Enforce consent mode in EEA countries
-    msd: window.location.hostname // Add this line for Microsoft Domain handling
+    defaultTagId: '', // Leave empty - will auto-detect
+    autoDetectTagId: true,
+    defaultConsent: 'denied',
+    enforceInEEA: true,
+    msd: window.location.hostname,
+    // Add new debugging option
+    debugDetection: true // Set to true to see detection logs
 },
     
     // Behavior configuration
@@ -1489,50 +1491,201 @@ geoConfig: {
 // ... end of config object
 
 
-// Add this function to detect UET tag from the page
+// ===================== UET TAG DETECTION FUNCTIONS =====================
+
+// Comprehensive UET tag detector
 function detectUetTagFromPage() {
+    console.log('🔍 Starting UET tag detection...');
+    let detectedTagId = '';
+    
     try {
-        // Method 1: Check for UET script tag
-        const scripts = document.querySelectorAll('script[src*="bat.bing.com"]');
+        // ========== METHOD 1: Check for UET script tags ==========
+        console.log('Checking METHOD 1: Script tags...');
+        const scripts = document.querySelectorAll('script');
         for (let script of scripts) {
-            const url = new URL(script.src);
-            const tagId = url.searchParams.get('tag');
-            if (tagId) {
-                console.log('✅ Detected UET tag from script:', tagId);
-                return tagId;
-            }
-        }
-        
-        // Method 2: Check inline UET initialization
-        const inlineScripts = document.querySelectorAll('script:not([src])');
-        for (let script of inlineScripts) {
-            const content = script.textContent;
-            if (content.includes('bat.bing.com') && content.includes('tag=')) {
-                const match = content.match(/tag=([^&'"]+)/);
-                if (match && match[1]) {
-                    console.log('✅ Detected UET tag from inline script:', match[1]);
-                    return match[1];
+            if (script.src) {
+                // Check for bat.bing.com
+                if (script.src.includes('bat.bing.com')) {
+                    console.log('Found bat.bing.com script:', script.src);
+                    const url = new URL(script.src);
+                    const tagParam = url.searchParams.get('tag');
+                    if (tagParam) {
+                        console.log('✅ Found UET tag in script src:', tagParam);
+                        detectedTagId = tagParam;
+                        break;
+                    }
+                }
+                // Also check for other bing domains
+                if (script.src.includes('bing.com/event') || script.src.includes('bing.com/tag')) {
+                    console.log('Found bing.com script:', script.src);
+                    const match = script.src.match(/[?&]tag=([^&]+)/);
+                    if (match && match[1]) {
+                        console.log('✅ Found UET tag in alternative script:', match[1]);
+                        detectedTagId = match[1];
+                        break;
+                    }
                 }
             }
         }
         
-        // Method 3: Check window.uetq
-        if (window.uetq && window.uetq.length > 0) {
+        // ========== METHOD 2: Check inline scripts ==========
+        if (!detectedTagId) {
+            console.log('Checking METHOD 2: Inline scripts...');
+            const inlineScripts = document.querySelectorAll('script:not([src])');
+            for (let script of inlineScripts) {
+                const content = script.textContent || script.innerText;
+                if (content) {
+                    // Look for bat.bing.com with tag parameter
+                    if (content.includes('bat.bing.com') && content.includes('tag=')) {
+                        const match = content.match(/tag=([^&'"]+)/);
+                        if (match && match[1]) {
+                            console.log('✅ Found UET tag in inline script:', match[1]);
+                            detectedTagId = match[1];
+                            break;
+                        }
+                    }
+                    // Look for UET initialization patterns
+                    if (content.includes('97221015')) { // Your specific tag ID
+                        console.log('✅ Found your specific UET tag (97221015) in inline script');
+                        detectedTagId = '97221015';
+                        break;
+                    }
+                    // Look for window.uetq.push patterns
+                    if (content.includes('window.uetq') && content.includes('push')) {
+                        const tagMatch = content.match(/['"]tag['"]\s*:\s*['"]([^'"]+)['"]/);
+                        if (tagMatch && tagMatch[1]) {
+                            console.log('✅ Found UET tag in window.uetq:', tagMatch[1]);
+                            detectedTagId = tagMatch[1];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ========== METHOD 3: Check window.uetq queue ==========
+        if (!detectedTagId && window.uetq && window.uetq.length > 0) {
+            console.log('Checking METHOD 3: window.uetq queue...');
+            console.log('Current uetq:', window.uetq);
+            
+            // Check for 'set', 'uetid' pattern
             for (let i = 0; i < window.uetq.length; i++) {
                 if (window.uetq[i] === 'set' && window.uetq[i+1] === 'uetid') {
-                    console.log('✅ Detected UET tag from uetq queue:', window.uetq[i+2]);
-                    return window.uetq[i+2];
+                    detectedTagId = window.uetq[i+2];
+                    console.log('✅ Found UET tag in uetq[set, uetid]:', detectedTagId);
+                    break;
+                }
+                // Also check for tag parameter
+                if (typeof window.uetq[i] === 'object' && window.uetq[i].tag) {
+                    detectedTagId = window.uetq[i].tag;
+                    console.log('✅ Found UET tag in uetq object:', detectedTagId);
+                    break;
                 }
             }
         }
         
-        console.log('⚠️ No UET tag detected on page');
-        return '';
+        // ========== METHOD 4: Check global variables ==========
+        if (!detectedTagId) {
+            console.log('Checking METHOD 4: Global variables...');
+            // Sometimes UET stores tag in window._uetq_settings
+            if (window._uetq_settings && window._uetq_settings.tag) {
+                detectedTagId = window._uetq_settings.tag;
+                console.log('✅ Found UET tag in _uetq_settings:', detectedTagId);
+            }
+            // Check for Microsoft-specific variables
+            if (window.uet && window.uet.tag) {
+                detectedTagId = window.uet.tag;
+                console.log('✅ Found UET tag in uet object:', detectedTagId);
+            }
+        }
+        
+        // ========== METHOD 5: Check dataLayer ==========
+        if (!detectedTagId && window.dataLayer) {
+            console.log('Checking METHOD 5: dataLayer...');
+            for (let i = window.dataLayer.length - 1; i >= 0; i--) {
+                const item = window.dataLayer[i];
+                if (item.uet_tag_id || item.uet_tag) {
+                    detectedTagId = item.uet_tag_id || item.uet_tag;
+                    console.log('✅ Found UET tag in dataLayer:', detectedTagId);
+                    break;
+                }
+            }
+        }
+        
+        // ========== METHOD 6: Check for meta tags ==========
+        if (!detectedTagId) {
+            console.log('Checking METHOD 6: Meta tags...');
+            const metaTags = document.querySelectorAll('meta[name*="uet"], meta[content*="97221015"]');
+            for (let meta of metaTags) {
+                const content = meta.getAttribute('content') || '';
+                if (content.includes('97221015')) {
+                    detectedTagId = '97221015';
+                    console.log('✅ Found UET tag in meta tag');
+                    break;
+                }
+            }
+        }
+        
+        // ========== METHOD 7: Check for noscript tags ==========
+        if (!detectedTagId) {
+            console.log('Checking METHOD 7: Noscript tags...');
+            const noscriptTags = document.querySelectorAll('noscript');
+            for (let noscript of noscriptTags) {
+                const content = noscript.textContent || '';
+                if (content.includes('bat.bing.com') && content.includes('tag=')) {
+                    const match = content.match(/tag=([^&]+)/);
+                    if (match && match[1]) {
+                        detectedTagId = match[1];
+                        console.log('✅ Found UET tag in noscript:', detectedTagId);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (detectedTagId) {
+            console.log(`🎯 FINAL DETECTION: UET Tag ID found: ${detectedTagId}`);
+        } else {
+            console.log('⚠️ No UET tag detected on this page');
+        }
+        
+        return detectedTagId;
         
     } catch (error) {
         console.error('Error detecting UET tag:', error);
         return '';
     }
+}
+
+// Function to verify if UET is properly installed
+function verifyUetInstallation() {
+    console.log('🔍 Verifying UET installation...');
+    
+    // Check if UET script is loaded
+    const uetScripts = Array.from(document.scripts).filter(script => 
+        script.src.includes('bat.bing.com') || 
+        script.src.includes('bing.com/tag') ||
+        script.src.includes('bing.com/event')
+    );
+    
+    console.log('UET scripts found:', uetScripts.length);
+    
+    // Check if window.uetq exists
+    console.log('window.uetq exists:', typeof window.uetq !== 'undefined');
+    if (window.uetq) {
+        console.log('window.uetq content:', window.uetq);
+    }
+    
+    // Try to detect tag
+    const detectedTag = detectUetTagFromPage();
+    console.log('Detected tag:', detectedTag);
+    
+    return {
+        scriptsFound: uetScripts.length,
+        uetqExists: typeof window.uetq !== 'undefined',
+        tagDetected: detectedTag,
+        allScripts: Array.from(document.scripts).map(s => s.src).filter(s => s)
+    };
 }
 
 
@@ -1562,18 +1715,25 @@ if (typeof window.uetq === 'undefined') {
         window.uetq.push('set', 'msd', config.uetConfig.msd);
         
         // Detect real UET tag
-        const realTagId = detectUetTagFromPage() || config.uetConfig.defaultTagId;
+        const realTagId = detectUetTagFromPage();
         
-        // Push initialization event to dataLayer with real tag ID
+        // Push initialization event to dataLayer
         window.dataLayer.push({
             'event': 'uet_initialized',
             'uet_params': {
                 'msd': config.uetConfig.msd,
-                'tag_id': realTagId, // ← Use real tag ID
-                'auto_detect': config.uetConfig.autoDetectTagId
+                'tag_id': realTagId, // ← Real tag or empty
+                'auto_detect': config.uetConfig.autoDetectTagId,
+                'detection_status': realTagId ? 'detected' : 'not_found'
             },
             'timestamp': new Date().toISOString()
         });
+        
+        // Debug log
+        if (config.uetConfig.debugDetection && !realTagId) {
+            console.warn('⚠️ UET tag detection failed. Running verification...');
+            verifyUetInstallation();
+        }
     }
 }
 
@@ -1611,46 +1771,14 @@ window.dataLayer.push({
     'timestamp': new Date().toISOString()
 });
 
-// Replace the entire setDefaultUetConsent function with this:
 function setDefaultUetConsent() {
     if (!config.uetConfig.enabled) return;
     
-    // Try to detect REAL UET tag from the page first
-    let detectedTagId = null;
+    // Detect real UET tag from the page
+    const detectedTagId = detectUetTagFromPage();
     
-    // Method 1: Look for UET script tag
-    const scripts = document.querySelectorAll('script[src*="bat.bing.com"]');
-    scripts.forEach(script => {
-        const src = script.src;
-        const match = src.match(/tag=([^&]+)/);
-        if (match && match[1]) {
-            detectedTagId = match[1];
-        }
-    });
-    
-    // Method 2: Look for UET in dataLayer
-    if (!detectedTagId && window.dataLayer) {
-        for (let i = 0; i < window.dataLayer.length; i++) {
-            const item = window.dataLayer[i];
-            if (item.uet_tag_id) {
-                detectedTagId = item.uet_tag_id;
-                break;
-            }
-        }
-    }
-    
-    // Method 3: Look for window.uetq initialization
-    if (!detectedTagId && window.uetq && window.uetq.length > 0) {
-        for (let i = 0; i < window.uetq.length; i++) {
-            if (window.uetq[i] === 'set' && window.uetq[i+1] === 'uetid') {
-                detectedTagId = window.uetq[i+2];
-                break;
-            }
-        }
-    }
-    
-    // Use detected tag if found, otherwise use default or blank
-    const realTagId = detectedTagId || (config.uetConfig.defaultTagId ? config.uetConfig.defaultTagId : '');
+    // Use detected tag or empty string (NOT the hardcoded default)
+    const realTagId = detectedTagId || '';
     
     // Initialize UET queue if not exists with msd parameter
     if (typeof window.uetq === 'undefined') {
@@ -1662,14 +1790,14 @@ function setDefaultUetConsent() {
     
     const consentState = config.uetConfig.defaultConsent === 'granted' ? 'granted' : 'denied';
     
-    // Push consent update with additional parameters
+    // Push consent update
     window.uetq.push('consent', 'default', {
         'ad_storage': consentState,
         'data_processing': config.uetConfig.enforceInEEA && EU_COUNTRIES.includes(locationData?.country || '') ? 
             ['LDU'] : ['GDPR']
     });
     
-    // Enhanced dataLayer push with REAL tag ID
+    // Enhanced dataLayer push with REAL tag ID or empty
     window.dataLayer.push({
         'event': 'uet_consent_default',
         'consent_mode': {
@@ -1682,17 +1810,29 @@ function setDefaultUetConsent() {
             'msd': config.uetConfig.msd || window.location.hostname,
             'enforce_eea': config.uetConfig.enforceInEEA,
             'data_processing': config.uetConfig.enforceInEEA && EU_COUNTRIES.includes(locationData?.country || '') ? 
-                'LDU' : 'GDPR'
+                'LDU' : 'GDPR',
+            'detection_success': !!detectedTagId
         },
         'uet_params': {
             'msd': config.uetConfig.msd || window.location.hostname,
-            'tag_id': realTagId, // ← THIS IS THE KEY CHANGE: Use real tag ID
-            'auto_detect': config.uetConfig.autoDetectTagId
+            'tag_id': realTagId, // ← This will be "97221015" or empty
+            'auto_detect': config.uetConfig.autoDetectTagId,
+            'detected': !!detectedTagId,
+            'detection_method': detectedTagId ? 'auto-detected' : 'not_found'
         },
         'gcs': 'G100',
         'timestamp': new Date().toISOString(),
         'location_data': locationData
     });
+    
+    // Log for debugging
+    if (config.uetConfig.debugDetection) {
+        console.log('📊 UET Detection Results:', {
+            detectedTagId: detectedTagId,
+            finalTagId: realTagId,
+            usedInDataLayer: realTagId
+        });
+    }
 }
 
 
