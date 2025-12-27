@@ -4219,8 +4219,7 @@ function initializeCookieConsent(detectedCookies, language) {
 
 
 
-    // Microsoft Clarity initialization
-// Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
+    // Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
 function initializeClarity(consentGranted) {
     if (!config.clarityConfig.enabled) return;
     
@@ -4246,31 +4245,6 @@ function initializeClarity(consentGranted) {
             (window.clarity.q = window.clarity.q || []).push(arguments);
         };
         window.clarity('consent', false);
-    }
-}
-
-
-
-// Function to send consent signal to Microsoft Clarity
-function sendClarityConsentSignal(consentGranted) {
-    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
-    
-    try {
-        if (typeof window.clarity !== 'undefined') {
-            // Send consent signal to Clarity
-            window.clarity('consent', consentGranted);
-            console.log('Microsoft Clarity consent signal sent:', consentGranted);
-            
-            // Push to dataLayer for tracking
-            window.dataLayer.push({
-                'event': 'clarity_consent_signal',
-                'clarity_consent': consentGranted,
-                'timestamp': new Date().toISOString(),
-                'location_data': locationData
-            });
-        }
-    } catch (error) {
-        console.error('Failed to send Clarity consent signal:', error);
     }
 }
     
@@ -4511,12 +4485,14 @@ function handleCookieValueToggle(e) {
 }
 
 // Setup all event listeners - SIMPLIFIED VERSION
-// Setup all event listeners using consolidated system
+// Setup all event listeners
 function setupEventListeners() {
-    if (DEBUG) console.log('Setting up event listeners with consolidated system...');
+    console.log('🔧 DEBUG: Setting up event listeners...');
     
     // Clear any existing listeners first
-    cleanupAllGlobalHandlers();
+    if (typeof cleanupAllGlobalHandlers === 'function') {
+        cleanupAllGlobalHandlers();
+    }
     
     // Main banner buttons
     const acceptAllBtn = document.getElementById('acceptAllBtn');
@@ -4535,64 +4511,85 @@ function setupEventListeners() {
     // Language selector
     const languageSelect = document.getElementById('cookieLanguageSelect');
     
-    // Add global handlers (replacing addManagedListener)
+    // Debug log all found elements
+    console.log('🔧 DEBUG: Found elements:', {
+        acceptAllBtn: acceptAllBtn ? 'FOUND' : 'NOT FOUND',
+        rejectAllBtn: rejectAllBtn ? 'FOUND' : 'NOT FOUND',
+        adjustConsentBtn: adjustConsentBtn ? 'FOUND' : 'NOT FOUND',
+        acceptAllSettingsBtn: acceptAllSettingsBtn ? 'FOUND' : 'NOT FOUND',
+        rejectAllSettingsBtn: rejectAllSettingsBtn ? 'FOUND' : 'NOT FOUND',
+        saveSettingsBtn: saveSettingsBtn ? 'FOUND' : 'NOT FOUND',
+        closeModalBtn: closeModalBtn ? 'FOUND' : 'NOT FOUND',
+        floatingButton: floatingButton ? 'FOUND' : 'NOT FOUND',
+        languageSelect: languageSelect ? 'FOUND' : 'NOT FOUND'
+    });
+    
+    // Add click listeners with better error handling
     if (acceptAllBtn) {
-        addGlobalHandler(acceptAllBtn, 'click', handleAcceptAllClick);
+        console.log('🔧 DEBUG: Adding click listener to Accept All button');
+        acceptAllBtn.addEventListener('click', handleAcceptAllClick);
     }
     
     if (rejectAllBtn) {
-        addGlobalHandler(rejectAllBtn, 'click', handleRejectAllClick);
+        console.log('🔧 DEBUG: Adding click listener to Reject All button');
+        rejectAllBtn.addEventListener('click', handleRejectAllClick);
     }
     
     if (adjustConsentBtn) {
-        addGlobalHandler(adjustConsentBtn, 'click', handleAdjustConsentClick);
+        console.log('🔧 DEBUG: Adding click listener to Adjust Consent button');
+        adjustConsentBtn.addEventListener('click', handleAdjustConsentClick);
     }
     
     if (acceptAllSettingsBtn) {
-        addGlobalHandler(acceptAllSettingsBtn, 'click', handleAcceptAllSettingsClick);
+        console.log('🔧 DEBUG: Adding click listener to Accept All Settings button');
+        acceptAllSettingsBtn.addEventListener('click', handleAcceptAllSettingsClick);
     }
     
     if (rejectAllSettingsBtn) {
-        addGlobalHandler(rejectAllSettingsBtn, 'click', handleRejectAllSettingsClick);
+        console.log('🔧 DEBUG: Adding click listener to Reject All Settings button');
+        rejectAllSettingsBtn.addEventListener('click', handleRejectAllSettingsClick);
     }
     
     if (saveSettingsBtn) {
-        addGlobalHandler(saveSettingsBtn, 'click', handleSaveSettingsClick);
+        console.log('🔧 DEBUG: Adding click listener to Save Settings button');
+        saveSettingsBtn.addEventListener('click', handleSaveSettingsClick);
     }
     
     if (closeModalBtn) {
-        addGlobalHandler(closeModalBtn, 'click', handleCloseModalClick);
+        console.log('🔧 DEBUG: Adding click listener to Close Modal button');
+        closeModalBtn.addEventListener('click', handleCloseModalClick);
     }
     
     if (floatingButton) {
-        addGlobalHandler(floatingButton, 'click', handleFloatingButtonClick);
+        console.log('🔧 DEBUG: Adding click listener to Floating Button');
+        floatingButton.addEventListener('click', handleFloatingButtonClick);
     }
     
     if (languageSelect) {
-        addGlobalHandler(languageSelect, 'change', handleLanguageChange);
+        console.log('🔧 DEBUG: Adding change listener to Language Select');
+        languageSelect.addEventListener('change', handleLanguageChange);
     }
     
     // Cookie details toggle
-    document.querySelectorAll('.cookie-details-header').forEach(header => {
-        addGlobalHandler(header, 'click', handleHeaderClick);
+    document.querySelectorAll('.cookie-details-header').forEach((header, index) => {
+        console.log(`🔧 DEBUG: Adding click listener to cookie details header ${index + 1}`);
+        header.addEventListener('click', handleHeaderClick);
     });
     
-    // Cookie value toggle - add to document with event delegation
-    addGlobalHandler(document, 'click', handleCookieValueToggle);
+    // Cookie value toggle
+    console.log('🔧 DEBUG: Adding click listener for cookie value toggles');
+    document.addEventListener('click', handleCookieValueToggle);
     
     // Add to the blur overlay
     const overlay = document.getElementById('cookieBlurOverlay');
     if (overlay) {
-        addGlobalHandler(overlay, 'click', handleOverlayClick);
+        console.log('🔧 DEBUG: Adding click listener to overlay');
+        overlay.addEventListener('click', handleOverlayClick);
     }
     
-    if (DEBUG) console.log(`✅ All event listeners set up using consolidated system`);
-    
-    // Add cleanup to page unload
-    addGlobalHandler(window, 'beforeunload', cleanup);
-    addGlobalHandler(window, 'pagehide', cleanup);
-    addGlobalHandler(window, 'unload', cleanup);
+    console.log('✅ DEBUG: All event listeners set up successfully');
 }
+
 
 // Show/hide functions with animations
 function showCookieBanner() {
@@ -5633,5 +5630,46 @@ if (typeof window !== 'undefined') {
 }
 
 
-  
+ // TEST FUNCTION: Add this to manually test buttons
+window.testCookieButtons = function() {
+    console.log('🧪 TEST: Testing cookie buttons...');
+    
+    // Test if buttons exist
+    const buttons = {
+        'Accept All': document.getElementById('acceptAllBtn'),
+        'Reject All': document.getElementById('rejectAllBtn'),
+        'Adjust': document.getElementById('adjustConsentBtn'),
+        'Accept Settings': document.getElementById('acceptAllSettingsBtn'),
+        'Reject Settings': document.getElementById('rejectAllSettingsBtn'),
+        'Save': document.getElementById('saveSettingsBtn')
+    };
+    
+    for (const [name, button] of Object.entries(buttons)) {
+        if (button) {
+            console.log(`✅ ${name} button: FOUND (click to test)`);
+            // Add a test click handler
+            button.addEventListener('click', function() {
+                console.log(`✅ TEST: ${name} button clicked successfully!`);
+            }, { once: true }); // Only fires once for testing
+        } else {
+            console.log(`❌ ${name} button: NOT FOUND`);
+        }
+    }
+    
+    // Try to show banner if not shown
+    const banner = document.getElementById('cookieConsentBanner');
+    if (banner && !banner.classList.contains('show')) {
+        console.log('🧪 TEST: Showing banner for testing...');
+        showCookieBanner();
+    }
+};
+
+// Also add a simple reset function
+window.resetCookieConsent = function() {
+    console.log('🔄 Resetting cookie consent...');
+    document.cookie = "cookie_consent=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+    localStorage.removeItem('__user_cookie_consent__');
+    localStorage.removeItem('__user_cookie_categories__');
+    console.log('✅ Cookie consent reset. Refresh the page.');
+}; 
 }
