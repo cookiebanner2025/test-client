@@ -671,24 +671,21 @@ window.COOKIE_SETTINGS = {
     }
     
     // 5. Block iframes
-   const iframeObserver = new MutationObserver(function (mutations) {
-    mutations.forEach(function (mutation) {
-        mutation.addedNodes.forEach(function (node) {
-            if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
-                if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
-                node.remove();
-            }
+    const iframeObserver = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            mutation.addedNodes.forEach(function (node) {
+                if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
+                    if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
+                    node.remove();
+                }
+            });
         });
     });
-});
-
-iframeObserver.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-});
-
-// Register observer for cleanup
-registerCleanupObserver(iframeObserver);
+    
+    iframeObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+    });
     
     if (DEBUG) console.log("✅ Iframe blocking activated");
     
@@ -707,51 +704,86 @@ registerCleanupObserver(iframeObserver);
     // CRITICAL FIX: LIMITED COOKIE CLEANUP INTERVAL (like Cookiebot/OneTrust)
     // Runs 10 times then stops - saves CPU/battery
     // ============================================================================
-    blockAndDeleteCookies();
- let cookieCleanupRuns = 0;
+  // ============================================================================
+// CRITICAL FIX: LIMITED COOKIE CLEANUP INTERVAL (like Cookiebot/OneTrust)
+// Runs 10 times then stops - saves CPU/battery
+// ============================================================================
+blockAndDeleteCookies();
+let cookieCleanupRuns = 0;
 const cookieCleanupInterval = setInterval(() => {
     blockAndDeleteCookies();
     cookieCleanupRuns++;
     if (cookieCleanupRuns >= 9) { // 10 total runs (0-9)
         clearInterval(cookieCleanupInterval);
-        cleanupRegistry.intervals.delete(cookieCleanupInterval); // Remove from registry
         if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
     }
 }, 1000);
 
-// Register interval for cleanup
-registerCleanupInterval(cookieCleanupInterval);
+// Register with cleanup system (this replaces the old approach)
+cookieBlockingCleanup.addInterval(cookieCleanupInterval);
 
 
 
 
 // Cleanup functions storage
-let cleanupFunctions = [];
-
-// Named function for beforeunload cleanup
-function handleBeforeUnload() {
-    clearInterval(cookieCleanupInterval);
-    iframeObserver.disconnect();
+// ===================== CLEANUP MANAGEMENT =====================
+// Create a single unified cleanup system
+const cookieBlockingCleanup = {
+    intervals: [],
+    observers: [],
+    listeners: [],
     
-    // Clean all registered cleanup functions
-    cleanupFunctions.forEach(fn => fn());
-    cleanupFunctions = [];
-}
+    addInterval: function(interval) {
+        this.intervals.push(interval);
+        return interval;
+    },
+    
+    addObserver: function(observer) {
+        this.observers.push(observer);
+        return observer;
+    },
+    
+    addListener: function(element, event, handler) {
+        element.addEventListener(event, handler);
+        this.listeners.push({ element, event, handler });
+        return { element, event, handler };
+    },
+    
+    cleanup: function() {
+        // Clear all intervals
+        this.intervals.forEach(interval => clearInterval(interval));
+        this.intervals = [];
+        
+        // Disconnect all observers
+        this.observers.forEach(observer => observer.disconnect());
+        this.observers = [];
+        
+        // Remove all event listeners
+        this.listeners.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
+        this.listeners = [];
+        
+        // Also clean up from the eventHandlers Map (from banner script)
+        if (typeof cleanupAllListeners === 'function') {
+            cleanupAllListeners();
+        }
+        
+        if (DEBUG) console.log("✅ Cookie blocking cleanup completed");
+    }
+};
 
-// ADD: Cleanup on page unload with named function
-// Unified cleanup on page unload
-function handlePageUnload() {
-    unifiedCleanup();
-}
+// Register the cookie cleanup interval with our new system
+cookieBlockingCleanup.addInterval(cookieCleanupInterval);
 
-window.addEventListener('beforeunload', handlePageUnload);
-window.addEventListener('pagehide', handlePageUnload);
+// Register the iframe observer with our new system
+cookieBlockingCleanup.addObserver(iframeObserver);
 
-// Register this as a cleanup function too
-registerCleanupFunction(() => {
-    window.removeEventListener('beforeunload', handlePageUnload);
-    window.removeEventListener('pagehide', handlePageUnload);
+// Add page unload cleanup
+cookieBlockingCleanup.addListener(window, 'beforeunload', () => {
+    cookieBlockingCleanup.cleanup();
 });
+
 
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
@@ -810,27 +842,23 @@ registerCleanupFunction(() => {
  /* ===================== CLEANUP SYSTEM ===================== */
 /* ===================== CLEANUP SYSTEM ===================== */
 /* ===================== CLEANUP SYSTEM ===================== */
-    // Ensure cleanupFunctions exists
-    if (typeof window.cleanupFunctions === 'undefined') {
-        window.cleanupFunctions = [];
-    }
-    
+  /* ===================== CLEANUP SYSTEM ===================== */
+// Consolidated cleanup function that works with both systems
 function cleanup() {
-    console.log('🧼 Running legacy cleanup...');
-    
-    // Use the unified cleanup system
-    unifiedCleanup();
-    
-    // Clear legacy cleanupFunctions array
-    if (window.cleanupFunctions && Array.isArray(window.cleanupFunctions)) {
-        window.cleanupFunctions.length = 0;
+    // Clean up cookie blocking system if it exists
+    if (typeof cookieBlockingCleanup !== 'undefined' && 
+        typeof cookieBlockingCleanup.cleanup === 'function') {
+        cookieBlockingCleanup.cleanup();
     }
     
-    if (DEBUG) console.log("✅ Legacy cleanup completed");
+    // Clean up banner event listeners
+    cleanupAllListeners();
+    
+    if (DEBUG) console.log("✅ Complete cleanup completed");
 }
 
-    // Register the cleanup function globally
-    window.cleanupCookieConsent = cleanup;
+// Register the cleanup function globally
+window.cleanupCookieConsent = cleanup;
 
     
     /* ===================== BANNER HOOKS ===================== */
@@ -1388,61 +1416,8 @@ geoConfig: {
 // ... end of config object
 
 /* ===================== EVENT HANDLER MANAGEMENT ===================== */
-/* ===================== UNIFIED CLEANUP MANAGEMENT ===================== */
 const eventHandlers = new Map();
-let cleanupRegistry = {
-    intervals: new Set(),
-    observers: new Set(),
-    timeouts: new Set(),
-    functions: new Set()
-};
 
-// Unified cleanup function
-function unifiedCleanup() {
-    console.log('🧹 Performing unified cleanup...');
-    
-    // 1. Clean all event listeners
-    eventHandlers.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-    });
-    eventHandlers.clear();
-    
-    // 2. Clear all intervals
-    cleanupRegistry.intervals.forEach(intervalId => {
-        clearInterval(intervalId);
-    });
-    cleanupRegistry.intervals.clear();
-    
-    // 3. Disconnect all observers
-    cleanupRegistry.observers.forEach(observer => {
-        try {
-            observer.disconnect();
-        } catch (e) {
-            // Observer already disconnected
-        }
-    });
-    cleanupRegistry.observers.clear();
-    
-    // 4. Clear all timeouts
-    cleanupRegistry.timeouts.forEach(timeoutId => {
-        clearTimeout(timeoutId);
-    });
-    cleanupRegistry.timeouts.clear();
-    
-    // 5. Execute all cleanup functions
-    cleanupRegistry.functions.forEach(fn => {
-        try {
-            if (typeof fn === 'function') fn();
-        } catch (e) {
-            console.warn('Cleanup function error:', e);
-        }
-    });
-    cleanupRegistry.functions.clear();
-    
-    console.log('✅ Unified cleanup completed');
-}
-
-// Helper functions for the new system
 function addManagedListener(element, event, handler) {
     element.addEventListener(event, handler);
     const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -1450,35 +1425,21 @@ function addManagedListener(element, event, handler) {
     return key;
 }
 
-function registerCleanupInterval(intervalId) {
-    cleanupRegistry.intervals.add(intervalId);
-    return intervalId;
+function removeManagedListener(key) {
+    if (eventHandlers.has(key)) {
+        const { element, event, handler } = eventHandlers.get(key);
+        element.removeEventListener(event, handler);
+        eventHandlers.delete(key);
+    }
 }
 
-function registerCleanupObserver(observer) {
-    cleanupRegistry.observers.add(observer);
-    return observer;
-}
-
-function registerCleanupTimeout(timeoutId) {
-    cleanupRegistry.timeouts.add(timeoutId);
-    return timeoutId;
-}
-
-function registerCleanupFunction(fn) {
-    cleanupRegistry.functions.add(fn);
-    return fn;
-}
-
-// Backward compatibility
 function cleanupAllListeners() {
     eventHandlers.forEach(({ element, event, handler }) => {
         element.removeEventListener(event, handler);
     });
     eventHandlers.clear();
+    console.log('✅ All event listeners cleaned up');
 }
-
-// ============== IMPLEMENTATION SECTION ============== //
 
 // ============== IMPLEMENTATION SECTION ============== //
 
@@ -1508,10 +1469,7 @@ if (typeof window.uetq === 'undefined') {
 }
 
 
-// Initialize cleanupFunctions array GLOBALLY
-if (typeof window.cleanupFunctions === 'undefined') {
-    window.cleanupFunctions = [];
-}
+
 
 function gtag() { dataLayer.push(arguments); }
 
@@ -4407,23 +4365,18 @@ function sendClarityConsentSignal(consentGranted) {
 
     
     // Setup timer for durationMinutes if enabled
-// Setup timer for durationMinutes if enabled
-if (config.behavior.bannerSchedule.enabled && config.behavior.bannerSchedule.durationMinutes) {
-    // Clear any existing timer
-    if (bannerTimer) {
-        clearTimeout(bannerTimer);
-        cleanupRegistry.timeouts.delete(bannerTimer); // Remove old from registry
-    }
-    
-    bannerTimer = setTimeout(() => {
-        if (!getCookie('cookie_consent')) {
-            hideCookieBanner();
+    if (config.behavior.bannerSchedule.enabled && config.behavior.bannerSchedule.durationMinutes) {
+        // Clear any existing timer
+        if (bannerTimer) {
+            clearTimeout(bannerTimer);
         }
-    }, config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
-    
-    // Register timeout for cleanup
-    registerCleanupTimeout(bannerTimer);
-}
+        
+        bannerTimer = setTimeout(() => {
+            if (!getCookie('cookie_consent')) {
+                hideCookieBanner();
+            }
+        }, config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
+    }
 }
 
 
@@ -4668,10 +4621,6 @@ function setupEventListeners() {
     }
     
     console.log(`✅ All event listeners set up (${eventHandlers.size} total)`);
-    
-    // Add cleanup to your existing cleanupFunctions array
-   // Register cleanup function
-registerCleanupFunction(unifiedCleanup);
 }
 
 // Show/hide functions with animations
@@ -4884,9 +4833,14 @@ function setBlurDensity(density) {
 
 // Cookie consent functions
 function acceptAllCookies() {
-    
-    hideCookieBanner(); // ← Add this line
+    hideCookieBanner();
     console.log("✅ Accepting ALL cookies");
+    
+    // Clean up before reloading
+    if (typeof cookieBlockingCleanup !== 'undefined') {
+        cookieBlockingCleanup.cleanup();
+    }
+    cleanupAllListeners();
     
     // IMPORTANT: Call the blocking script function
     if (typeof window.enableAllTracking === 'function') {
@@ -4900,14 +4854,14 @@ function acceptAllCookies() {
             performance: true
         }));
         
-      // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
+        // Only reload if reload feature is enabled
+        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else {
+            console.log("🟡 Page reload disabled - changes saved without refresh");
+        }
     }
     
     // Your existing code continues...
@@ -4931,7 +4885,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     
- 
     window.dataLayer.push({
         'event': 'cookie_consent_accepted',
         'consent_mode': {
@@ -4954,17 +4907,18 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     disableInteractionRestrictions();
     
     console.log("✅ All cookies accepted, page will reload");
-
-     // ADD THIS LINE:
-    cleanup(); // Clean up memory
-    
 }
 
 
 function rejectAllCookies() {
-
-    hideCookieBanner(); // ← Add this line
+    hideCookieBanner();
     console.log("❌ Rejecting ALL cookies");
+    
+    // Clean up before reloading
+    if (typeof cookieBlockingCleanup !== 'undefined') {
+        cookieBlockingCleanup.cleanup();
+    }
+    cleanupAllListeners();
     
     // IMPORTANT: Call the blocking script function
     if (typeof window.disableAllTracking === 'function') {
@@ -4974,14 +4928,14 @@ function rejectAllCookies() {
         localStorage.removeItem("__user_cookie_consent__");
         localStorage.removeItem("__user_cookie_categories__");
         
-       // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
+        // Only reload if reload feature is enabled
+        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else {
+            console.log("🟡 Page reload disabled - changes saved without refresh");
+        }
     }
     
     // Your existing code continues...
@@ -5005,8 +4959,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     updateConsentMode(consentData);
     clearNonEssentialCookies();
     
-   
-    
     window.dataLayer.push({
         'event': 'cookie_consent_rejected',
         'consent_mode': {
@@ -5029,16 +4981,18 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     disableInteractionRestrictions();
     
     console.log("✅ All cookies rejected, page will reload");
-
-      // ADD THIS LINE:
-    cleanup(); // Clean up memory
-    
 }
 
 
 function saveCustomSettings() {
-
-    hideCookieBanner(); // ← Add this line
+    hideCookieBanner();
+    
+    // Clean up before reloading
+    if (typeof cookieBlockingCleanup !== 'undefined') {
+        cookieBlockingCleanup.cleanup();
+    }
+    cleanupAllListeners();
+    
     // Get current checkbox states
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
     const advertisingChecked = document.querySelector('input[data-category="advertising"]').checked;
@@ -5068,18 +5022,15 @@ function saveCustomSettings() {
         const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
         localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
         
-      // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
+        // Only reload if reload feature is enabled
+        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else {
+            console.log("🟡 Page reload disabled - changes saved without refresh");
+        }
     }
-    
-    // Continue with your existing analytics code...
-    // Rest of your function stays the same...
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -5128,8 +5079,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     if (!performanceChecked) clearCategoryCookies('performance');
     if (!advertisingChecked) clearCategoryCookies('advertising');
     if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
-    
-  
     
     // Your existing dataLayer code continues...
     const consentStates = {
@@ -5181,17 +5130,11 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         });
     }
    
-        // NEW: Disable interaction restrictions when user saves custom settings
+    // NEW: Disable interaction restrictions when user saves custom settings
     disableInteractionRestrictions();
    
     console.log("✅ Custom settings saved and page will reload");
-
-    // ADD THIS LINE:
-    cleanup(); // Clean up memory
-    
 }
-
-
 
 
 // Helper functions
@@ -5617,30 +5560,14 @@ if (typeof window !== 'undefined') {
         saveSettings: saveCustomSettings,
         changeLanguage: changeLanguage,
         config: config,
-        // NEW: Control functions for restrictions
+         // NEW: Control functions for restrictions
         toggleRestrictions: toggleRestrictions,
         toggleScrollRestriction: toggleScrollRestriction,
         toggleClickRestriction: toggleClickRestriction,
         toggleBlurEffect: toggleBlurEffect,
-        setBlurDensity: setBlurDensity,
-        
-        // NEW: Cleanup management functions
-        cleanup: unifiedCleanup,
-        getCleanupStats: function() {
-            return {
-                eventListeners: eventHandlers.size,
-                intervals: cleanupRegistry.intervals.size,
-                observers: cleanupRegistry.observers.size,
-                timeouts: cleanupRegistry.timeouts.size,
-                functions: cleanupRegistry.functions.size
-            };
-        },
-        forceCleanup: function() {
-            console.log('🔄 Force cleaning all resources...');
-            unifiedCleanup();
-        }
+        setBlurDensity: setBlurDensity
     };
-}
+
 
 
 
@@ -5708,11 +5635,27 @@ window.showBlockingSettings = function() {
 };
 
 
-// Clean up event listeners on page unload
-// Clean up event listeners on page unload
+// Clean up everything on page unload
 if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', unifiedCleanup);
-    window.addEventListener('pagehide', unifiedCleanup);
+    window.addEventListener('beforeunload', function() {
+        // Clean up cookie blocking
+        if (typeof cookieBlockingCleanup !== 'undefined') {
+            cookieBlockingCleanup.cleanup();
+        }
+        
+        // Clean up banner event listeners
+        cleanupAllListeners();
+    });
+    
+    window.addEventListener('pagehide', function() {
+        // Clean up cookie blocking
+        if (typeof cookieBlockingCleanup !== 'undefined') {
+            cookieBlockingCleanup.cleanup();
+        }
+        
+        // Clean up banner event listeners
+        cleanupAllListeners();
+    });
 }
 // Optional: Debug function for testing
 if (typeof window !== 'undefined') {
