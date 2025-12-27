@@ -719,23 +719,41 @@ window.COOKIE_SETTINGS = {
 
 
 // Cleanup functions storage
-let cleanupFunctions = [];
-
-// Named function for beforeunload cleanup
-function handleBeforeUnload() {
-    clearInterval(cookieCleanupInterval);
-    iframeObserver.disconnect();
-    
-    // Clean all registered cleanup functions
-    cleanupFunctions.forEach(fn => fn());
-    cleanupFunctions = [];
+// SINGLE SOURCE OF TRUTH: Global event handler management
+if (typeof window.cookieConsentHandlers === 'undefined') {
+    window.cookieConsentHandlers = new Map();
 }
 
-// ADD: Cleanup on page unload with named function
-window.addEventListener('beforeunload', handleBeforeUnload);
-cleanupFunctions.push(() => {
-    window.removeEventListener('beforeunload', handleBeforeUnload);
-});
+// Function to add managed handlers
+function addGlobalHandler(element, event, handler) {
+    if (!element || !event || !handler) return null;
+    
+    element.addEventListener(event, handler);
+    const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    window.cookieConsentHandlers.set(key, { element, event, handler });
+    return key;
+}
+
+// Function to remove managed handlers
+function removeGlobalHandler(key) {
+    if (window.cookieConsentHandlers.has(key)) {
+        const { element, event, handler } = window.cookieConsentHandlers.get(key);
+        element.removeEventListener(event, handler);
+        window.cookieConsentHandlers.delete(key);
+    }
+}
+
+// Consolidated cleanup function
+function cleanupAllGlobalHandlers() {
+    if (window.cookieConsentHandlers && window.cookieConsentHandlers.size > 0) {
+        window.cookieConsentHandlers.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
+        window.cookieConsentHandlers.clear();
+    }
+    
+    if (DEBUG) console.log("✅ All global event handlers cleaned up");
+}
 
 
     
@@ -795,54 +813,46 @@ cleanupFunctions.push(() => {
  /* ===================== CLEANUP SYSTEM ===================== */
 /* ===================== CLEANUP SYSTEM ===================== */
 /* ===================== CLEANUP SYSTEM ===================== */
-    // Ensure cleanupFunctions exists
-    if (typeof window.cleanupFunctions === 'undefined') {
-        window.cleanupFunctions = [];
-    }
-    
-    // Simple cleanup function
+ /* ===================== CLEANUP SYSTEM ===================== */
+// Consolidated cleanup function
 function cleanup() {
-    // Disconnect iframe observer
+    // Disconnect iframe observer and nullify
     try {
-        iframeObserver.disconnect();
+        if (iframeObserver) {
+            iframeObserver.disconnect();
+            iframeObserver = null;
+        }
     } catch (e) {
-        console.log('Iframe observer already disconnected');
+        if (DEBUG) console.log('Iframe observer already disconnected');
     }
     
-    // Clear cookie cleanup interval
+    // Clear cookie cleanup interval and nullify
     try {
-        clearInterval(cookieCleanupInterval);
+        if (cookieCleanupInterval) {
+            clearInterval(cookieCleanupInterval);
+            cookieCleanupInterval = null;
+        }
     } catch (e) {
-        console.log('Cookie cleanup interval already cleared');
+        if (DEBUG) console.log('Cookie cleanup interval already cleared');
     }
     
-    // NEW: Clean up all event listeners
-    cleanupAllListeners();
+    // Clean up all event listeners using consolidated system
+    cleanupAllGlobalHandlers();
     
-    // Execute cleanup functions if they exist
-    if (window.cleanupFunctions && window.cleanupFunctions.length > 0) {
-        window.cleanupFunctions.forEach(fn => {
-            try {
-                if (typeof fn === 'function') {
-                    fn();
-                }
-            } catch (e) {
-                console.warn('Error in cleanup function:', e);
-            }
-        });
-        window.cleanupFunctions = [];
+    // Clean up any remaining global functions
+// Clean up using consolidated system (already handled by cleanupAllGlobalHandlers())
+// No need for separate cleanupFunctions array
+    
+    // Clean up global references
+    if (window.cookieConsentHandlers) {
+        window.cookieConsentHandlers.clear();
     }
     
-    if (DEBUG) console.log("✅ Cleanup completed");
-    
-    // Clear references to prevent memory leaks (OPTIONAL but recommended)
-    cookieCleanupInterval = null;
-    if (typeof iframeObserver !== 'undefined') {
-        iframeObserver = null;
-    }
+    if (DEBUG) console.log("✅ Complete cleanup performed");
 }
 
- 
+// Register the cleanup function globally
+window.cleanupCookieConsent = cleanup;
     
     /* ===================== BANNER HOOKS ===================== */
     
@@ -1399,60 +1409,12 @@ geoConfig: {
 // ... end of config object
 
 /* ===================== EVENT HANDLER MANAGEMENT ===================== */
-const eventHandlers = new Map();
-
-function addManagedListener(element, event, handler) {
-    element.addEventListener(event, handler);
-    const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    eventHandlers.set(key, { element, event, handler });
-    return key;
-}
-
-function removeManagedListener(key) {
-    if (eventHandlers.has(key)) {
-        const { element, event, handler } = eventHandlers.get(key);
-        element.removeEventListener(event, handler);
-        eventHandlers.delete(key);
-    }
-}
-
-function cleanupAllListeners() {
-    eventHandlers.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-    });
-    eventHandlers.clear();
-    console.log('✅ All event listeners cleaned up');
-}
-
-// ... end of config object
-
 /* ===================== EVENT HANDLER MANAGEMENT ===================== */
-const eventHandlers = new Map();
-
-function addManagedListener(element, event, handler) {
-    element.addEventListener(event, handler);
-    const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    eventHandlers.set(key, { element, event, handler });
-    return key;
-}
-
-function removeManagedListener(key) {
-    if (eventHandlers.has(key)) {
-        const { element, event, handler } = eventHandlers.get(key);
-        element.removeEventListener(event, handler);
-        eventHandlers.delete(key);
-    }
-}
-
-function cleanupAllListeners() {
-    eventHandlers.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-    });
-    eventHandlers.clear();
-    console.log('✅ All event listeners cleaned up');
-}
+// Using the consolidated global system from Step 1
+// Remove duplicate definitions - keep only the global ones above
 
 // ============== IMPLEMENTATION SECTION ============== //
+
 
 
 // Initialize dataLayer for Google Tag Manager
@@ -1480,9 +1442,8 @@ if (typeof window.uetq === 'undefined') {
 
 
 // Initialize cleanupFunctions array GLOBALLY
-if (typeof window.cleanupFunctions === 'undefined') {
-    window.cleanupFunctions = [];
-}
+// Consolidated initialization - already done in Step 1
+// Remove this duplicate initialization
 
 function gtag() { dataLayer.push(arguments); }
 
@@ -4550,11 +4511,12 @@ function handleCookieValueToggle(e) {
 }
 
 // Setup all event listeners - SIMPLIFIED VERSION
+// Setup all event listeners using consolidated system
 function setupEventListeners() {
-    console.log('Setting up event listeners with proper cleanup...');
+    if (DEBUG) console.log('Setting up event listeners with consolidated system...');
     
     // Clear any existing listeners first
-    cleanupAllListeners();
+    cleanupAllGlobalHandlers();
     
     // Main banner buttons
     const acceptAllBtn = document.getElementById('acceptAllBtn');
@@ -4573,72 +4535,63 @@ function setupEventListeners() {
     // Language selector
     const languageSelect = document.getElementById('cookieLanguageSelect');
     
-    // Add managed listeners
+    // Add global handlers (replacing addManagedListener)
     if (acceptAllBtn) {
-        addManagedListener(acceptAllBtn, 'click', handleAcceptAllClick);
-        console.log('✓ Accept All button listener added (managed)');
+        addGlobalHandler(acceptAllBtn, 'click', handleAcceptAllClick);
     }
     
     if (rejectAllBtn) {
-        addManagedListener(rejectAllBtn, 'click', handleRejectAllClick);
-        console.log('✓ Reject All button listener added (managed)');
+        addGlobalHandler(rejectAllBtn, 'click', handleRejectAllClick);
     }
     
     if (adjustConsentBtn) {
-        addManagedListener(adjustConsentBtn, 'click', handleAdjustConsentClick);
-        console.log('✓ Adjust Consent button listener added (managed)');
+        addGlobalHandler(adjustConsentBtn, 'click', handleAdjustConsentClick);
     }
     
     if (acceptAllSettingsBtn) {
-        addManagedListener(acceptAllSettingsBtn, 'click', handleAcceptAllSettingsClick);
-        console.log('✓ Accept All Settings button listener added (managed)');
+        addGlobalHandler(acceptAllSettingsBtn, 'click', handleAcceptAllSettingsClick);
     }
     
     if (rejectAllSettingsBtn) {
-        addManagedListener(rejectAllSettingsBtn, 'click', handleRejectAllSettingsClick);
-        console.log('✓ Reject All Settings button listener added (managed)');
+        addGlobalHandler(rejectAllSettingsBtn, 'click', handleRejectAllSettingsClick);
     }
     
     if (saveSettingsBtn) {
-        addManagedListener(saveSettingsBtn, 'click', handleSaveSettingsClick);
-        console.log('✓ Save Settings button listener added (managed)');
+        addGlobalHandler(saveSettingsBtn, 'click', handleSaveSettingsClick);
     }
     
     if (closeModalBtn) {
-        addManagedListener(closeModalBtn, 'click', handleCloseModalClick);
-        console.log('✓ Close Modal button listener added (managed)');
+        addGlobalHandler(closeModalBtn, 'click', handleCloseModalClick);
     }
     
     if (floatingButton) {
-        addManagedListener(floatingButton, 'click', handleFloatingButtonClick);
-        console.log('✓ Floating Button listener added (managed)');
+        addGlobalHandler(floatingButton, 'click', handleFloatingButtonClick);
     }
     
     if (languageSelect) {
-        addManagedListener(languageSelect, 'change', handleLanguageChange);
-        console.log('✓ Language Selector listener added (managed)');
+        addGlobalHandler(languageSelect, 'change', handleLanguageChange);
     }
     
-    // Cookie details toggle - handle dynamically added elements
+    // Cookie details toggle
     document.querySelectorAll('.cookie-details-header').forEach(header => {
-        addManagedListener(header, 'click', handleHeaderClick);
+        addGlobalHandler(header, 'click', handleHeaderClick);
     });
     
     // Cookie value toggle - add to document with event delegation
-    addManagedListener(document, 'click', handleCookieValueToggle);
+    addGlobalHandler(document, 'click', handleCookieValueToggle);
     
-    // Also add to the blur overlay
+    // Add to the blur overlay
     const overlay = document.getElementById('cookieBlurOverlay');
     if (overlay) {
-        addManagedListener(overlay, 'click', handleOverlayClick);
+        addGlobalHandler(overlay, 'click', handleOverlayClick);
     }
     
-    console.log(`✅ All event listeners set up (${eventHandlers.size} total)`);
+    if (DEBUG) console.log(`✅ All event listeners set up using consolidated system`);
     
-    // Add cleanup to your existing cleanupFunctions array
-    if (typeof window.cleanupFunctions !== 'undefined') {
-        window.cleanupFunctions.push(cleanupAllListeners);
-    }
+    // Add cleanup to page unload
+    addGlobalHandler(window, 'beforeunload', cleanup);
+    addGlobalHandler(window, 'pagehide', cleanup);
+    addGlobalHandler(window, 'unload', cleanup);
 }
 
 // Show/hide functions with animations
@@ -4744,12 +4697,6 @@ function handleOverlayClick(e) {
     e.stopPropagation();
     e.preventDefault();
 }
-// Named function for overlay click handling
-function handleOverlayClick(e) {
-    e.stopPropagation();
-    e.preventDefault();
-}
-
 
 
 // NEW: Enable/disable interaction restrictions
@@ -4771,14 +4718,29 @@ function enableInteractionRestrictions() {
     }
     
     // Prevent clicking outside banner
+// Prevent clicking outside banner
 if (config.behavior.restrictInteraction.preventClick) {
     overlay.classList.add('block-clicks');
-    addManagedListener(overlay, 'click', handleOverlayClick);
+    addGlobalHandler(overlay, 'click', handleOverlayClick);
 }
 }
 
 // NEW: Disable interaction restrictions
-
+function disableInteractionRestrictions() {
+    const overlay = document.getElementById('cookieBlurOverlay');
+    
+    // Remove blur effect
+    overlay.style.display = 'none';
+    
+    // Enable scrolling
+    document.body.classList.remove('no-scroll');
+    
+    // Enable clicking
+    overlay.classList.remove('block-clicks');
+    
+    // Remove click blocker using named function
+    overlay.removeEventListener('click', handleOverlayClick, true);
+}
 // NEW: Disable interaction restrictions
 function disableInteractionRestrictions() {
     const overlay = document.getElementById('cookieBlurOverlay');
@@ -4915,7 +4877,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ All cookies accepted, page will reload");
 
      // ADD THIS LINE:
-    cleanup(); // Clean up memory
+    cleanup(); // Clean up memory using consolidated system
     
 }
 
@@ -4990,7 +4952,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ All cookies rejected, page will reload");
 
       // ADD THIS LINE:
-    cleanup(); // Clean up memory
+   cleanup(); // Clean up memory using consolidated system
     
 }
 
@@ -5146,7 +5108,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ Custom settings saved and page will reload");
 
     // ADD THIS LINE:
-    cleanup(); // Clean up memory
+    cleanup(); // Clean up memory using consolidated system
     
 }
 
@@ -5652,24 +5614,21 @@ window.showBlockingSettings = function() {
 
 
 // Clean up event listeners on page unload
-if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', cleanupAllListeners);
-    window.addEventListener('pagehide', cleanupAllListeners);
-}
-
 // Optional: Debug function for testing
 if (typeof window !== 'undefined') {
     window.debugEventListeners = function() {
         console.log('📊 Event Handler Debug:');
-        console.log(`Total managed listeners: ${eventHandlers.size}`);
+        console.log(`Total global handlers: ${window.cookieConsentHandlers ? window.cookieConsentHandlers.size : 0}`);
         
-        eventHandlers.forEach(({ element, event, handler }, key) => {
-            console.log(key, {
-                element: element.id || element.className || element.tagName,
-                event: event,
-                handler: handler.name || 'anonymous'
+        if (window.cookieConsentHandlers) {
+            window.cookieConsentHandlers.forEach(({ element, event, handler }, key) => {
+                console.log(key, {
+                    element: element.id || element.className || element.tagName,
+                    event: event,
+                    handler: handler.name || 'anonymous'
+                });
             });
-        });
+        }
     };
 }
 
