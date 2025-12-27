@@ -671,15 +671,9 @@ window.COOKIE_SETTINGS = {
     }
     
     // 5. Block iframes
+// Create and register observer
 const iframeObserver = new MutationObserver(function (mutations) {
-    mutations.forEach(function (mutation) {
-        mutation.addedNodes.forEach(function (node) {
-            if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
-                if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
-                node.remove();
-            }
-        });
-    });
+    // ... keep your existing observer code unchanged
 });
 
 iframeObserver.observe(document.documentElement, {
@@ -687,66 +681,45 @@ iframeObserver.observe(document.documentElement, {
     subtree: true
 });
 
-// Register observer cleanup
-registerCleanup('observer', 'iframeObserver', () => {
-    iframeObserver.disconnect();
-    // Nullify to help garbage collection
-    iframeObserver = null;
-});
-    
-    if (DEBUG) console.log("✅ Iframe blocking activated");
-    
-    // 6. Block and delete cookies - LIMITED INTERVAL (PERFORMANCE FIX)
-    function blockAndDeleteCookies() {
-        document.cookie.split(';').forEach(function (cookie) {
-            const [name] = cookie.trim().split('=');
-            if (name && shouldBlockCookie(name)) {
-                deleteCookieEverywhere(name);
-                if (DEBUG) console.log(`🛡️ Deleted blocked cookie: ${name}`);
-            }
-        });
-    }
-    
-    // ============================================================================
-    // CRITICAL FIX: LIMITED COOKIE CLEANUP INTERVAL (like Cookiebot/OneTrust)
-    // Runs 10 times then stops - saves CPU/battery
-    // ============================================================================
- blockAndDeleteCookies();
+// Register the observer
+registerObserver(iframeObserver);
+
+// Cookie cleanup interval
+blockAndDeleteCookies();
 let cookieCleanupRuns = 0;
 const cookieCleanupInterval = setInterval(() => {
     blockAndDeleteCookies();
     cookieCleanupRuns++;
     if (cookieCleanupRuns >= 9) {
-        clearInterval(cookieCleanupInterval);
-        // Remove from registry
-        cleanupRegistry.intervals.delete('cookieCleanup');
+        clearRegisteredInterval(cookieCleanupInterval);
         if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
     }
 }, 1000);
 
-// Register interval cleanup
-registerCleanup('interval', 'cookieCleanup', () => {
-    clearInterval(cookieCleanupInterval);
-});
+// Register the interval
+registerInterval(cookieCleanupInterval);
 
 
 
 
-// Cleanup functions storage
+
 // Named function for beforeunload cleanup
 function handleBeforeUnload() {
-    completeCleanup();
+    clearInterval(cookieCleanupInterval);
+    iframeObserver.disconnect();
+    
+    // Clean all registered cleanup functions
+    cleanupFunctions.forEach(fn => fn());
+    cleanupFunctions = [];
 }
 
-// Register beforeunload event cleanup
+// ADD: Cleanup on page unload with named function
 window.addEventListener('beforeunload', handleBeforeUnload);
-registerCleanup('callback', 'beforeunload-cleanup', () => {
+cleanupFunctions.push(() => {
     window.removeEventListener('beforeunload', handleBeforeUnload);
 });
 
 
-
-    
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
     function blockInlineTrackers() {
@@ -803,17 +776,14 @@ registerCleanup('callback', 'beforeunload-cleanup', () => {
 
  /* ===================== CLEANUP SYSTEM ===================== */
 /* ===================== CLEANUP SYSTEM ===================== */
-/* ===================== CLEANUP SYSTEM ===================== */
-    // Ensure cleanupFunctions exists
-    if (typeof window.cleanupFunctions === 'undefined') {
-        window.cleanupFunctions = [];
-    }
+
     
     // Simple cleanup function
 function cleanup() {
-    completeCleanup();
+    // Use the unified cleanup system
+    cleanupAll();
     
-    if (DEBUG) console.log("✅ Cleanup completed via unified registry");
+    if (DEBUG) console.log("✅ Cleanup completed");
 }
 
     // Register the cleanup function globally
@@ -1374,107 +1344,27 @@ geoConfig: {
 
 // ... end of config object
 
-// ... end of config object
-
-/* ===================== UNIFIED CLEANUP REGISTRY ===================== */
-// SINGLE SOURCE OF TRUTH for all cleanup
+/* ===================== EVENT HANDLER MANAGEMENT ===================== */
+/* ===================== UNIFIED CLEANUP MANAGEMENT ===================== */
+// Single source of truth for all cleanup
 const cleanupRegistry = {
-    // For event listeners
+    // Event listeners registry
     eventHandlers: new Map(),
     
-    // For intervals/timeouts
-    intervals: new Map(),
-    timeouts: new Map(),
+    // Interval timers registry
+    intervals: new Set(),
     
-    // For observers (MutationObserver, IntersectionObserver, etc.)
-    observers: new Map(),
+    // Observers registry
+    observers: new Set(),
     
-    // For other cleanup callbacks
-    callbacks: new Set()
+    // Callback functions registry
+    callbacks: new Set(),
+    
+    // DOM element references
+    elements: new Set()
 };
 
-// Add cleanup function to registry
-function registerCleanup(type, identifier, cleanupFn) {
-    switch(type) {
-        case 'interval':
-            cleanupRegistry.intervals.set(identifier, cleanupFn);
-            break;
-        case 'timeout':
-            cleanupRegistry.timeouts.set(identifier, cleanupFn);
-            break;
-        case 'observer':
-            cleanupRegistry.observers.set(identifier, cleanupFn);
-            break;
-        case 'callback':
-            cleanupRegistry.callbacks.add(cleanupFn);
-            break;
-        default:
-            console.warn('Unknown cleanup type:', type);
-    }
-}
-
-// Main cleanup function that clears EVERYTHING
-function completeCleanup() {
-    console.log('🧹 Performing complete cleanup...');
-    
-    // 1. Clear all event listeners
-    cleanupRegistry.eventHandlers.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-    });
-    cleanupRegistry.eventHandlers.clear();
-    console.log(`✅ Cleared ${cleanupRegistry.eventHandlers.size} event listeners`);
-    
-    // 2. Clear all intervals
-    cleanupRegistry.intervals.forEach((cleanupFn, identifier) => {
-        try {
-            cleanupFn();
-        } catch (e) {
-            console.warn(`Error cleaning up interval ${identifier}:`, e);
-        }
-    });
-    cleanupRegistry.intervals.clear();
-    console.log(`✅ Cleared ${cleanupRegistry.intervals.size} intervals`);
-    
-    // 3. Clear all timeouts
-    cleanupRegistry.timeouts.forEach((cleanupFn, identifier) => {
-        try {
-            cleanupFn();
-        } catch (e) {
-            console.warn(`Error cleaning up timeout ${identifier}:`, e);
-        }
-    });
-    cleanupRegistry.timeouts.clear();
-    console.log(`✅ Cleared ${cleanupRegistry.timeouts.size} timeouts`);
-    
-    // 4. Disconnect all observers
-    cleanupRegistry.observers.forEach((cleanupFn, identifier) => {
-        try {
-            cleanupFn();
-        } catch (e) {
-            console.warn(`Error cleaning up observer ${identifier}:`, e);
-        }
-    });
-    cleanupRegistry.observers.clear();
-    console.log(`✅ Disconnected ${cleanupRegistry.observers.size} observers`);
-    
-    // 5. Execute all registered callbacks
-    cleanupRegistry.callbacks.forEach(callback => {
-        try {
-            if (typeof callback === 'function') {
-                callback();
-            }
-        } catch (e) {
-            console.warn('Error in cleanup callback:', e);
-        }
-    });
-    cleanupRegistry.callbacks.clear();
-    console.log(`✅ Executed ${cleanupRegistry.callbacks.size} callbacks`);
-    
-    console.log('✅ Complete cleanup finished');
-}
-
-/* ===================== EVENT HANDLER MANAGEMENT ===================== */
-// Update event handler functions to use unified registry
+// Event listener management
 function addManagedListener(element, event, handler) {
     element.addEventListener(event, handler);
     const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -1490,7 +1380,113 @@ function removeManagedListener(key) {
     }
 }
 
-// ============== IMPLEMENTATION SECTION ============== //
+// Interval management
+function registerInterval(intervalId) {
+    cleanupRegistry.intervals.add(intervalId);
+    return intervalId;
+}
+
+function clearRegisteredInterval(intervalId) {
+    clearInterval(intervalId);
+    cleanupRegistry.intervals.delete(intervalId);
+}
+
+// Observer management
+function registerObserver(observer) {
+    cleanupRegistry.observers.add(observer);
+    return observer;
+}
+
+// Callback management (replaces cleanupFunctions array)
+function registerCleanupCallback(callback) {
+    cleanupRegistry.callbacks.add(callback);
+    return callback;
+}
+
+// Element reference management
+function registerElement(element) {
+    cleanupRegistry.elements.add(element);
+    return element;
+}
+
+// Main cleanup function
+function cleanupAll() {
+    console.log('🧹 Starting comprehensive cleanup...');
+    
+    // 1. Clear all intervals
+    cleanupRegistry.intervals.forEach(intervalId => {
+        clearInterval(intervalId);
+    });
+    cleanupRegistry.intervals.clear();
+    
+    // 2. Disconnect all observers
+    cleanupRegistry.observers.forEach(observer => {
+        try {
+            observer.disconnect();
+        } catch (e) {
+            console.log('Observer already disconnected');
+        }
+    });
+    cleanupRegistry.observers.clear();
+    
+    // 3. Remove all event listeners
+    cleanupRegistry.eventHandlers.forEach(({ element, event, handler }) => {
+        try {
+            element.removeEventListener(event, handler);
+        } catch (e) {
+            console.log('Event listener already removed');
+        }
+    });
+    cleanupRegistry.eventHandlers.clear();
+    
+    // 4. Execute all cleanup callbacks
+    cleanupRegistry.callbacks.forEach(callback => {
+        try {
+            if (typeof callback === 'function') {
+                callback();
+            }
+        } catch (e) {
+            console.warn('Error in cleanup callback:', e);
+        }
+    });
+    cleanupRegistry.callbacks.clear();
+    
+    // 5. Clear element references
+    cleanupRegistry.elements.clear();
+    
+    // 6. Nullify global variables
+    nullifyGlobals();
+    
+    console.log('✅ Comprehensive cleanup completed');
+}
+
+// Nullify global variables to prevent memory leaks
+function nullifyGlobals() {
+    // Cookie cleanup interval
+    if (typeof cookieCleanupInterval !== 'undefined') {
+        cookieCleanupInterval = null;
+    }
+    
+    // Observers
+    if (typeof iframeObserver !== 'undefined') {
+        iframeObserver = null;
+    }
+    
+    // Banner timer
+    if (typeof bannerTimer !== 'undefined') {
+        bannerTimer = null;
+    }
+    
+    // Location data (clear from session storage too)
+    if (typeof locationData !== 'undefined') {
+        locationData = {};
+        try {
+            sessionStorage.removeItem('locationData');
+        } catch (e) {
+            console.log('Could not clear location data from session storage');
+        }
+    }
+}
 // ============== IMPLEMENTATION SECTION ============== //
 
 
@@ -3311,14 +3307,28 @@ function clearStoredParams() {
 }
 
 // Add to your window.cookieConsent exports:
+// Clean up everything on page unload
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', cleanupAll);
+    window.addEventListener('pagehide', cleanupAll);
+    window.addEventListener('unload', cleanupAll);
+}
+
+// Export for manual control
 if (typeof window !== 'undefined') {
     window.cookieConsent = {
         // ... existing exports ...
-        clearStoredParams: clearStoredParams,
-        getStoredParams: () => JSON.parse(localStorage.getItem('storedQueryParams') || '{}')
+        cleanupAll: cleanupAll, // Add this line
+        debugCleanup: function() {
+            console.log('🧹 Cleanup Registry Debug:');
+            console.log('Event Handlers:', cleanupRegistry.eventHandlers.size);
+            console.log('Intervals:', cleanupRegistry.intervals.size);
+            console.log('Observers:', cleanupRegistry.observers.size);
+            console.log('Callbacks:', cleanupRegistry.callbacks.size);
+            console.log('Elements:', cleanupRegistry.elements.size);
+        }
     };
 }
-
 
 
 
@@ -4424,11 +4434,20 @@ function sendClarityConsentSignal(consentGranted) {
             clearTimeout(bannerTimer);
         }
         
-        bannerTimer = setTimeout(() => {
-            if (!getCookie('cookie_consent')) {
-                hideCookieBanner();
-            }
-        }, config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
+        // Banner scheduling variables
+let bannerTimer = null;
+
+// Later when setting the timer:
+bannerTimer = setTimeout(() => {
+    if (!getCookie('cookie_consent')) {
+        hideCookieBanner();
+    }
+}, config.behavior.bannerSchedule.durationMinutes * 60 * 1000);
+
+// Register the timer (add this line after creating it)
+if (bannerTimer) {
+    registerInterval(bannerTimer);
+}
     }
 }
 
@@ -4591,10 +4610,10 @@ function handleCookieValueToggle(e) {
 
 // Setup all event listeners - SIMPLIFIED VERSION
 function setupEventListeners() {
-    console.log('Setting up event listeners with proper cleanup...');
+    console.log('Setting up event listeners with unified cleanup...');
     
-    // Clear any existing listeners first
-    cleanupAllListeners();
+    // Clear all existing listeners first
+    cleanupAll();
     
     // Main banner buttons
     const acceptAllBtn = document.getElementById('acceptAllBtn');
@@ -4673,10 +4692,11 @@ function setupEventListeners() {
         addManagedListener(overlay, 'click', handleOverlayClick);
     }
     
- console.log(`✅ All event listeners set up (${cleanupRegistry.eventHandlers.size} total)`);
+    // Register key DOM elements for cleanup
+    if (overlay) registerElement(overlay);
+    if (floatingButton) registerElement(floatingButton);
     
-// Add cleanup callback
-registerCleanup('callback', 'eventListenersCleanup', completeCleanup);
+    console.log(`✅ All event listeners set up (${cleanupRegistry.eventHandlers.size} total)`);
 }
 
 // Show/hide functions with animations
@@ -4961,7 +4981,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ All cookies accepted, page will reload");
 
      // ADD THIS LINE:
-   completeCleanup(); // Complete memory cleanup via unified registry
+    cleanup(); // Clean up memory
     
 }
 
@@ -5036,7 +5056,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ All cookies rejected, page will reload");
 
       // ADD THIS LINE:
- completeCleanup(); // Complete memory cleanup via unified registry
+    cleanup(); // Clean up memory
     
 }
 
@@ -5192,7 +5212,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ Custom settings saved and page will reload");
 
     // ADD THIS LINE:
-  completeCleanup(); // Complete memory cleanup via unified registry
+    cleanup(); // Clean up memory
     
 }
 
@@ -5622,16 +5642,24 @@ if (typeof window !== 'undefined') {
         saveSettings: saveCustomSettings,
         changeLanguage: changeLanguage,
         config: config,
-         // NEW: Control functions for restrictions
+        // NEW: Control functions for restrictions
         toggleRestrictions: toggleRestrictions,
         toggleScrollRestriction: toggleScrollRestriction,
         toggleClickRestriction: toggleClickRestriction,
         toggleBlurEffect: toggleBlurEffect,
-        setBlurDensity: setBlurDensity
+        setBlurDensity: setBlurDensity,
+        // NEW: Cleanup control
+        cleanupAll: cleanupAll,
+        debugCleanup: function() {
+            console.log('🧹 Cleanup Registry Debug:');
+            console.log('Event Handlers:', cleanupRegistry.eventHandlers.size);
+            console.log('Intervals:', cleanupRegistry.intervals.size);
+            console.log('Observers:', cleanupRegistry.observers.size);
+            console.log('Callbacks:', cleanupRegistry.callbacks.size);
+            console.log('Elements:', cleanupRegistry.elements.size);
+        }
     };
-
-
-
+}
 
 /* ============================================================
    ADMIN CONTROL FUNCTIONS
@@ -5696,76 +5724,21 @@ window.showBlockingSettings = function() {
     console.log("Consent Status:", localStorage.getItem("__user_cookie_consent__"));
 };
 
-
-// Clean up event listeners on page unload
+// Clean up everything on page unload
 if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', cleanupAllListeners);
-    window.addEventListener('pagehide', cleanupAllListeners);
+    window.addEventListener('beforeunload', cleanupAll);
+    window.addEventListener('pagehide', cleanupAll);
+    window.addEventListener('unload', cleanupAll);
 }
 
 // Optional: Debug function for testing
 if (typeof window !== 'undefined') {
     window.debugEventListeners = function() {
-        console.log('📊 Event Handler Debug:');
-        console.log(`Total managed listeners: ${eventHandlers.size}`);
-        
-        eventHandlers.forEach(({ element, event, handler }, key) => {
-            console.log(key, {
-                element: element.id || element.className || element.tagName,
-                event: event,
-                handler: handler.name || 'anonymous'
-            });
-        });
-    };
-}
-
-/* ===================== DEBUG UTILITIES ===================== */
-if (typeof window !== 'undefined') {
-    window.debugCleanupRegistry = function() {
-        console.log('🧹 CLEANUP REGISTRY STATUS:');
-        console.log('Event Listeners:', cleanupRegistry.eventHandlers.size);
+        console.log('📊 Cleanup Registry Debug:');
+        console.log('Event Handlers:', cleanupRegistry.eventHandlers.size);
         console.log('Intervals:', cleanupRegistry.intervals.size);
-        console.log('Timeouts:', cleanupRegistry.timeouts.size);
         console.log('Observers:', cleanupRegistry.observers.size);
         console.log('Callbacks:', cleanupRegistry.callbacks.size);
-        
-        // Detailed breakdown
-        console.log('\n📋 Detailed Breakdown:');
-        
-        console.log('\n🎯 Event Listeners:');
-        cleanupRegistry.eventHandlers.forEach((data, key) => {
-            console.log(`  ${key}:`, {
-                element: data.element.id || data.element.className || data.element.tagName,
-                event: data.event,
-                handler: data.handler.name || 'anonymous'
-            });
-        });
-        
-        console.log('\n⏱️ Intervals:');
-        cleanupRegistry.intervals.forEach((_, key) => {
-            console.log(`  ${key}`);
-        });
-        
-        console.log('\n👀 Observers:');
-        cleanupRegistry.observers.forEach((_, key) => {
-            console.log(`  ${key}`);
-        });
-        
-        console.log('\n📞 Callbacks:');
-        cleanupRegistry.callbacks.forEach(callback => {
-            console.log(`  ${callback.name || 'anonymous'}`);
-        });
+        console.log('Elements:', cleanupRegistry.elements.size);
     };
-    
-    window.forceCleanup = function() {
-        console.log('🧹 Forcing complete cleanup...');
-        completeCleanup();
-        console.log('✅ Forced cleanup complete');
-    };
-    
-    // Auto cleanup on page unload
-    window.addEventListener('beforeunload', completeCleanup);
-    window.addEventListener('pagehide', completeCleanup);
-}
-  
 }
