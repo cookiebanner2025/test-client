@@ -1153,8 +1153,8 @@ const config = {
         enabled: true,  // Enable/disable cross-domain consent sharing
         domains: [
             "dev-rpractice.pantheonsite.io",
-            "practicebdhere.myshopify.com",
-            "efgh.com"
+            "practicebdhere.myshopify.com"
+          
         ],  // List of domains to share consent with
         subdomains: true,  // Include all subdomains automatically
         expirationDays: 1,  // Default: 24 hours. Options: 1, 7, 30, 365, etc.
