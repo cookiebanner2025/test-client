@@ -1152,8 +1152,8 @@ const config = {
     crossDomain: {
         enabled: true,  // Enable/disable cross-domain consent sharing
         domains: [
-            "abcd.com",
-            "xyz.com",
+            "dev-rpractice.pantheonsite.io",
+            "practicebdhere.myshopify.com",
             "efgh.com"
         ],  // List of domains to share consent with
         subdomains: true,  // Include all subdomains automatically
@@ -1163,7 +1163,7 @@ const config = {
         autoSync: true,  // Automatically sync consent when user navigates
         syncInterval: 5000,  // Check for consent sync every 5 seconds
         requireVerification: false,  // Require domain verification
-        debug: false  // Enable debug logging for cross-domain
+        debug: true  // Enable debug logging for cross-domain
     },
 
     
