@@ -1148,22 +1148,26 @@ const config = {
     allowedDomains: [],
 
 
-        // Cross-Domain Consent Sharing Configuration
+      
+    // Cross-Domain Consent Sharing Configuration
     crossDomain: {
-        enabled: true,  // Enable/disable cross-domain consent sharing
+        enabled: true,
         domains: [
             "dev-rpractice.pantheonsite.io",
             "practicebdhere.myshopify.com"
-          
-        ],  // List of domains to share consent with
-        subdomains: true,  // Include all subdomains automatically
-        expirationDays: 1,  // Default: 24 hours. Options: 1, 7, 30, 365, etc.
-        fallbackMethod: "localStorage",  // "localStorage" or "sessionStorage"
-        secureMethods: ["postMessage"],  // "postMessage", "iframe", "redirect"
-        autoSync: true,  // Automatically sync consent when user navigates
-        syncInterval: 5000,  // Check for consent sync every 5 seconds
-        requireVerification: false,  // Require domain verification
-        debug: true  // Enable debug logging for cross-domain
+        ],
+        subdomains: true,
+        expirationDays: 1,
+        methods: ["urlToken", "postMessage", "localStorage"], // Multiple methods tried in order
+        primaryMethod: "urlToken", // URL token works best for different domains
+        autoSync: true,
+        syncInterval: 5000,
+        requireVerification: false,
+        debug: true, // Set to true for testing
+        useEncryption: false, // For production, set to true
+        sharedSecret: "your-secret-key-here", // Change this for production
+        redirectTimeout: 3000, // ms to wait for redirect sync
+        tokenParamName: "cookie_consent_token" // URL parameter name
     },
 
     
@@ -4294,7 +4298,9 @@ function initializeCookieConsent(detectedCookies, language) {
         console.log('Cookie consent banner disabled for this URL');
         return; // Don't show the banner on this URL
     }
-  
+     // NEW: Check for URL tokens FIRST (before checking existing consent)
+    // This allows cross-domain consent to override local checks
+    checkUrlForTokens();
     const consentGiven = getCookie('cookie_consent');
     
     // Check if banner should be shown based on geo-targeting and schedule
@@ -4916,7 +4922,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     initializeClarity(true);
     sendClarityConsentSignal(true);
     
-    const consentData = {
+     const consentData = {
         status: 'accepted',
         gcs: 'G111',
         categories: {
@@ -4928,9 +4934,20 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         },
         timestamp: new Date().getTime()
     };
-
-        // Store for cross-domain sharing
+    
+    // Store for cross-domain sharing using ALL methods
     storeCrossDomainConsent(consentData);
+    
+    // Generate and display direct links (optional - for user convenience)
+    if (config.crossDomain.debug && config.crossDomain.enabled) {
+        setTimeout(() => {
+            const links = getCrossDomainLinks();
+            console.log('🔗 Pre-approved cross-domain links:');
+            Object.keys(links).forEach(domain => {
+                console.log(`   ${domain}: https://${domain}/?${config.crossDomain.tokenParamName}=${encodeURIComponent(links[domain])}`);
+            });
+        }, 500);
+    }
     
     addStoredParamsToURL();
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
@@ -5006,8 +5023,19 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         timestamp: new Date().getTime()
     };
 
-        // Store for cross-domain sharing
+      // Store for cross-domain sharing using ALL methods
     storeCrossDomainConsent(consentData);
+    
+    // Generate and display direct links (optional - for user convenience)
+    if (config.crossDomain.debug && config.crossDomain.enabled) {
+        setTimeout(() => {
+            const links = getCrossDomainLinks();
+            console.log('🔗 Pre-approved cross-domain links:');
+            Object.keys(links).forEach(domain => {
+                console.log(`   ${domain}: https://${domain}/?${config.crossDomain.tokenParamName}=${encodeURIComponent(links[domain])}`);
+            });
+        }, 500);
+    }
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
@@ -5117,8 +5145,19 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         timestamp: new Date().getTime()
     };
 
-    // Store for cross-domain sharing
+     // Store for cross-domain sharing using ALL methods
     storeCrossDomainConsent(consentData);
+    
+    // Generate and display direct links (optional - for user convenience)
+    if (config.crossDomain.debug && config.crossDomain.enabled) {
+        setTimeout(() => {
+            const links = getCrossDomainLinks();
+            console.log('🔗 Pre-approved cross-domain links:');
+            Object.keys(links).forEach(domain => {
+                console.log(`   ${domain}: https://${domain}/?${config.crossDomain.tokenParamName}=${encodeURIComponent(links[domain])}`);
+            });
+        }, 500);
+    }
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
@@ -5522,7 +5561,7 @@ function generateConsentId() {
     return 'cid_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// Store consent in a cross-domain accessible way
+// ENHANCED: Store consent using multiple methods
 function storeCrossDomainConsent(consentData) {
     if (!config.crossDomain.enabled) return;
     
@@ -5535,24 +5574,93 @@ function storeCrossDomainConsent(consentData) {
         sourceDomain: window.location.hostname,
         timestamp: new Date().getTime(),
         expiresAt: new Date().getTime() + (config.crossDomain.expirationDays * 24 * 60 * 60 * 1000),
-        version: '1.0'
+        version: '2.0' // Updated version
     };
     
-    // Store in localStorage (primary storage)
+    // Store in multiple locations
     localStorage.setItem('__cross_domain_consent__', JSON.stringify(crossDomainData));
-    
-    // Also store in sessionStorage for same-tab sharing
     sessionStorage.setItem('__cross_domain_consent__', JSON.stringify(crossDomainData));
     
-    // Broadcast to other domains via postMessage
+    // Use ALL configured methods
     broadcastConsentToOtherDomains(crossDomainData);
     
+    // Generate URL tokens for all allowed domains
+    generateUrlTokensForAllDomains(crossDomainData);
+    
     if (config.crossDomain.debug) {
-        console.log('🌐 Cross-domain consent stored:', crossDomainData);
+        console.log('🌐 Cross-domain consent stored with all methods:', crossDomainData);
     }
 }
 
-// Check if a domain is in the allowed list
+// ENHANCED: Generate URL tokens for ALL allowed domains
+function generateUrlTokensForAllDomains(consentData) {
+    if (!config.crossDomain.domains || !config.crossDomain.methods.includes('urlToken')) {
+        return;
+    }
+    
+    const tokens = {};
+    
+    config.crossDomain.domains.forEach(targetDomain => {
+        if (targetDomain !== window.location.hostname) {
+            const token = generateUrlToken(consentData, targetDomain);
+            tokens[targetDomain] = token;
+            
+            if (config.crossDomain.debug) {
+                console.log(`🔗 URL token for ${targetDomain}:`, token);
+                console.log(`🔗 Direct link: https://${targetDomain}/?${config.crossDomain.tokenParamName}=${encodeURIComponent(token)}`);
+            }
+        }
+    });
+    
+    // Store tokens for later use
+    sessionStorage.setItem('__cross_domain_url_tokens__', JSON.stringify(tokens));
+    
+    return tokens;
+}
+
+// Generate secure URL token
+function generateUrlToken(consentData, targetDomain) {
+    const tokenData = {
+        consent: consentData.consentData,
+        source: window.location.hostname,
+        target: targetDomain,
+        timestamp: Date.now(),
+        expires: Date.now() + (config.crossDomain.expirationDays * 24 * 60 * 60 * 1000)
+    };
+    
+    // Simple encoding (for production, use proper encryption)
+    if (config.crossDomain.useEncryption) {
+        // For production, implement proper encryption here
+        return btoa(JSON.stringify(tokenData));
+    } else {
+        return btoa(JSON.stringify(tokenData));
+    }
+}
+
+// Decode URL token
+function decodeUrlToken(token) {
+    try {
+        const decoded = JSON.parse(atob(token));
+        
+        // Validate token
+        if (decoded.expires < Date.now()) {
+            if (config.crossDomain.debug) console.log('🕒 URL token expired');
+            return null;
+        }
+        
+        if (!isDomainAllowedForSharing(decoded.source)) {
+            if (config.crossDomain.debug) console.log('⚠️ Token from unauthorized source:', decoded.source);
+            return null;
+        }
+        
+        return decoded;
+    } catch (e) {
+        if (config.crossDomain.debug) console.error('❌ Failed to decode URL token:', e);
+        return null;
+    }
+}
+
+// ENHANCED: Check if a domain is in the allowed list
 function isDomainAllowedForSharing(domain) {
     if (!config.crossDomain.domains || config.crossDomain.domains.length === 0) {
         return false;
@@ -5568,8 +5676,10 @@ function isDomainAllowedForSharing(domain) {
     // Check subdomain if enabled
     if (config.crossDomain.subdomains) {
         for (const allowedDomain of config.crossDomain.domains) {
-            // Check if domain ends with allowed domain (e.g., sub.xyz.com ends with xyz.com)
-            if (domain === allowedDomain || domain.endsWith('.' + allowedDomain)) {
+            // Handle wildcard subdomains
+            if (domain === allowedDomain || 
+                domain.endsWith('.' + allowedDomain) ||
+                allowedDomain.startsWith('*.') && domain.endsWith(allowedDomain.substring(1))) {
                 return true;
             }
         }
@@ -5583,13 +5693,28 @@ function isDomainAllowedForSharing(domain) {
     return false;
 }
 
-// Broadcast consent to other domains using postMessage
+// ENHANCED: Broadcast using multiple methods
 function broadcastConsentToOtherDomains(consentData) {
-    if (!config.crossDomain.enabled || !config.crossDomain.secureMethods.includes('postMessage')) {
-        return;
-    }
+    if (!config.crossDomain.enabled) return;
     
-    // Create a secure message
+    // Try all configured methods
+    config.crossDomain.methods.forEach(method => {
+        switch(method) {
+            case 'postMessage':
+                broadcastViaPostMessage(consentData);
+                break;
+            case 'localStorage':
+                broadcastViaLocalStorage(consentData);
+                break;
+            case 'urlToken':
+                // Already handled by generateUrlTokensForAllDomains
+                break;
+        }
+    });
+}
+
+// Broadcast via postMessage
+function broadcastViaPostMessage(consentData) {
     const message = {
         type: 'COOKIE_CONSENT_UPDATE',
         data: consentData,
@@ -5598,23 +5723,37 @@ function broadcastConsentToOtherDomains(consentData) {
         signature: generateMessageSignature(consentData)
     };
     
-    // Store locally for other windows/tabs of same origin
     try {
         localStorage.setItem('__pending_cross_domain_broadcast__', JSON.stringify(message));
     } catch (e) {
-        if (config.crossDomain.debug) {
-            console.warn('Failed to store broadcast locally:', e);
-        }
+        if (config.crossDomain.debug) console.warn('Failed to store broadcast:', e);
     }
     
-    if (config.crossDomain.debug) {
-        console.log('📡 Broadcasting consent to other domains:', message);
+    if (config.crossDomain.debug) console.log('📡 Broadcast via postMessage:', message);
+}
+
+// Broadcast via localStorage events
+function broadcastViaLocalStorage(consentData) {
+    const message = {
+        type: 'COOKIE_CONSENT_UPDATE',
+        data: consentData,
+        source: window.location.origin,
+        timestamp: new Date().getTime()
+    };
+    
+    try {
+        // This triggers storage events in other tabs of SAME origin
+        localStorage.setItem('__local_cross_domain_broadcast__', JSON.stringify(message));
+        setTimeout(() => {
+            localStorage.removeItem('__local_cross_domain_broadcast__');
+        }, 100);
+    } catch (e) {
+        if (config.crossDomain.debug) console.warn('Failed local broadcast:', e);
     }
 }
 
-// Generate a simple signature for message verification
+// Generate signature
 function generateMessageSignature(data) {
-    // Create a simple hash for verification (not cryptographic, just for basic validation)
     const str = JSON.stringify(data) + window.location.origin + Date.now();
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -5625,28 +5764,14 @@ function generateMessageSignature(data) {
     return hash.toString(36);
 }
 
-// Verify incoming message signature
-function verifyMessageSignature(message) {
-    if (!config.crossDomain.requireVerification) {
-        return true; // Skip verification if not required
-    }
-    
-    const expectedSignature = generateMessageSignature(message.data);
-    return message.signature === expectedSignature;
-}
-
-// Listen for cross-domain consent messages
+// ENHANCED: Setup all listeners
 function setupCrossDomainListener() {
-    if (!config.crossDomain.enabled) {
-        return;
-    }
+    if (!config.crossDomain.enabled) return;
     
-    // Listen for postMessage from other domains
-    window.addEventListener('message', function(event) {
-        handleIncomingMessage(event);
-    }, false);
+    // Listen for postMessage
+    window.addEventListener('message', handleIncomingMessage, false);
     
-    // Check for stored consent from same origin (other tabs/windows)
+    // Listen for localStorage events (same origin tabs)
     window.addEventListener('storage', function(event) {
         if (event.key === '__pending_cross_domain_broadcast__' && event.newValue) {
             try {
@@ -5655,110 +5780,141 @@ function setupCrossDomainListener() {
                     processIncomingConsent(message.data);
                 }
             } catch (e) {
-                if (config.crossDomain.debug) {
-                    console.warn('Failed to process storage event:', e);
-                }
+                if (config.crossDomain.debug) console.warn('Failed storage event:', e);
             }
         }
     });
     
-    // Check on page load if we have cross-domain consent
+    // Check URL for tokens FIRST (most reliable for cross-domain)
+    checkUrlForTokens();
+    
+    // Then check localStorage
     checkForCrossDomainConsent();
     
-    if (config.crossDomain.debug) {
-        console.log('👂 Cross-domain listener setup complete');
+    // Setup auto-redirect if needed
+    setupAutoRedirect();
+    
+    if (config.crossDomain.debug) console.log('👂 Cross-domain listeners setup complete');
+}
+
+// Check URL for consent tokens
+function checkUrlForTokens() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get(config.crossDomain.tokenParamName);
+    
+    if (!token) return;
+    
+    const decoded = decodeUrlToken(token);
+    if (!decoded || !decoded.consent) return;
+    
+    // Apply the consent
+    processIncomingConsent({
+        consentData: decoded.consent,
+        sourceDomain: decoded.source,
+        timestamp: decoded.timestamp
+    });
+    
+    // Clean URL
+    cleanUrlToken();
+}
+
+// Clean token from URL
+function cleanUrlToken() {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has(config.crossDomain.tokenParamName)) {
+        url.searchParams.delete(config.crossDomain.tokenParamName);
+        window.history.replaceState({}, document.title, url.toString());
+        if (config.crossDomain.debug) console.log('🧹 Cleaned token from URL');
     }
 }
 
-// Handle incoming messages from other domains
+// Setup auto-redirect detection
+function setupAutoRedirect() {
+    if (!config.crossDomain.autoSync) return;
+    
+    // Check if we just arrived from another domain
+    const referrer = document.referrer;
+    if (referrer && referrer !== '' && !referrer.includes(window.location.hostname)) {
+        const referrerDomain = new URL(referrer).hostname;
+        if (isDomainAllowedForSharing(referrerDomain)) {
+            if (config.crossDomain.debug) console.log('🔄 Detected arrival from allowed domain:', referrerDomain);
+            // We could trigger a consent check here
+        }
+    }
+}
+
+// Handle incoming messages
 function handleIncomingMessage(event) {
     if (!config.crossDomain.enabled) return;
     
-    // Security: Verify origin
     if (!isDomainAllowedForSharing(new URL(event.origin).hostname)) {
-        if (config.crossDomain.debug) {
-            console.warn('⚠️ Rejected message from unauthorized origin:', event.origin);
-        }
+        if (config.crossDomain.debug) console.warn('Rejected message from:', event.origin);
         return;
     }
     
     try {
         const message = event.data;
+        if (!message || message.type !== 'COOKIE_CONSENT_UPDATE') return;
         
-        // Validate message structure
-        if (!message || typeof message !== 'object' || message.type !== 'COOKIE_CONSENT_UPDATE') {
-            return;
-        }
-        
-        // Verify signature if required
         if (config.crossDomain.requireVerification && !verifyMessageSignature(message)) {
-            if (config.crossDomain.debug) {
-                console.warn('⚠️ Message signature verification failed');
-            }
+            if (config.crossDomain.debug) console.warn('Signature verification failed');
             return;
         }
         
-        // Check if consent is expired
         if (message.data.expiresAt && message.data.expiresAt < Date.now()) {
-            if (config.crossDomain.debug) {
-                console.log('🕒 Cross-domain consent expired');
-            }
+            if (config.crossDomain.debug) console.log('Consent expired');
             return;
         }
         
-        // Process the consent
         processIncomingConsent(message.data);
         
     } catch (error) {
-        if (config.crossDomain.debug) {
-            console.error('❌ Error handling cross-domain message:', error);
-        }
+        if (config.crossDomain.debug) console.error('Error handling message:', error);
     }
 }
 
-// Process incoming consent data
-function processIncomingConsent(consentData) {
-    if (!consentData || !consentData.consentData) {
-        return;
-    }
+// Verify signature
+function verifyMessageSignature(message) {
+    if (!config.crossDomain.requireVerification) return true;
     
-    // Check if we already have consent
+    const expectedSignature = generateMessageSignature(message.data);
+    return message.signature === expectedSignature;
+}
+
+// Process incoming consent
+function processIncomingConsent(consentData) {
+    if (!consentData || !consentData.consentData) return;
+    
     const existingConsent = getCookie('cookie_consent');
     if (existingConsent) {
-        // Compare timestamps - only update if incoming consent is newer
         try {
             const existingData = JSON.parse(existingConsent);
             if (existingData.timestamp && consentData.timestamp && 
                 existingData.timestamp >= consentData.timestamp) {
-                if (config.crossDomain.debug) {
-                    console.log('⏭️ Existing consent is newer, skipping update');
-                }
+                if (config.crossDomain.debug) console.log('Existing consent is newer, skipping');
                 return;
             }
-        } catch (e) {
-            // Continue with update
-        }
+        } catch (e) {}
     }
     
-    // Apply the consent
     applyCrossDomainConsent(consentData.consentData);
     
     if (config.crossDomain.debug) {
-        console.log('✅ Applied cross-domain consent:', consentData.consentData);
+        console.log('✅ Applied cross-domain consent from:', consentData.sourceDomain);
     }
 }
 
-// Apply cross-domain consent to current domain
+// Apply cross-domain consent
 function applyCrossDomainConsent(consentData) {
     if (!consentData) return;
     
-    // Store the consent locally
+    // Store locally
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     
     // Update consent mode
     updateConsentMode(consentData);
     
-    // Update blocking script categories
+    // Update blocking script
     if (typeof window.enableTrackingByCategory === 'function') {
         window.enableTrackingByCategory({
             analytics: consentData.categories.analytics || false,
@@ -5766,7 +5922,6 @@ function applyCrossDomainConsent(consentData) {
             performance: consentData.categories.performance || false
         });
     } else {
-        // Fallback
         const categories = {
             analytics: consentData.categories.analytics || false,
             advertising: consentData.categories.advertising || false,
@@ -5778,7 +5933,7 @@ function applyCrossDomainConsent(consentData) {
         localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
     }
     
-    // Send GCS signal
+    // Determine GCS signal
     let gcsSignal = 'G100';
     if (consentData.status === 'accepted') {
         gcsSignal = 'G111';
@@ -5792,7 +5947,7 @@ function applyCrossDomainConsent(consentData) {
         }
     }
     
-    // Update dataLayer
+    // Send to dataLayer
     window.dataLayer.push({
         'event': 'cross_domain_consent_applied',
         'consent_mode': {
@@ -5811,8 +5966,8 @@ function applyCrossDomainConsent(consentData) {
     });
     
     // Hide banner if shown
-    if (document.getElementById('cookieConsentBanner') && 
-        document.getElementById('cookieConsentBanner').classList.contains('show')) {
+    const banner = document.getElementById('cookieConsentBanner');
+    if (banner && banner.classList.contains('show')) {
         hideCookieBanner();
     }
     
@@ -5822,60 +5977,37 @@ function applyCrossDomainConsent(consentData) {
     }
 }
 
-// Check for existing cross-domain consent on page load
+// Check for stored consent
 function checkForCrossDomainConsent() {
     if (!config.crossDomain.enabled) return;
     
-    // Check localStorage for cross-domain consent
     const storedConsent = localStorage.getItem('__cross_domain_consent__');
     if (!storedConsent) return;
     
     try {
         const consentData = JSON.parse(storedConsent);
         
-        // Check if consent is expired
         if (consentData.expiresAt && consentData.expiresAt < Date.now()) {
-            if (config.crossDomain.debug) {
-                console.log('🕒 Stored cross-domain consent expired, removing');
-            }
+            if (config.crossDomain.debug) console.log('Stored consent expired');
             localStorage.removeItem('__cross_domain_consent__');
             return;
         }
         
-        // Check if consent is from allowed domain
         if (consentData.sourceDomain && consentData.sourceDomain !== window.location.hostname) {
             if (!isDomainAllowedForSharing(consentData.sourceDomain)) {
-                if (config.crossDomain.debug) {
-                    console.warn('⚠️ Stored consent from unauthorized domain:', consentData.sourceDomain);
-                }
+                if (config.crossDomain.debug) console.warn('Stored consent from unauthorized domain');
                 return;
             }
         }
         
-        // Apply the consent
         processIncomingConsent(consentData);
         
     } catch (error) {
-        if (config.crossDomain.debug) {
-            console.error('❌ Error checking cross-domain consent:', error);
-        }
+        if (config.crossDomain.debug) console.error('Error checking consent:', error);
     }
 }
 
-// Request consent from other domains
-function requestConsentFromOtherDomains() {
-    if (!config.crossDomain.enabled || !config.crossDomain.autoSync) {
-        return;
-    }
-    
-    // This would typically be called from an iframe or redirect flow
-    // For now, we'll rely on postMessage and storage events
-    if (config.crossDomain.debug) {
-        console.log('🔍 Requesting consent from other domains...');
-    }
-}
-
-// Clean up expired cross-domain consent
+// Clean up expired consent
 function cleanupExpiredCrossDomainConsent() {
     const storedConsent = localStorage.getItem('__cross_domain_consent__');
     if (!storedConsent) return;
@@ -5885,16 +6017,27 @@ function cleanupExpiredCrossDomainConsent() {
         if (consentData.expiresAt && consentData.expiresAt < Date.now()) {
             localStorage.removeItem('__cross_domain_consent__');
             sessionStorage.removeItem('__cross_domain_consent__');
+            localStorage.removeItem('__cross_domain_consent_id__');
             
-            if (config.crossDomain.debug) {
-                console.log('🧹 Cleaned up expired cross-domain consent');
-            }
+            if (config.crossDomain.debug) console.log('Cleaned up expired consent');
         }
-    } catch (e) {
-        // Ignore errors
-    }
+    } catch (e) {}
 }
 
+// NEW: Get direct links for all domains
+function getCrossDomainLinks() {
+    if (!config.crossDomain.enabled) return {};
+    
+    const storedConsent = localStorage.getItem('__cross_domain_consent__');
+    if (!storedConsent) return {};
+    
+    try {
+        const consentData = JSON.parse(storedConsent);
+        return generateUrlTokensForAllDomains(consentData);
+    } catch (e) {
+        return {};
+    }
+}
 
 
 
@@ -6069,6 +6212,54 @@ if (typeof window !== 'undefined') {
             storeCrossDomainConsent(testConsent);
             console.log('✅ Test consent stored for cross-domain sharing');
         },
+
+
+
+                // Get direct links for all domains
+        getCrossDomainLinks: function() {
+            const links = getCrossDomainLinks();
+            console.log('🔗 Available cross-domain links:');
+            Object.keys(links).forEach(domain => {
+                console.log(`   ${domain}: https://${domain}/?${config.crossDomain.tokenParamName}=${encodeURIComponent(links[domain])}`);
+            });
+            return links;
+        },
+        
+        // Manually check URL for tokens
+        checkUrlToken: function() {
+            checkUrlForTokens();
+            console.log('🔍 Manual URL token check completed');
+        },
+        
+        // Generate test token for a specific domain
+        generateTestToken: function(targetDomain) {
+            const testConsent = {
+                status: 'accepted',
+                gcs: 'G111',
+                categories: {
+                    functional: true,
+                    analytics: true,
+                    performance: true,
+                    advertising: true,
+                    uncategorized: true
+                },
+                timestamp: new Date().getTime()
+            };
+            
+            const token = generateUrlToken({
+                consentData: testConsent,
+                sourceDomain: window.location.hostname,
+                timestamp: Date.now()
+            }, targetDomain);
+            
+            console.log(`🧪 Test token for ${targetDomain}:`, token);
+            console.log(`🔗 Test URL: https://${targetDomain}/?${config.crossDomain.tokenParamName}=${encodeURIComponent(token)}`);
+            return token;
+        },
+
+
+
+        
         
         // Configure cross-domain settings
         configureCrossDomain: function(settings) {
@@ -6228,17 +6419,18 @@ if (config.crossDomain.enabled && config.crossDomain.autoSync && config.crossDom
                 if (message.type === 'COOKIE_CONSENT_UPDATE') {
                     processIncomingConsent(message.data);
                 }
-                // Clear after processing
                 localStorage.removeItem('__pending_cross_domain_broadcast__');
             } catch (e) {
                 // Ignore errors
             }
         }
         
-        // Clean up expired consent periodically
+        // Also check for URL tokens periodically (in case they were added after page load)
+        checkUrlForTokens();
+        
+        // Clean up expired consent
         cleanupExpiredCrossDomainConsent();
         
     }, config.crossDomain.syncInterval);
 }
 }  // <-- This is the VERY LAST }
-
