@@ -1452,7 +1452,7 @@ const config = {
         // Cross-domain consent sharing configuration
     crossDomainConfig: {
         enabled: true, // Set to true to enable cross-domain sharing
-        domains: [], // Add your domains here: ["abcd.com", "xyz.com", "efgh.com"]
+        domains: ["dev-rpractice.pantheonsite.io", "practicebdhere.myshopify.com"], // Add your domains here: ["abcd.com", "xyz.com", "efgh.com"]
         storageKey: "__cross_domain_consent__",
         syncMethod: 'postMessage', // Options: 'postMessage', 'localStorage', 'both'
         expirationDays: 365, // Consent expires after X days (set to 365 for 1 year)
