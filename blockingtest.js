@@ -15,8 +15,11 @@ window.COOKIE_SETTINGS = {
 (function () {
     'use strict';
 
-     // DEBUG: Log that script is loading
-    console.log('🔧 Cookie Consent Script Loading...');
+
+
+
+// STEP 1: Initialize cleanup registry (ONE SINGLE PLACE)
+window.cookieBlockingCleanup = window.cookieBlockingCleanup || {};
 
     /* ===================== CONFIGURATION ===================== */
     // Use global settings with safe defaults
@@ -414,328 +417,365 @@ window.COOKIE_SETTINGS = {
         return false;
     }
     
-    /* ===================== IMPLEMENT BLOCKING ===================== */
+// ============================================================================
+// CRITICAL SECURITY: Block document.write and document.writeln
+// Prevents trackers from bypassing blocking via inline script injection
+// ============================================================================
+if (!document.__cookieDocumentWritePatched) {
+    document.__cookieDocumentWritePatched = true;
     
-    // ============================================================================
-    // CRITICAL SECURITY: Block document.write and document.writeln
-    // Prevents trackers from bypassing blocking via inline script injection
-    // ============================================================================
-    if (!document.__cookieDocumentWritePatched) {
-        document.__cookieDocumentWritePatched = true;
+    // Store originals for cleanup
+    document.__originalWrite = document.write;
+    document.__originalWriteln = document.writeln;
+    
+    document.write = function(content) {
+        if (content && typeof content === 'string') {
+            // Check if content contains tracking scripts
+            const hasTrackingScript = 
+                content.includes('<script') && (
+                    content.includes('google-analytics.com') ||
+                    content.includes('googletagmanager.com') ||
+                    content.includes('facebook.com') ||
+                    content.includes('connect.facebook.net') ||
+                    content.includes('doubleclick.net') ||
+                    content.includes('gtag(') ||
+                    content.includes('fbq(') ||
+                    content.includes('dataLayer.push')
+                );
+            
+            if (hasTrackingScript) {
+                if (DEBUG) console.log('🛡️ Blocked unsafe document.write with tracking script');
+                return;
+            }
+        }
+        return document.__originalWrite.apply(document, arguments);
+    };
+    
+    document.writeln = function(content) {
+        if (content && typeof content === 'string') {
+            // Check if content contains tracking scripts
+            const hasTrackingScript = 
+                content.includes('<script') && (
+                    content.includes('google-analytics.com') ||
+                    content.includes('googletagmanager.com') ||
+                    content.includes('facebook.com') ||
+                    content.includes('connect.facebook.net') ||
+                    content.includes('doubleclick.net') ||
+                    content.includes('gtag(') ||
+                    content.includes('fbq(') ||
+                    content.includes('dataLayer.push')
+                );
+            
+            if (hasTrackingScript) {
+                if (DEBUG) console.log('🛡️ Blocked unsafe document.writeln with tracking script');
+                return;
+            }
+        }
+        return document.__originalWriteln.apply(document, arguments);
+    };
+    
+    if (DEBUG) console.log("✅ document.write/document.writeln protection activated");
+}
+    
+// 1. Block script loading WITH SAFE GUARD
+if (!document.__cookieCreateElementPatched) {
+    document.__cookieCreateElementPatched = true;
+    
+    // Store original for cleanup
+    document.__originalCreateElement = document.createElement;
+    
+    document.createElement = function (tagName) {
+        const element = document.__originalCreateElement.call(document, tagName);
         
-        const originalWrite = document.write;
-        document.write = function(content) {
-            if (content && typeof content === 'string') {
-                // Check if content contains tracking scripts
-                const hasTrackingScript = 
-                    content.includes('<script') && (
-                        content.includes('google-analytics.com') ||
-                        content.includes('googletagmanager.com') ||
-                        content.includes('facebook.com') ||
-                        content.includes('connect.facebook.net') ||
-                        content.includes('doubleclick.net') ||
-                        content.includes('gtag(') ||
-                        content.includes('fbq(') ||
-                        content.includes('dataLayer.push')
-                    );
-                
-                if (hasTrackingScript) {
-                    if (DEBUG) console.log('🛡️ Blocked unsafe document.write with tracking script');
-                    return;
+        if (tagName.toLowerCase() === 'script') {
+            const originalSetAttribute = element.setAttribute;
+            
+            element.setAttribute = function (name, value) {
+                if (name === 'src' && shouldBlockDomain(value)) {
+                    if (DEBUG) console.log(`🛡️ Blocked script loading: ${value}`);
+                    return; // Don't set the src attribute
                 }
-            }
-            return originalWrite.apply(document, arguments);
-        };
-        
-        const originalWriteln = document.writeln;
-        document.writeln = function(content) {
-            if (content && typeof content === 'string') {
-                // Check if content contains tracking scripts
-                const hasTrackingScript = 
-                    content.includes('<script') && (
-                        content.includes('google-analytics.com') ||
-                        content.includes('googletagmanager.com') ||
-                        content.includes('facebook.com') ||
-                        content.includes('connect.facebook.net') ||
-                        content.includes('doubleclick.net') ||
-                        content.includes('gtag(') ||
-                        content.includes('fbq(') ||
-                        content.includes('dataLayer.push')
-                    );
-                
-                if (hasTrackingScript) {
-                    if (DEBUG) console.log('🛡️ Blocked unsafe document.writeln with tracking script');
-                    return;
+                return originalSetAttribute.call(this, name, value);
+            };
+            
+            Object.defineProperty(element, 'src', {
+                set(value) {
+                    if (shouldBlockDomain(value)) {
+                        if (DEBUG) console.log(`🛡️ Blocked script src: ${value}`);
+                        return;
+                    }
+                    this.setAttribute('src', value);
+                },
+                get() {
+                    return this.getAttribute('src');
                 }
-            }
-            return originalWriteln.apply(document, arguments);
-        };
+            });
+        }
         
-        if (DEBUG) console.log("✅ document.write/document.writeln protection activated");
-    }
+        return element;
+    };
     
-    // 1. Block script loading WITH SAFE GUARD
-    if (!document.__cookieCreateElementPatched) {
-        document.__cookieCreateElementPatched = true;
-        
-        const originalCreateElement = document.createElement;
-        document.createElement = function (tagName) {
-            const element = originalCreateElement.call(document, tagName);
-            
-            if (tagName.toLowerCase() === 'script') {
-                const originalSetAttribute = element.setAttribute;
-                
-                element.setAttribute = function (name, value) {
-                    if (name === 'src' && shouldBlockDomain(value)) {
-                        if (DEBUG) console.log(`🛡️ Blocked script loading: ${value}`);
-                        return; // Don't set the src attribute
-                    }
-                    return originalSetAttribute.call(this, name, value);
-                };
-                
-                Object.defineProperty(element, 'src', {
-                    set(value) {
-                        if (shouldBlockDomain(value)) {
-                            if (DEBUG) console.log(`🛡️ Blocked script src: ${value}`);
-                            return;
-                        }
-                        this.setAttribute('src', value);
-                    },
-                    get() {
-                        return this.getAttribute('src');
-                    }
-                });
-            }
-            
-            return element;
-        };
-        
-        if (DEBUG) console.log("✅ Script loading protection activated");
-    }
+    if (DEBUG) console.log("✅ Script loading protection activated");
+}
     
-    // 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
-    if (window.fetch) {
-        const originalFetch = window.fetch;
-        window.fetch = function (resource, init) {
-            const url = typeof resource === 'string' ? resource : resource?.url;
+  // 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
+if (window.fetch) {
+    // Store original for cleanup
+    window.__originalFetch = window.fetch;
+    
+    window.fetch = function (resource, init) {
+        const url = typeof resource === 'string' ? resource : resource?.url;
+        
+        if (shouldBlockDomain(url)) {
+            if (DEBUG) console.log(`🛡️ Blocked fetch request: ${url}`);
             
-            if (shouldBlockDomain(url)) {
-                if (DEBUG) console.log(`🛡️ Blocked fetch request: ${url}`);
+            // ============================================================================
+            // CRITICAL FIX: AGGRESSIVE_MODE default = false (safer for websites)
+            // ============================================================================
+            if (AGGRESSIVE_MODE) {
+                // ============================================================================
+                // AGGRESSIVE MODE: Hides from extensions
+                // Returns Promise.reject() for trackers (invisible to extensions)
+                // Returns 204 for functional APIs (prevents website crashes)
+                // ============================================================================
                 
-                // ============================================================================
-                // CRITICAL FIX: AGGRESSIVE_MODE default = false (safer for websites)
-                // ============================================================================
-                if (AGGRESSIVE_MODE) {
-                    // ============================================================================
-                    // AGGRESSIVE MODE: Hides from extensions
-                    // Returns Promise.reject() for trackers (invisible to extensions)
-                    // Returns 204 for functional APIs (prevents website crashes)
-                    // ============================================================================
-                    
-                    // List of KNOWN TRACKER PATTERNS (these get rejected)
-                    const isDefinitelyTracker = 
-                        // Meta/Facebook
-                        url.includes('facebook.com') || 
-                        url.includes('connect.facebook.net') ||
-                        url.includes('fbcdn.net') ||
-                        // Google Analytics/Ads
-                        url.includes('google-analytics.com') ||
-                        url.includes('doubleclick.net') ||
-                        url.includes('googleadservices.com') ||
-                        url.includes('googlesyndication.com') ||
-                        // TikTok
-                        url.includes('tiktok.com') ||
-                        // Microsoft/UET
-                        url.includes('bing.com') ||
-                        // Pinterest
-                        url.includes('pinterest.com') ||
-                        // Common tracker endpoints
-                        url.includes('/collect') ||
-                        url.includes('/tr/') ||
-                        url.includes('/gtag/') ||
-                        url.includes('/beacon') ||
-                        url.includes('/event') ||
-                        url.includes('/track') ||
-                        url.includes('/pixel') ||
-                        url.includes('/conversion') ||
-                        url.includes('/ads') ||
-                        url.includes('/adserver');
-                    
-                    // List of FUNCTIONAL API PATTERNS (these get 204 responses)
-                    const isLikelyFunctionalAPI = 
-                        // Standard API patterns
-                        (url.includes('/api/') && !url.includes('/api/event')) || 
-                        url.includes('/graphql') ||
-                        url.includes('/rest/') ||
-                        url.includes('/ajax/') ||
-                        // WordPress
-                        url.includes('/wp-admin/admin-ajax.php') ||
-                        // E-commerce
-                        url.includes('/checkout') ||
-                        url.includes('/cart') ||
-                        url.includes('/add-to-cart') ||
-                        url.includes('/update-cart') ||
-                        // User actions
-                        url.includes('/login') ||
-                        url.includes('/register') ||
-                        url.includes('/contact') ||
-                        url.includes('/newsletter') ||
-                        // Payment processors
-                        url.includes('/stripe') ||
-                        url.includes('/paypal') ||
-                        url.includes('/braintree');
-                    
-                    // AGGRESSIVE: Reject ALL tracking requests (hides from extensions)
-                    if (isDefinitelyTracker) {
-                        if (DEBUG) console.log(`🔥 AGGRESSIVE: Rejecting tracker: ${url}`);
-                        return Promise.reject(new Error(`Blocked by cookie consent`));
-                    }
-                    // POLITE: Return empty response for functional APIs (prevents crashes)
-                    else if (isLikelyFunctionalAPI) {
-                        if (DEBUG) console.log(`🛡️  SAFE: Returning 204 for API: ${url}`);
-                        return Promise.resolve(new Response(null, { 
-                            status: 204, 
-                            statusText: 'No Content'
-                        }));
-                    }
-                    // DEFAULT: Reject (hides from extensions)
-                    else {
-                        if (DEBUG) console.log(`🛡️  DEFAULT: Rejecting unknown: ${url}`);
-                        return Promise.reject(new Error('Request blocked'));
-                    }
-                } 
-                else {
-                    // ============================================================================
-                    // POLITE MODE (DEFAULT): Safer for production
-                    // Always returns 204 (extensions can see the blocked attempt)
-                    // This is the SAFE default that won't break websites
-                    // ============================================================================
-                    if (DEBUG) console.log(`📊 POLITE: Returning 204 (safer for websites): ${url}`);
+                // List of KNOWN TRACKER PATTERNS (these get rejected)
+                const isDefinitelyTracker = 
+                    // Meta/Facebook
+                    url.includes('facebook.com') || 
+                    url.includes('connect.facebook.net') ||
+                    url.includes('fbcdn.net') ||
+                    // Google Analytics/Ads
+                    url.includes('google-analytics.com') ||
+                    url.includes('doubleclick.net') ||
+                    url.includes('googleadservices.com') ||
+                    url.includes('googlesyndication.com') ||
+                    // TikTok
+                    url.includes('tiktok.com') ||
+                    // Microsoft/UET
+                    url.includes('bing.com') ||
+                    // Pinterest
+                    url.includes('pinterest.com') ||
+                    // Common tracker endpoints
+                    url.includes('/collect') ||
+                    url.includes('/tr/') ||
+                    url.includes('/gtag/') ||
+                    url.includes('/beacon') ||
+                    url.includes('/event') ||
+                    url.includes('/track') ||
+                    url.includes('/pixel') ||
+                    url.includes('/conversion') ||
+                    url.includes('/ads') ||
+                    url.includes('/adserver');
+                
+                // List of FUNCTIONAL API PATTERNS (these get 204 responses)
+                const isLikelyFunctionalAPI = 
+                    // Standard API patterns
+                    (url.includes('/api/') && !url.includes('/api/event')) || 
+                    url.includes('/graphql') ||
+                    url.includes('/rest/') ||
+                    url.includes('/ajax/') ||
+                    // WordPress
+                    url.includes('/wp-admin/admin-ajax.php') ||
+                    // E-commerce
+                    url.includes('/checkout') ||
+                    url.includes('/cart') ||
+                    url.includes('/add-to-cart') ||
+                    url.includes('/update-cart') ||
+                    // User actions
+                    url.includes('/login') ||
+                    url.includes('/register') ||
+                    url.includes('/contact') ||
+                    url.includes('/newsletter') ||
+                    // Payment processors
+                    url.includes('/stripe') ||
+                    url.includes('/paypal') ||
+                    url.includes('/braintree');
+                
+                // AGGRESSIVE: Reject ALL tracking requests (hides from extensions)
+                if (isDefinitelyTracker) {
+                    if (DEBUG) console.log(`🔥 AGGRESSIVE: Rejecting tracker: ${url}`);
+                    return Promise.reject(new Error(`Blocked by cookie consent`));
+                }
+                // POLITE: Return empty response for functional APIs (prevents crashes)
+                else if (isLikelyFunctionalAPI) {
+                    if (DEBUG) console.log(`🛡️  SAFE: Returning 204 for API: ${url}`);
                     return Promise.resolve(new Response(null, { 
                         status: 204, 
                         statusText: 'No Content'
                     }));
                 }
-            }
-            
-            return originalFetch.call(this, resource, init);
-        };
-        
-        if (DEBUG) console.log(`✅ Fetch blocking activated (${AGGRESSIVE_MODE ? 'AGGRESSIVE' : 'POLITE'} mode)`);
-    }
-    
-    // 3. Block XMLHttpRequest
-    if (window.XMLHttpRequest) {
-        const originalOpen = XMLHttpRequest.prototype.open;
-        XMLHttpRequest.prototype.open = function (method, url) {
-            if (shouldBlockDomain(url)) {
-                if (DEBUG) console.log(`🛡️ Blocked XHR request: ${url}`);
-                this._blocked = true;
-                return;
-            }
-            return originalOpen.apply(this, arguments);
-        };
-        
-        const originalSend = XMLHttpRequest.prototype.send;
-        XMLHttpRequest.prototype.send = function (body) {
-            if (this._blocked) {
-                if (DEBUG) console.log(`🛡️ Blocked XHR send`);
-                return;
-            }
-            return originalSend.apply(this, arguments);
-        };
-        
-        if (DEBUG) console.log("✅ XHR blocking activated");
-    }
-    
-    // 4. Block sendBeacon (with AGGRESSIVE_MODE control)
-    if (navigator.sendBeacon) {
-        const originalBeacon = navigator.sendBeacon;
-        navigator.sendBeacon = function(url, data) {
-            if (shouldBlockDomain(url)) {
-                if (DEBUG) console.log('🛡️ Blocked beacon:', url);
-                
-                // AGGRESSIVE MODE: Return false (hides from extensions)
-                if (AGGRESSIVE_MODE) {
-                    return false;
-                }
-                // POLITE MODE (DEFAULT): Return true but don't send
+                // DEFAULT: Reject (hides from extensions)
                 else {
-                    return true; // Safer for websites
+                    if (DEBUG) console.log(`🛡️  DEFAULT: Rejecting unknown: ${url}`);
+                    return Promise.reject(new Error('Request blocked'));
                 }
+            } 
+            else {
+                // ============================================================================
+                // POLITE MODE (DEFAULT): Safer for production
+                // Always returns 204 (extensions can see the blocked attempt)
+                // This is the SAFE default that won't break websites
+                // ============================================================================
+                if (DEBUG) console.log(`📊 POLITE: Returning 204 (safer for websites): ${url}`);
+                return Promise.resolve(new Response(null, { 
+                    status: 204, 
+                    statusText: 'No Content'
+                }));
             }
-            return originalBeacon.call(this, url, data);
-        };
-        
-        if (DEBUG) console.log(`✅ sendBeacon blocking activated (${AGGRESSIVE_MODE ? 'returns false' : 'returns true'})`);
-    }
-    
-    // 5. Block iframes
-    const iframeObserver = new MutationObserver(function (mutations) {
-        mutations.forEach(function (mutation) {
-            mutation.addedNodes.forEach(function (node) {
-                if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
-                    if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
-                    node.remove();
-                }
-            });
-        });
-    });
-    
-    iframeObserver.observe(document.documentElement, {
-        childList: true,
-        subtree: true
-    });
-    
-    if (DEBUG) console.log("✅ Iframe blocking activated");
-    
-    // 6. Block and delete cookies - LIMITED INTERVAL (PERFORMANCE FIX)
-    function blockAndDeleteCookies() {
-        document.cookie.split(';').forEach(function (cookie) {
-            const [name] = cookie.trim().split('=');
-            if (name && shouldBlockCookie(name)) {
-                deleteCookieEverywhere(name);
-                if (DEBUG) console.log(`🛡️ Deleted blocked cookie: ${name}`);
-            }
-        });
-    }
-    
-    // ============================================================================
-    // CRITICAL FIX: LIMITED COOKIE CLEANUP INTERVAL (like Cookiebot/OneTrust)
-    // Runs 10 times then stops - saves CPU/battery
-    // ============================================================================
-    blockAndDeleteCookies();
-    let cookieCleanupRuns = 0;
-    const cookieCleanupInterval = setInterval(() => {
-        blockAndDeleteCookies();
-        cookieCleanupRuns++;
-        if (cookieCleanupRuns >= 9) { // 10 total runs (0-9)
-            clearInterval(cookieCleanupInterval);
-            if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
         }
-    }, 1000);
-
-
-
-
-// Cleanup functions storage
-let cleanupFunctions = [];
-
-// Named function for beforeunload cleanup
-function handleBeforeUnload() {
-    clearInterval(cookieCleanupInterval);
-    iframeObserver.disconnect();
+        
+        return window.__originalFetch.call(this, resource, init);
+    };
     
-    // Clean all registered cleanup functions
-    cleanupFunctions.forEach(fn => fn());
-    cleanupFunctions = [];
+    if (DEBUG) console.log(`✅ Fetch blocking activated (${AGGRESSIVE_MODE ? 'AGGRESSIVE' : 'POLITE'} mode)`);
+}
+    
+// 3. Block XMLHttpRequest
+if (window.XMLHttpRequest) {
+    // Store originals for cleanup
+    XMLHttpRequest.prototype.__originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.__originalSend = XMLHttpRequest.prototype.send;
+    
+    XMLHttpRequest.prototype.open = function (method, url) {
+        if (shouldBlockDomain(url)) {
+            if (DEBUG) console.log(`🛡️ Blocked XHR request: ${url}`);
+            this._blocked = true;
+            return;
+        }
+        return XMLHttpRequest.prototype.__originalOpen.apply(this, arguments);
+    };
+    
+    XMLHttpRequest.prototype.send = function (body) {
+        if (this._blocked) {
+            if (DEBUG) console.log(`🛡️ Blocked XHR send`);
+            return;
+        }
+        return XMLHttpRequest.prototype.__originalSend.apply(this, arguments);
+    };
+    
+    if (DEBUG) console.log("✅ XHR blocking activated");
+}
+    
+  // 4. Block sendBeacon (with AGGRESSIVE_MODE control)
+if (navigator.sendBeacon) {
+    // Store original for cleanup
+    navigator.__originalSendBeacon = navigator.sendBeacon;
+    
+    navigator.sendBeacon = function(url, data) {
+        if (shouldBlockDomain(url)) {
+            if (DEBUG) console.log('🛡️ Blocked beacon:', url);
+            
+            // AGGRESSIVE MODE: Return false (hides from extensions)
+            if (AGGRESSIVE_MODE) {
+                return false;
+            }
+            // POLITE MODE (DEFAULT): Return true but don't send
+            else {
+                return true; // Safer for websites
+            }
+        }
+        return navigator.__originalSendBeacon.call(this, url, data);
+    };
+    
+    if (DEBUG) console.log(`✅ sendBeacon blocking activated (${AGGRESSIVE_MODE ? 'returns false' : 'returns true'})`);
+}
+    
+/* ===================== IMPLEMENT BLOCKING ===================== */
+
+// 5. Block iframes
+const iframeObserver = new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(function (node) {
+            if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
+                if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
+                node.remove();
+            }
+        });
+    });
+});
+
+iframeObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+});
+
+// Store in cleanup registry
+window.cookieBlockingCleanup.iframeObserver = iframeObserver;
+
+if (DEBUG) console.log("✅ Iframe blocking activated");
+
+
+
+// 6. Block and delete cookies - LIMITED INTERVAL (PERFORMANCE FIX)
+function blockAndDeleteCookies() {
+    document.cookie.split(';').forEach(function (cookie) {
+        const [name] = cookie.trim().split('=');
+        if (name && shouldBlockCookie(name)) {
+            deleteCookieEverywhere(name);
+            if (DEBUG) console.log(`🛡️ Deleted blocked cookie: ${name}`);
+        }
+    });
 }
 
-// ADD: Cleanup on page unload with named function
-window.addEventListener('beforeunload', handleBeforeUnload);
-cleanupFunctions.push(() => {
-    window.removeEventListener('beforeunload', handleBeforeUnload);
-});
+// ============================================================================
+// CRITICAL FIX: LIMITED COOKIE CLEANUP INTERVAL (like Cookiebot/OneTrust)
+// Runs 10 times then stops - saves CPU/battery
+// ============================================================================
+blockAndDeleteCookies();
+let cookieCleanupRuns = 0;
+const cookieCleanupInterval = setInterval(() => {
+    blockAndDeleteCookies();
+    cookieCleanupRuns++;
+    if (cookieCleanupRuns >= 9) { // 10 total runs (0-9)
+        clearInterval(cookieCleanupInterval);
+        if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
+    }
+}, 1000);
+
+// Store in cleanup registry
+window.cookieBlockingCleanup.cookieCleanupInterval = cookieCleanupInterval;
+window.cookieBlockingCleanup.cookieCleanupRuns = cookieCleanupRuns;
+
+
+
+
+
+// SINGLE SOURCE OF TRUTH: Global event handler management
+if (typeof window.cookieConsentHandlers === 'undefined') {
+    window.cookieConsentHandlers = new Map();
+}
+
+// Function to add managed handlers
+function addGlobalHandler(element, event, handler) {
+    if (!element || !event || !handler) return null;
+    
+    element.addEventListener(event, handler);
+    const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    window.cookieConsentHandlers.set(key, { element, event, handler });
+    return key;
+}
+
+// Function to remove managed handlers
+function removeGlobalHandler(key) {
+    if (window.cookieConsentHandlers.has(key)) {
+        const { element, event, handler } = window.cookieConsentHandlers.get(key);
+        element.removeEventListener(event, handler);
+        window.cookieConsentHandlers.delete(key);
+    }
+}
+
+// Consolidated cleanup function
+function cleanupAllGlobalHandlers() {
+    if (window.cookieConsentHandlers && window.cookieConsentHandlers.size > 0) {
+        window.cookieConsentHandlers.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
+        window.cookieConsentHandlers.clear();
+    }
+    
+    if (DEBUG) console.log("✅ All global event handlers cleaned up");
+}
 
 
     
@@ -792,53 +832,122 @@ cleanupFunctions.push(() => {
 
 
 
- /* ===================== CLEANUP SYSTEM ===================== */
 /* ===================== CLEANUP SYSTEM ===================== */
-/* ===================== CLEANUP SYSTEM ===================== */
-    // Ensure cleanupFunctions exists
-    if (typeof window.cleanupFunctions === 'undefined') {
-        window.cleanupFunctions = [];
-    }
-    
-    // Simple cleanup function
+// SINGLE CONSOLIDATED CLEANUP FUNCTION
 function cleanup() {
-    // Disconnect iframe observer
+    if (DEBUG) console.log("🔄 Starting complete cleanup...");
+    
+    // 1. Clean up iframe observer
     try {
-        iframeObserver.disconnect();
+        if (window.cookieBlockingCleanup.iframeObserver) {
+            window.cookieBlockingCleanup.iframeObserver.disconnect();
+            window.cookieBlockingCleanup.iframeObserver = null;
+            if (DEBUG) console.log("✅ Iframe observer cleaned");
+        }
     } catch (e) {
-        console.log('Iframe observer already disconnected');
+        if (DEBUG) console.log('Iframe observer already disconnected');
     }
     
-    // Clear cookie cleanup interval
+    // 2. Clean up cookie cleanup interval
     try {
-        clearInterval(cookieCleanupInterval);
+        if (window.cookieBlockingCleanup.cookieCleanupInterval) {
+            clearInterval(window.cookieBlockingCleanup.cookieCleanupInterval);
+            window.cookieBlockingCleanup.cookieCleanupInterval = null;
+            if (DEBUG) console.log("✅ Cookie cleanup interval cleaned");
+        }
     } catch (e) {
-        console.log('Cookie cleanup interval already cleared');
+        if (DEBUG) console.log('Cookie cleanup interval already cleared');
     }
     
-    // NEW: Clean up all event listeners
-    cleanupAllListeners();
-    
-    // Execute cleanup functions if they exist
-    if (window.cleanupFunctions && window.cleanupFunctions.length > 0) {
-        window.cleanupFunctions.forEach(fn => {
-            try {
-                if (typeof fn === 'function') {
-                    fn();
-                }
-            } catch (e) {
-                console.warn('Error in cleanup function:', e);
-            }
-        });
-        window.cleanupFunctions = [];
+    // 3. Reset counter
+    if (window.cookieBlockingCleanup) {
+        window.cookieBlockingCleanup.cookieCleanupRuns = 0;
     }
     
-    if (DEBUG) console.log("✅ Cleanup completed");
+    // 4. Clean up document.write patches
+    try {
+        if (document.__cookieDocumentWritePatched) {
+            document.write = document.__originalWrite;
+            document.writeln = document.__originalWriteln;
+            delete document.__cookieDocumentWritePatched;
+            delete document.__originalWrite;
+            delete document.__originalWriteln;
+            if (DEBUG) console.log("✅ Document write patches cleaned");
+        }
+    } catch (e) {
+        if (DEBUG) console.log('Document write patches already cleaned');
+    }
+    
+    // 5. Clean up createElement patch
+    try {
+        if (document.__cookieCreateElementPatched) {
+            document.createElement = document.__originalCreateElement;
+            delete document.__cookieCreateElementPatched;
+            delete document.__originalCreateElement;
+            if (DEBUG) console.log("✅ CreateElement patch cleaned");
+        }
+    } catch (e) {
+        if (DEBUG) console.log('CreateElement patch already cleaned');
+    }
+    
+    // 6. Clean up fetch patch
+    try {
+        if (window.__originalFetch) {
+            window.fetch = window.__originalFetch;
+            delete window.__originalFetch;
+            if (DEBUG) console.log("✅ Fetch patch cleaned");
+        }
+    } catch (e) {
+        if (DEBUG) console.log('Fetch patch already cleaned');
+    }
+    
+    // 7. Clean up XMLHttpRequest patches
+    try {
+        if (XMLHttpRequest.prototype.__originalOpen) {
+            XMLHttpRequest.prototype.open = XMLHttpRequest.prototype.__originalOpen;
+            XMLHttpRequest.prototype.send = XMLHttpRequest.prototype.__originalSend;
+            delete XMLHttpRequest.prototype.__originalOpen;
+            delete XMLHttpRequest.prototype.__originalSend;
+            if (DEBUG) console.log("✅ XMLHttpRequest patches cleaned");
+        }
+    } catch (e) {
+        if (DEBUG) console.log('XMLHttpRequest patches already cleaned');
+    }
+    
+    // 8. Clean up sendBeacon patch
+    try {
+        if (navigator.__originalSendBeacon) {
+            navigator.sendBeacon = navigator.__originalSendBeacon;
+            delete navigator.__originalSendBeacon;
+            if (DEBUG) console.log("✅ sendBeacon patch cleaned");
+        }
+    } catch (e) {
+        if (DEBUG) console.log('sendBeacon patch already cleaned');
+    }
+    
+    // 9. Clean up all global event handlers (only use this system)
+    cleanupAllGlobalHandlers();
+    
+    // 10. Clear the cleanup registry itself
+    window.cookieBlockingCleanup = {};
+
+    // 11 Clean up cross-domain message listener
+    try {
+        if (window.__crossDomainMessageHandler) {
+            window.removeEventListener('message', window.__crossDomainMessageHandler);
+            delete window.__crossDomainMessageHandler;
+            if (DEBUG) console.log("✅ Cross-domain message listener cleaned");
+        }
+    } catch (e) {
+        if (DEBUG) console.log('Cross-domain listener already cleaned');
+    }
+    
+    
+    if (DEBUG) console.log("✅ Complete cleanup performed");
 }
 
-    // Register the cleanup function globally
-    window.cleanupCookieConsent = cleanup;
-
+// Register the cleanup function globally
+window.cleanupCookieConsent = cleanup;
     
     /* ===================== BANNER HOOKS ===================== */
     
@@ -897,6 +1006,292 @@ function cleanup() {
             console.log("🟡 Page reload disabled - changes applied without refresh");
         }
     };
+
+
+
+
+/* ===================== CROSS-DOMAIN CONSENT FUNCTIONS ===================== */
+
+// Check if cross-domain sharing is enabled
+function isCrossDomainEnabled() {
+    return config.crossDomainConfig && 
+           config.crossDomainConfig.enabled && 
+           config.crossDomainConfig.domains.length > 0;
+}
+
+// Validate if a domain is in the allowed list
+function isValidCrossDomain(domain) {
+    const domains = config.crossDomainConfig.domains;
+    return domains.some(allowedDomain => {
+        // Remove www. and protocol for comparison
+        const cleanDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
+        const cleanAllowed = allowedDomain.replace(/^(https?:\/\/)?(www\.)?/, '');
+        return cleanDomain === cleanAllowed || cleanDomain.endsWith('.' + cleanAllowed);
+    });
+}
+
+// Generate a consent signature for verification
+function generateConsentSignature(consentData) {
+    const str = JSON.stringify(consentData) + window.location.hostname + Date.now();
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
+}
+
+// Save consent for cross-domain sharing
+function saveConsentForCrossDomain(consentData) {
+    if (!isCrossDomainEnabled()) return;
+    
+    try {
+        // Create cross-domain consent object
+        const crossDomainConsent = {
+            version: '1.1',
+            data: consentData,
+            timestamp: new Date().getTime(),
+            source: window.location.hostname,
+            signature: generateConsentSignature(consentData),
+            expires: new Date().getTime() + (config.crossDomainConfig.expirationDays * 24 * 60 * 60 * 1000)
+        };
+        
+        // Store based on selected method
+        const method = config.crossDomainConfig.syncMethod;
+        
+        if (method === 'localStorage' || method === 'both') {
+            localStorage.setItem(config.crossDomainConfig.storageKey, JSON.stringify(crossDomainConsent));
+        }
+        
+        if (method === 'postMessage' || method === 'both') {
+            broadcastConsentToDomains(crossDomainConsent);
+        }
+        
+        console.log('✅ Consent saved for cross-domain sharing');
+        
+    } catch (error) {
+        console.error('❌ Error saving cross-domain consent:', error);
+    }
+}
+
+// Broadcast consent to other domains
+function broadcastConsentToDomains(consentData) {
+    if (!config.crossDomainConfig.usePostMessage) return;
+    
+    const message = {
+        type: 'CROSS_DOMAIN_CONSENT',
+        payload: consentData,
+        origin: window.location.origin,
+        timestamp: Date.now()
+    };
+    
+    // Send to parent windows
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage(message, '*');
+    }
+    
+    // Send to opener windows
+    if (window.opener) {
+        window.opener.postMessage(message, '*');
+    }
+    
+    // Log for debugging
+    if (window.COOKIE_SETTINGS?.DEBUG) {
+        console.log('📤 Broadcasting consent to other domains:', message);
+    }
+}
+
+// Load consent from cross-domain storage
+function loadCrossDomainConsent() {
+    if (!isCrossDomainEnabled()) return null;
+    
+    try {
+        // Try localStorage first
+        if (config.crossDomainConfig.syncMethod === 'localStorage' || config.crossDomainConfig.syncMethod === 'both') {
+            const stored = localStorage.getItem(config.crossDomainConfig.storageKey);
+            if (stored) {
+                const consentData = JSON.parse(stored);
+                
+                // Check expiration
+                if (consentData.expires && consentData.expires > Date.now()) {
+                    // Verify signature
+                    if (consentData.signature === generateConsentSignature(consentData.data)) {
+                        return consentData.data;
+                    }
+                } else {
+                    // Remove expired consent
+                    localStorage.removeItem(config.crossDomainConfig.storageKey);
+                }
+            }
+        }
+        
+        return null;
+        
+    } catch (error) {
+        console.error('❌ Error loading cross-domain consent:', error);
+        return null;
+    }
+}
+
+// Apply cross-domain consent
+function applyCrossDomainConsent(consentData) {
+    if (!consentData || !config.crossDomainConfig.autoApply) return false;
+    
+    try {
+        console.log('🔄 Applying cross-domain consent:', consentData.status);
+        
+        // 1. Save to local cookie
+        setCookie('cookie_consent', JSON.stringify(consentData), config.crossDomainConfig.expirationDays);
+        
+        // 2. Update all consent modes
+        updateAllConsentModes(consentData);
+        
+        // 3. Update blocking system
+        updateBlockingSystem(consentData);
+        
+        // 4. Update UI
+        if (config.behavior.showFloatingButton) {
+            showFloatingButton();
+        }
+        
+        // 5. Hide banner if showing
+        hideCookieBanner();
+        
+        // 6. Track in dataLayer
+        window.dataLayer.push({
+            'event': 'cross_domain_consent_applied',
+            'consent_source': 'cross_domain',
+            'consent_status': consentData.status,
+            'original_domain': consentData.sourceDomain || 'unknown',
+            'timestamp': new Date().toISOString()
+        });
+        
+        console.log('✅ Cross-domain consent applied successfully');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error applying cross-domain consent:', error);
+        return false;
+    }
+}
+
+// Update all consent modes (Google, UET, Clarity)
+function updateAllConsentModes(consentData) {
+    // Update Google Consent Mode
+    const consentStates = {
+        'ad_storage': consentData.categories.advertising ? 'granted' : 'denied',
+        'analytics_storage': consentData.categories.analytics ? 'granted' : 'denied',
+        'ad_user_data': consentData.categories.advertising ? 'granted' : 'denied',
+        'ad_personalization': consentData.categories.advertising ? 'granted' : 'denied',
+        'personalization_storage': consentData.categories.performance ? 'granted' : 'denied',
+        'functionality_storage': consentData.categories.functional ? 'granted' : 'denied',
+        'security_storage': 'granted'
+    };
+    
+    gtag('consent', 'update', consentStates);
+    
+    // Update Microsoft UET
+    if (config.uetConfig.enabled) {
+        const uetConsentState = consentData.categories.advertising ? 'granted' : 'denied';
+        if (window.uetq) {
+            window.uetq.push('consent', 'update', {
+                'ad_storage': uetConsentState
+            });
+        }
+    }
+    
+    // Update Microsoft Clarity
+    if (config.clarityConfig.enabled && consentData.categories.analytics) {
+        if (typeof window.clarity === 'function') {
+            window.clarity('consent', consentData.categories.analytics);
+        }
+    }
+}
+
+// Update blocking system based on consent
+function updateBlockingSystem(consentData) {
+    if (consentData.status === 'accepted') {
+        if (typeof window.enableAllTracking === 'function') {
+            window.enableAllTracking();
+        }
+    } else if (consentData.status === 'rejected') {
+        if (typeof window.disableAllTracking === 'function') {
+            window.disableAllTracking();
+        }
+    } else if (consentData.status === 'custom') {
+        if (typeof window.enableTrackingByCategory === 'function') {
+            window.enableTrackingByCategory({
+                analytics: consentData.categories.analytics || false,
+                advertising: consentData.categories.advertising || false,
+                performance: consentData.categories.performance || false
+            });
+        }
+    }
+}
+
+// Setup message listener for real-time consent sharing
+function setupCrossDomainMessageListener() {
+    if (!isCrossDomainEnabled()) return;
+    
+    function handleCrossDomainMessage(event) {
+        // Validate message
+        if (!event.data || event.data.type !== 'CROSS_DOMAIN_CONSENT') return;
+        
+        // Validate origin if configured
+        if (config.crossDomainConfig.validation.requireSourceVerification) {
+            if (!isValidCrossDomain(event.origin)) {
+                console.warn('⚠️ Cross-domain message from untrusted origin:', event.origin);
+                return;
+            }
+        }
+        
+        // Check timestamp
+        const now = Date.now();
+        const tolerance = config.crossDomainConfig.validation.timestampTolerance;
+        if (Math.abs(now - event.data.timestamp) > tolerance) {
+            console.warn('⚠️ Cross-domain message too old:', event.data.timestamp);
+            return;
+        }
+        
+        try {
+            const consentData = event.data.payload.data;
+            applyCrossDomainConsent(consentData);
+            
+            // Also save for future visits
+            if (config.crossDomainConfig.syncMethod === 'localStorage' || config.crossDomainConfig.syncMethod === 'both') {
+                localStorage.setItem(config.crossDomainConfig.storageKey, JSON.stringify(event.data.payload));
+            }
+            
+        } catch (error) {
+            console.error('❌ Error processing cross-domain message:', error);
+        }
+    }
+    
+    window.addEventListener('message', handleCrossDomainMessage);
+    
+    // Store for cleanup
+    window.__crossDomainMessageHandler = handleCrossDomainMessage;
+}
+
+// Check for existing cross-domain consent on page load
+function checkForCrossDomainConsent() {
+    if (!isCrossDomainEnabled() || !config.crossDomainConfig.autoApply) return false;
+    
+    // Don't apply if we already have local consent
+    if (getCookie('cookie_consent')) return false;
+    
+    const crossDomainConsent = loadCrossDomainConsent();
+    if (crossDomainConsent) {
+        return applyCrossDomainConsent(crossDomainConsent);
+    }
+    
+    return false;
+}
+
+
+
+
     
     /* ===================== UTILITY FUNCTIONS ===================== */
     
@@ -1054,6 +1449,20 @@ const config = {
     privacyPolicyUrl: 'https://yourdomain.com/privacy-policy', // Add your full privacy policy URL here
 
 
+        // Cross-domain consent sharing configuration
+    crossDomainConfig: {
+        enabled: true, // Set to true to enable cross-domain sharing
+        domains: [], // Add your domains here: ["abcd.com", "xyz.com", "efgh.com"]
+        storageKey: "__cross_domain_consent__",
+        syncMethod: 'postMessage', // Options: 'postMessage', 'localStorage', 'both'
+        expirationDays: 365, // Consent expires after X days (set to 365 for 1 year)
+        autoApply: true, // Automatically apply consent from other domains
+        requireSecureConnection: true, // Only share over HTTPS
+        validation: {
+            requireSourceVerification: true,
+            timestampTolerance: 60000 // Accept consent up to 1 minute old
+        }
+    },
 
     // NEW: Cookie Banner Trigger Configuration
     bannerTriggers: {
@@ -1395,30 +1804,9 @@ geoConfig: {
 // ... end of config object
 
 /* ===================== EVENT HANDLER MANAGEMENT ===================== */
-const eventHandlers = new Map();
-
-function addManagedListener(element, event, handler) {
-    element.addEventListener(event, handler);
-    const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    eventHandlers.set(key, { element, event, handler });
-    return key;
-}
-
-function removeManagedListener(key) {
-    if (eventHandlers.has(key)) {
-        const { element, event, handler } = eventHandlers.get(key);
-        element.removeEventListener(event, handler);
-        eventHandlers.delete(key);
-    }
-}
-
-function cleanupAllListeners() {
-    eventHandlers.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-    });
-    eventHandlers.clear();
-    console.log('✅ All event listeners cleaned up');
-}
+/* ===================== EVENT HANDLER MANAGEMENT ===================== */
+// Using the consolidated global system from Step 1
+// Remove duplicate definitions - keep only the global ones above
 
 // ============== IMPLEMENTATION SECTION ============== //
 
@@ -1449,9 +1837,8 @@ if (typeof window.uetq === 'undefined') {
 
 
 // Initialize cleanupFunctions array GLOBALLY
-if (typeof window.cleanupFunctions === 'undefined') {
-    window.cleanupFunctions = [];
-}
+// Consolidated initialization - already done in Step 1
+// Remove this duplicate initialization
 
 function gtag() { dataLayer.push(arguments); }
 
@@ -4127,6 +4514,23 @@ function injectConsentHTML(detectedCookies, language = 'en') {
 
 // Check if banner should be shown based on schedule
 function shouldShowBanner() {
+
+        // Don't show banner if we have cross-domain consent
+    if (isCrossDomainEnabled() && config.crossDomainConfig.autoApply && getCookie('cookie_consent')) {
+        const consentCookie = getCookie('cookie_consent');
+        if (consentCookie) {
+            try {
+                const consentData = JSON.parse(consentCookie);
+                // Check if this consent came from cross-domain
+                if (consentData.source === 'cross_domain') {
+                    return false;
+                }
+            } catch (e) {
+                // Continue with normal flow
+            }
+        }
+    }
+    
     if (!config.behavior.bannerSchedule.enabled) {
         return true;
     }
@@ -4194,6 +4598,16 @@ function shouldShowBanner() {
 // Main initialization function
 function initializeCookieConsent(detectedCookies, language) {
 
+
+        // NEW: Check for cross-domain consent first
+    if (checkForCrossDomainConsent()) {
+        console.log('✅ Using cross-domain consent, skipping banner');
+        return;
+    }
+    
+    // NEW: Setup cross-domain message listener
+    setupCrossDomainMessageListener();
+
    // NEW: Check if we should show on this URL
     if (!shouldShowOnCurrentUrl()) {
         console.log('Cookie consent banner disabled for this URL');
@@ -4227,8 +4641,7 @@ function initializeCookieConsent(detectedCookies, language) {
 
 
 
-    // Microsoft Clarity initialization
-// Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
+    // Microsoft Clarity initialization - UPDATED FOR COMPLIANCE
 function initializeClarity(consentGranted) {
     if (!config.clarityConfig.enabled) return;
     
@@ -4254,31 +4667,6 @@ function initializeClarity(consentGranted) {
             (window.clarity.q = window.clarity.q || []).push(arguments);
         };
         window.clarity('consent', false);
-    }
-}
-
-
-
-// Function to send consent signal to Microsoft Clarity
-function sendClarityConsentSignal(consentGranted) {
-    if (!config.clarityConfig.enabled || !config.clarityConfig.sendConsentSignal) return;
-    
-    try {
-        if (typeof window.clarity !== 'undefined') {
-            // Send consent signal to Clarity
-            window.clarity('consent', consentGranted);
-            console.log('Microsoft Clarity consent signal sent:', consentGranted);
-            
-            // Push to dataLayer for tracking
-            window.dataLayer.push({
-                'event': 'clarity_consent_signal',
-                'clarity_consent': consentGranted,
-                'timestamp': new Date().toISOString(),
-                'location_data': locationData
-            });
-        }
-    } catch (error) {
-        console.error('Failed to send Clarity consent signal:', error);
     }
 }
     
@@ -4518,12 +4906,15 @@ function handleCookieValueToggle(e) {
     }
 }
 
-// Setup all event listeners - SIMPLIFIED VERSION
+
+// Setup all event listeners
 function setupEventListeners() {
-    console.log('Setting up event listeners with proper cleanup...');
+    
     
     // Clear any existing listeners first
-    cleanupAllListeners();
+    if (typeof cleanupAllGlobalHandlers === 'function') {
+        cleanupAllGlobalHandlers();
+    }
     
     // Main banner buttons
     const acceptAllBtn = document.getElementById('acceptAllBtn');
@@ -4542,73 +4933,74 @@ function setupEventListeners() {
     // Language selector
     const languageSelect = document.getElementById('cookieLanguageSelect');
     
-    // Add managed listeners
+
+    
+    // Add click listeners with better error handling
     if (acceptAllBtn) {
-        addManagedListener(acceptAllBtn, 'click', handleAcceptAllClick);
-        console.log('✓ Accept All button listener added (managed)');
+        
+        acceptAllBtn.addEventListener('click', handleAcceptAllClick);
     }
     
     if (rejectAllBtn) {
-        addManagedListener(rejectAllBtn, 'click', handleRejectAllClick);
-        console.log('✓ Reject All button listener added (managed)');
+       
+        rejectAllBtn.addEventListener('click', handleRejectAllClick);
     }
     
     if (adjustConsentBtn) {
-        addManagedListener(adjustConsentBtn, 'click', handleAdjustConsentClick);
-        console.log('✓ Adjust Consent button listener added (managed)');
+        
+        adjustConsentBtn.addEventListener('click', handleAdjustConsentClick);
     }
     
     if (acceptAllSettingsBtn) {
-        addManagedListener(acceptAllSettingsBtn, 'click', handleAcceptAllSettingsClick);
-        console.log('✓ Accept All Settings button listener added (managed)');
+        
+        acceptAllSettingsBtn.addEventListener('click', handleAcceptAllSettingsClick);
     }
     
     if (rejectAllSettingsBtn) {
-        addManagedListener(rejectAllSettingsBtn, 'click', handleRejectAllSettingsClick);
-        console.log('✓ Reject All Settings button listener added (managed)');
+       
+        rejectAllSettingsBtn.addEventListener('click', handleRejectAllSettingsClick);
     }
     
     if (saveSettingsBtn) {
-        addManagedListener(saveSettingsBtn, 'click', handleSaveSettingsClick);
-        console.log('✓ Save Settings button listener added (managed)');
+        
+        saveSettingsBtn.addEventListener('click', handleSaveSettingsClick);
     }
     
     if (closeModalBtn) {
-        addManagedListener(closeModalBtn, 'click', handleCloseModalClick);
-        console.log('✓ Close Modal button listener added (managed)');
+       
+        closeModalBtn.addEventListener('click', handleCloseModalClick);
     }
     
     if (floatingButton) {
-        addManagedListener(floatingButton, 'click', handleFloatingButtonClick);
-        console.log('✓ Floating Button listener added (managed)');
+        
+        floatingButton.addEventListener('click', handleFloatingButtonClick);
     }
     
     if (languageSelect) {
-        addManagedListener(languageSelect, 'change', handleLanguageChange);
-        console.log('✓ Language Selector listener added (managed)');
+       
+        languageSelect.addEventListener('change', handleLanguageChange);
     }
     
-    // Cookie details toggle - handle dynamically added elements
-    document.querySelectorAll('.cookie-details-header').forEach(header => {
-        addManagedListener(header, 'click', handleHeaderClick);
+    // Cookie details toggle
+    document.querySelectorAll('.cookie-details-header').forEach((header, index) => {
+        
+        header.addEventListener('click', handleHeaderClick);
     });
     
-    // Cookie value toggle - add to document with event delegation
-    addManagedListener(document, 'click', handleCookieValueToggle);
+    // Cookie value toggle
+   
+    document.addEventListener('click', handleCookieValueToggle);
     
-    // Also add to the blur overlay
+    // Add to the blur overlay
     const overlay = document.getElementById('cookieBlurOverlay');
     if (overlay) {
-        addManagedListener(overlay, 'click', handleOverlayClick);
+        
+        overlay.addEventListener('click', handleOverlayClick);
     }
     
-    console.log(`✅ All event listeners set up (${eventHandlers.size} total)`);
     
-    // Add cleanup to your existing cleanupFunctions array
-    if (typeof window.cleanupFunctions !== 'undefined') {
-        window.cleanupFunctions.push(cleanupAllListeners);
-    }
 }
+
 
 // Show/hide functions with animations
 function showCookieBanner() {
@@ -4734,11 +5126,13 @@ function enableInteractionRestrictions() {
     }
     
     // Prevent clicking outside banner
+// Prevent clicking outside banner
 if (config.behavior.restrictInteraction.preventClick) {
     overlay.classList.add('block-clicks');
-    addManagedListener(overlay, 'click', handleOverlayClick);
+    overlay.addEventListener('click', handleOverlayClick);
 }
 }
+
 
 // NEW: Disable interaction restrictions
 function disableInteractionRestrictions() {
@@ -4753,24 +5147,8 @@ function disableInteractionRestrictions() {
     // Enable clicking
     overlay.classList.remove('block-clicks');
     
-    // Remove click blocker using named function
-    overlay.removeEventListener('click', handleOverlayClick, true);
-}
-// NEW: Disable interaction restrictions
-function disableInteractionRestrictions() {
-    const overlay = document.getElementById('cookieBlurOverlay');
-    
-    // Remove blur effect
-    overlay.style.display = 'none';
-    
-    // Enable scrolling
-    document.body.classList.remove('no-scroll');
-    
-    // Enable clicking
-    overlay.classList.remove('block-clicks');
-    
-    // Remove click blocker using named function reference
-    // Note: We don't remove it from eventHandlers here since cleanupAllListeners will handle it
+    // Remove click blocker
+    overlay.removeEventListener('click', handleOverlayClick);
 }
 
 // NEW: Toggle functions for manual control
@@ -4865,6 +5243,8 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     
     addStoredParamsToURL();
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
+    // Save for cross-domain sharing
+    saveConsentForCrossDomain(consentData);
     updateConsentMode(consentData);
     
  
@@ -4892,7 +5272,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ All cookies accepted, page will reload");
 
      // ADD THIS LINE:
-    cleanup(); // Clean up memory
+    cleanup(); // Clean up memory using consolidated system
     
 }
 
@@ -4938,6 +5318,8 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     };
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
+    // Save for cross-domain sharing
+    saveConsentForCrossDomain(consentData);
     updateConsentMode(consentData);
     clearNonEssentialCookies();
     
@@ -4967,7 +5349,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ All cookies rejected, page will reload");
 
       // ADD THIS LINE:
-    cleanup(); // Clean up memory
+   cleanup(); // Clean up memory using consolidated system
     
 }
 
@@ -5046,6 +5428,8 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     };
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
+    // Save for cross-domain sharing
+    saveConsentForCrossDomain(consentData);
     updateConsentMode(consentData);
     
     // Load scripts based on consent
@@ -5123,7 +5507,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     console.log("✅ Custom settings saved and page will reload");
 
     // ADD THIS LINE:
-    cleanup(); // Clean up memory
+    cleanup(); // Clean up memory using consolidated system
     
 }
 
@@ -5553,12 +5937,48 @@ if (typeof window !== 'undefined') {
         saveSettings: saveCustomSettings,
         changeLanguage: changeLanguage,
         config: config,
-         // NEW: Control functions for restrictions
+             // NEW: Control functions for restrictions
         toggleRestrictions: toggleRestrictions,
         toggleScrollRestriction: toggleScrollRestriction,
         toggleClickRestriction: toggleClickRestriction,
         toggleBlurEffect: toggleBlurEffect,
-        setBlurDensity: setBlurDensity
+        setBlurDensity: setBlurDensity,
+        
+        // NEW: Cross-domain control functions
+        enableCrossDomain: function(domains, options = {}) {
+            config.crossDomainConfig.enabled = true;
+            config.crossDomainConfig.domains = domains || [];
+            
+            if (options.expirationDays) {
+                config.crossDomainConfig.expirationDays = options.expirationDays;
+            }
+            if (options.syncMethod) {
+                config.crossDomainConfig.syncMethod = options.syncMethod;
+            }
+            
+            console.log('✅ Cross-domain sharing enabled');
+            console.log('   Domains:', config.crossDomainConfig.domains);
+            console.log('   Expires after:', config.crossDomainConfig.expirationDays, 'days');
+        },
+        
+        disableCrossDomain: function() {
+            config.crossDomainConfig.enabled = false;
+            console.log('✅ Cross-domain sharing disabled');
+        },
+        
+        getCrossDomainStatus: function() {
+            return {
+                enabled: config.crossDomainConfig.enabled,
+                domains: config.crossDomainConfig.domains,
+                storedConsent: loadCrossDomainConsent(),
+                expirationDays: config.crossDomainConfig.expirationDays
+            };
+        },
+        
+        clearCrossDomainConsent: function() {
+            localStorage.removeItem(config.crossDomainConfig.storageKey);
+            console.log('✅ Cross-domain consent cleared');
+        }
     };
 
 
@@ -5629,27 +6049,66 @@ window.showBlockingSettings = function() {
 
 
 // Clean up event listeners on page unload
-if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', cleanupAllListeners);
-    window.addEventListener('pagehide', cleanupAllListeners);
-}
-
 // Optional: Debug function for testing
 if (typeof window !== 'undefined') {
     window.debugEventListeners = function() {
         console.log('📊 Event Handler Debug:');
-        console.log(`Total managed listeners: ${eventHandlers.size}`);
+        console.log(`Total global handlers: ${window.cookieConsentHandlers ? window.cookieConsentHandlers.size : 0}`);
         
-        eventHandlers.forEach(({ element, event, handler }, key) => {
-            console.log(key, {
-                element: element.id || element.className || element.tagName,
-                event: event,
-                handler: handler.name || 'anonymous'
+        if (window.cookieConsentHandlers) {
+            window.cookieConsentHandlers.forEach(({ element, event, handler }, key) => {
+                console.log(key, {
+                    element: element.id || element.className || element.tagName,
+                    event: event,
+                    handler: handler.name || 'anonymous'
+                });
             });
-        });
+        }
     };
 }
 
 
-  
+ // TEST FUNCTION: Add this to manually test buttons
+window.testCookieButtons = function() {
+    console.log('🧪 TEST: Testing cookie buttons...');
+    
+    // Test if buttons exist
+    const buttons = {
+        'Accept All': document.getElementById('acceptAllBtn'),
+        'Reject All': document.getElementById('rejectAllBtn'),
+        'Adjust': document.getElementById('adjustConsentBtn'),
+        'Accept Settings': document.getElementById('acceptAllSettingsBtn'),
+        'Reject Settings': document.getElementById('rejectAllSettingsBtn'),
+        'Save': document.getElementById('saveSettingsBtn')
+    };
+    
+    for (const [name, button] of Object.entries(buttons)) {
+        if (button) {
+            console.log(`✅ ${name} button: FOUND (click to test)`);
+            // Add a test click handler
+            button.addEventListener('click', function() {
+                console.log(`✅ TEST: ${name} button clicked successfully!`);
+            }, { once: true }); // Only fires once for testing
+        } else {
+            console.log(`❌ ${name} button: NOT FOUND`);
+        }
+    }
+    
+    // Try to show banner if not shown
+    const banner = document.getElementById('cookieConsentBanner');
+    if (banner && !banner.classList.contains('show')) {
+        console.log('🧪 TEST: Showing banner for testing...');
+        showCookieBanner();
+    }
+};
+
+// Also add a simple reset function
+window.resetCookieConsent = function() {
+    console.log('🔄 Resetting cookie consent...');
+    document.cookie = "cookie_consent=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+    localStorage.removeItem('__user_cookie_consent__');
+    localStorage.removeItem('__user_cookie_categories__');
+    console.log('✅ Cookie consent reset. Refresh the page.');
+}; 
 }
+
