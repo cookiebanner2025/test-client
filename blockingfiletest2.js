@@ -5399,18 +5399,16 @@ function rejectAllCookies() {
     
     console.log("✅ All cookies rejected");
     
-    // ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
-    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
-        // Only reload if reload feature is enabled
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 500); // Increased delay for cross-domain sync
-        } else {
-            console.log("🟡 Page reload disabled - changes saved without refresh");
-        }
+    // SIMPLE FIX: Always reload when rejecting all cookies
+    console.log("✅ All cookies rejected - reloading page to apply changes");
+    
+    // Check if reload is enabled in settings
+    if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED !== false) {
+        setTimeout(() => {
+            window.location.reload();
+        }, 300);
     } else {
-        console.log("🟢 Cross-domain consent applied, no reload needed");
+        console.log("🟡 Page reload disabled in settings");
     }
 
     cleanup(); // Clean up memory using consolidated system
@@ -5553,22 +5551,22 @@ function saveCustomSettings() {
    
     console.log("✅ Custom settings saved");
     
-    // ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
-    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
-        // Only reload if reload feature is enabled
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 500); // Increased delay for cross-domain sync
-        } else {
-            console.log("🟡 Page reload disabled - changes saved without refresh");
-        }
+    // SIMPLE FIX: Always reload when saving custom settings
+    console.log("✅ Custom settings saved - reloading page to apply changes");
+    
+    // Check if reload is enabled in settings
+    if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED !== false) {
+        setTimeout(() => {
+            window.location.reload();
+        }, 300);
     } else {
-        console.log("🟢 Cross-domain consent applied, no reload needed");
+        console.log("🟡 Page reload disabled in settings");
     }
 
     cleanup(); // Clean up memory using consolidated system
 }
+
+
 
 // Helper functions
 function clearNonEssentialCookies() {
