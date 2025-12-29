@@ -1237,6 +1237,7 @@ clarityConfig: {
             // Add your trusted domains here (without protocol)
             'dev-rpractice.pantheonsite.io',
             'practicebdhere.myshopify.com',
+            'subdomain.yourdomain.com',
             'yourdomain.com', // ← REPLACE with your actual first domain
             'your-second-domain.com' // ← REPLACE with your actual second domain
         ],
