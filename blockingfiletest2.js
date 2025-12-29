@@ -972,26 +972,34 @@ window.enableTrackingByCategory = function(categories) {
         localStorage.setItem(CONSENT_KEY, "partial");
     }
     
-    if (RELOAD_ENABLED) {
+    // Check if we're in cross-domain mode
+    const isCrossDomain = typeof config !== 'undefined' && config.crossDomain && config.crossDomain.enabled;
+    
+    // Only reload if not in cross-domain mode or if cross-domain auto-apply is disabled
+    if (RELOAD_ENABLED && (!isCrossDomain || !config.crossDomain.autoApply)) {
         setTimeout(() => {
             window.location.reload();
         }, 500);
     } else if (DEBUG) {
-        console.log("🟡 Page reload disabled - changes applied without refresh");
+        console.log("🟡 Page reload disabled (cross-domain mode or RELOAD_ENABLED = false)");
     }
 };
     
-window.disableAllTracking = function() {
+ window.disableAllTracking = function() {
     console.log("❌ Disabling ALL tracking");
     localStorage.removeItem(CONSENT_KEY);
     localStorage.removeItem(CATEGORIES_KEY);
     
-    if (RELOAD_ENABLED) {
+    // Check if we're in cross-domain mode
+    const isCrossDomain = typeof config !== 'undefined' && config.crossDomain && config.crossDomain.enabled;
+    
+    // Only reload if not in cross-domain mode or if cross-domain auto-apply is disabled
+    if (RELOAD_ENABLED && (!isCrossDomain || !config.crossDomain.autoApply)) {
         setTimeout(() => {
             window.location.reload();
         }, 500);
     } else if (DEBUG) {
-        console.log("🟡 Page reload disabled - changes applied without refresh");
+        console.log("🟡 Page reload disabled (cross-domain mode or RELOAD_ENABLED = false)");
     }
 };
     
@@ -5392,8 +5400,7 @@ function rejectAllCookies() {
     console.log("✅ All cookies rejected");
     
     // ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
-    // ALWAYS RELOAD WHEN REJECTING COOKIES
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
         // Only reload if reload feature is enabled
         if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
             setTimeout(() => {
@@ -5547,8 +5554,7 @@ function saveCustomSettings() {
     console.log("✅ Custom settings saved");
     
     // ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
-    // ALWAYS RELOAD WHEN SAVING CUSTOM SETTINGS
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
         // Only reload if reload feature is enabled
         if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
             setTimeout(() => {
