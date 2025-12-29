@@ -939,61 +939,82 @@ window.cleanupCookieConsent = cleanup;
     
     /* ===================== BANNER HOOKS ===================== */
     
-    window.enableAllTracking = function() {
-        console.log("✅ Enabling ALL tracking");
+window.enableAllTracking = function() {
+    console.log("✅ Enabling ALL tracking");
+    localStorage.setItem(CONSENT_KEY, "granted");
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify({
+        analytics: true,
+        advertising: true,
+        performance: true
+    }));
+    
+    // Set a flag to indicate we're in the middle of a consent change
+    sessionStorage.setItem('__consent_change_in_progress__', 'true');
+    
+    // Always log but don't trigger reload here - let the banner functions handle it
+    if (RELOAD_ENABLED) {
+        console.log("✅ All tracking enabled - reload will be handled by banner script");
+    } else if (DEBUG) {
+        console.log("🟡 Page reload disabled - changes saved without refresh");
+    }
+    
+    // Clear the flag after a delay
+    setTimeout(() => {
+        sessionStorage.removeItem('__consent_change_in_progress__');
+    }, 1000);
+};
+    
+window.enableTrackingByCategory = function(categories) {
+    console.log("✅ Enabling tracking for categories:", categories);
+    
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+    
+    const allEnabled = categories.analytics && 
+                      categories.advertising && 
+                      categories.performance;
+    
+    if (allEnabled) {
         localStorage.setItem(CONSENT_KEY, "granted");
-        localStorage.setItem(CATEGORIES_KEY, JSON.stringify({
-            analytics: true,
-            advertising: true,
-            performance: true
-        }));
-        
-        if (RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
-        } else if (DEBUG) {
-            console.log("🟡 Page reload disabled - changes applied without refresh");
-        }
-    };
+    } else {
+        localStorage.setItem(CONSENT_KEY, "partial");
+    }
     
-    window.enableTrackingByCategory = function(categories) {
-        console.log("✅ Enabling tracking for categories:", categories);
-        
-        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-        
-        const allEnabled = categories.analytics && 
-                          categories.advertising && 
-                          categories.performance;
-        
-        if (allEnabled) {
-            localStorage.setItem(CONSENT_KEY, "granted");
-        } else {
-            localStorage.setItem(CONSENT_KEY, "partial");
-        }
-        
-        if (RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
-        } else if (DEBUG) {
-            console.log("🟡 Page reload disabled - changes applied without refresh");
-        }
-    };
+    // Set a flag to indicate we're in the middle of a consent change
+    sessionStorage.setItem('__consent_change_in_progress__', 'true');
     
-    window.disableAllTracking = function() {
-        console.log("❌ Disabling ALL tracking");
-        localStorage.removeItem(CONSENT_KEY);
-        localStorage.removeItem(CATEGORIES_KEY);
-        
-        if (RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
-        } else if (DEBUG) {
-            console.log("🟡 Page reload disabled - changes applied without refresh");
-        }
-    };
+    // Always log but don't trigger reload here - let the banner functions handle it
+    if (RELOAD_ENABLED) {
+        console.log("✅ Category tracking updated - reload will be handled by banner script");
+    } else if (DEBUG) {
+        console.log("🟡 Page reload disabled - changes saved without refresh");
+    }
+    
+    // Clear the flag after a delay
+    setTimeout(() => {
+        sessionStorage.removeItem('__consent_change_in_progress__');
+    }, 1000);
+};
+    
+window.disableAllTracking = function() {
+    console.log("❌ Disabling ALL tracking");
+    localStorage.removeItem(CONSENT_KEY);
+    localStorage.removeItem(CATEGORIES_KEY);
+    
+    // Set a flag to indicate we're in the middle of a consent change
+    sessionStorage.setItem('__consent_change_in_progress__', 'true');
+    
+    // Always log but don't trigger reload here - let the banner functions handle it
+    if (RELOAD_ENABLED) {
+        console.log("✅ Tracking disabled - reload will be handled by banner script");
+    } else {
+        console.log("🟡 Page reload disabled - changes saved without refresh");
+    }
+    
+    // Clear the flag after a delay
+    setTimeout(() => {
+        sessionStorage.removeItem('__consent_change_in_progress__');
+    }, 1000);
+};
     
     /* ===================== UTILITY FUNCTIONS ===================== */
     
@@ -1659,6 +1680,7 @@ function getGcsFromConsent(consentData) {
 }
 
 // Apply consent from cross-domain source
+// Apply consent from cross-domain source
 function applyCrossDomainConsent(consentData) {
     console.log('Applying cross-domain consent:', consentData.status);
     
@@ -1688,13 +1710,29 @@ function applyCrossDomainConsent(consentData) {
         window.clarity('consent', consentData.categories.analytics);
     }
     
-    // Update blocking script
-    if (consentData.status === 'accepted' && typeof window.enableAllTracking === 'function') {
-        window.enableAllTracking();
-    } else if (consentData.status === 'rejected' && typeof window.disableAllTracking === 'function') {
-        window.disableAllTracking();
-    } else if (consentData.status === 'custom' && typeof window.enableTrackingByCategory === 'function') {
-        window.enableTrackingByCategory(consentData.categories);
+    // Update blocking script - IMPORTANT: Don't call blocking functions here
+    // as they might cause reload conflicts. Just update localStorage.
+    if (consentData.status === 'accepted') {
+        localStorage.setItem("__user_cookie_consent__", "granted");
+        localStorage.setItem("__user_cookie_categories__", JSON.stringify({
+            analytics: true,
+            advertising: true,
+            performance: true
+        }));
+    } else if (consentData.status === 'rejected') {
+        localStorage.removeItem("__user_cookie_consent__");
+        localStorage.removeItem("__user_cookie_categories__");
+    } else if (consentData.status === 'custom') {
+        localStorage.setItem("__user_cookie_categories__", JSON.stringify({
+            analytics: consentData.categories.analytics,
+            advertising: consentData.categories.advertising,
+            performance: consentData.categories.performance
+        }));
+        
+        const allEnabled = consentData.categories.analytics && 
+                          consentData.categories.advertising && 
+                          consentData.categories.performance;
+        localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
     }
     
     // Store locally
@@ -1709,6 +1747,9 @@ function applyCrossDomainConsent(consentData) {
         'source': 'cross_domain',
         'timestamp': new Date().toISOString()
     });
+    
+    // DON'T trigger reload here - let the main functions handle it
+    console.log('Cross-domain consent applied (no reload triggered here)');
 }
 
 // Check URL for incoming cross-domain consent
@@ -5262,10 +5303,15 @@ function acceptAllCookies() {
         }));
         
       // Only reload if reload feature is enabled
+// ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
+if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
+    // Only reload if reload feature is enabled
+// ALWAYS RELOAD WHEN ACCEPTING - blocking needs to be updated
 if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     setTimeout(() => {
+        console.log("🔄 Reloading page to update cookie blocking...");
         window.location.reload();
-    }, 300);
+    }, 500); // Increased delay for cross-domain sync
 } else {
     console.log("🟡 Page reload disabled - changes saved without refresh");
 }
@@ -5326,7 +5372,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 
 function rejectAllCookies() {
-
     hideCookieBanner(); // ← Add this line
     console.log("❌ Rejecting ALL cookies");
     
@@ -5337,15 +5382,6 @@ function rejectAllCookies() {
         // Fallback
         localStorage.removeItem("__user_cookie_consent__");
         localStorage.removeItem("__user_cookie_categories__");
-        
-       // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
     }
     
     // Your existing code continues...
@@ -5365,16 +5401,12 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         timestamp: new Date().getTime()
     };
 
-     // STORE FOR CROSS-DOMAIN SHARING
+    // STORE FOR CROSS-DOMAIN SHARING
     storeCrossDomainConsent(consentData);
-
-    
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     clearNonEssentialCookies();
-    
-   
     
     window.dataLayer.push({
         'event': 'cookie_consent_rejected',
@@ -5397,16 +5429,22 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     // Add this at the end of rejectAllCookies function
     disableInteractionRestrictions();
     
-    console.log("✅ All cookies rejected, page will reload");
-
-      // ADD THIS LINE:
-   cleanup(); // Clean up memory using consolidated system
+    console.log("✅ All cookies rejected");
     
+    // ALWAYS RELOAD WHEN REJECTING - blocking needs to be applied
+    if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+        setTimeout(() => {
+            console.log("🔄 Reloading page to apply cookie blocking...");
+            window.location.reload();
+        }, 500); // Increased delay for cross-domain sync
+    } else {
+        console.log("🟡 Page reload disabled - changes saved without refresh");
+    }
+
+    cleanup(); // Clean up memory using consolidated system
 }
 
-
 function saveCustomSettings() {
-
     hideCookieBanner(); // ← Add this line
     // Get current checkbox states
     const analyticsChecked = document.querySelector('input[data-category="analytics"]').checked;
@@ -5436,19 +5474,7 @@ function saveCustomSettings() {
         // Set partial consent
         const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
         localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
-        
-      // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
     }
-    
-    // Continue with your existing analytics code...
-    // Rest of your function stays the same...
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -5478,7 +5504,7 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         timestamp: new Date().getTime()
     };
 
-     // STORE FOR CROSS-DOMAIN SHARING
+    // STORE FOR CROSS-DOMAIN SHARING
     storeCrossDomainConsent(consentData);
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
@@ -5487,12 +5513,10 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     // Load scripts based on consent
     if (analyticsChecked) {
         console.log("📊 Loading analytics scripts...");
-        // You can load analytics scripts here if needed
     }
     
     if (advertisingChecked) {
         console.log("🎯 Loading marketing scripts...");
-        // You can load marketing scripts here if needed
     }
     
     // Clear cookies for unselected categories
@@ -5500,8 +5524,6 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     if (!performanceChecked) clearCategoryCookies('performance');
     if (!advertisingChecked) clearCategoryCookies('advertising');
     if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
-    
-  
     
     // Your existing dataLayer code continues...
     const consentStates = {
@@ -5552,19 +5574,24 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
             'location_data': locationData
         });
     }
-   
-        // NEW: Disable interaction restrictions when user saves custom settings
+    
+    // NEW: Disable interaction restrictions when user saves custom settings
     disableInteractionRestrictions();
    
-    console.log("✅ Custom settings saved and page will reload");
-
-    // ADD THIS LINE:
-    cleanup(); // Clean up memory using consolidated system
+    console.log("✅ Custom settings saved");
     
+    // ALWAYS RELOAD WHEN SAVING CUSTOM SETTINGS - blocking needs to be applied
+    if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+        setTimeout(() => {
+            console.log("🔄 Reloading page to apply cookie blocking...");
+            window.location.reload();
+        }, 500); // Increased delay for cross-domain sync
+    } else {
+        console.log("🟡 Page reload disabled - changes saved without refresh");
+    }
+
+    cleanup(); // Clean up memory using consolidated system
 }
-
-
-
 
 // Helper functions
 function clearNonEssentialCookies() {
