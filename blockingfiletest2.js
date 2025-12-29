@@ -1211,6 +1211,7 @@ clarityConfig: {
     
   
     // Microsoft UET Configuration
+    
     // Microsoft UET Configuration
     uetConfig: {
         enabled: true,
@@ -1221,7 +1222,28 @@ clarityConfig: {
         msd: window.location.hostname // Add this line for Microsoft Domain handling
     },
     
-    // Behavior configuration
+    // NEW: Cross-domain & Subdomain Consent Sharing
+    crossDomain: {
+        enabled: true, // Enable cross-domain consent sharing
+        trustedDomains: [
+            // Add your trusted domains here (without protocol)
+            'dev-rpractice.pantheonsite.io',
+            'practicebdhere.myshopify.com',
+            'yourdomain.com', // ← REPLACE with your actual first domain
+            'your-second-domain.com' // ← REPLACE with your actual second domain
+        ],
+        syncSubdomains: true, // Share consent across subdomains
+        paramName: 'gcs', // URL parameter name for consent passing
+        cookieName: '__cross_domain_consent__',
+        registryName: '__multi_domain_registry__',
+        autoApply: true, // Automatically apply consent when detected
+        showPopup: false, // Don't show banner if consent already exists
+        cookieDuration: 365, // Days to store cross-domain consent
+        sameSite: 'Lax', // Cookie SameSite attribute
+        secure: true // Only send cookie over HTTPS
+    },
+    
+  
     // Behavior configuration
     behavior: {
         autoShow: true,
@@ -1297,45 +1319,7 @@ geoConfig: {
     specificRegions: [] // NEW: Can specify 'EU' or other regions
 },
     
-       // Cross-domain and Subdomain Consent Sharing Configuration
-    crossDomainConfig: {
-        enabled: true, // Enable/disable cross-domain consent sharing
-        storageMode: 'hybrid', // 'localStorage', 'cookie', or 'hybrid' (both)
-        consentKey: '__cross_domain_consent__',
-        registryKey: '__multi_domain_registry__',
-        
-        // Trusted domains for automatic consent sharing
-        trustedDomains: [
-    // Example domains - replace with your actual domains
-        'dev-rpractice.pantheonsite.io',
-        'practicebdhere.myshopify.com',
-        'your-main-domain.com',
-        'subdomain.your-domain.com',
-        'another-trusted-site.com'
-          ],
-        
-        // Auto-sync settings
-        autoSyncOnLoad: true, // Automatically sync consent when page loads
-        autoSyncOnStorage: true, // Sync when localStorage changes (subdomains)
-        passConsentViaUrl: true, // Pass consent via URL parameters (cross-domain)
-        
-        // Cookie settings for subdomain sharing
-        cookieSettings: {
-            path: '/',
-            sameSite: 'Lax',
-            secure: true,
-            domainStrategy: 'auto', // 'auto', 'root', or 'specific'
-            expirationDays: 365
-        },
-        
-        // Consent modes to sync
-        syncModes: {
-            google: true,     // Google Consent Mode v2
-            uet: true,        // Microsoft UET
-            clarity: true,    // Microsoft Clarity
-            default: true     // All other upcoming modes
-        }
-    },
+   
     
     // UI Theme selection
     uiTheme: 'default',
@@ -1529,14 +1513,357 @@ geoConfig: {
 
 // ... end of config object
 
-/* ===================== EVENT HANDLER MANAGEMENT ===================== */
+
 /* ===================== EVENT HANDLER MANAGEMENT ===================== */
 // Using the consolidated global system from Step 1
 // Remove duplicate definitions - keep only the global ones above
 
 // ============== IMPLEMENTATION SECTION ============== //
 
+// ============== IMPLEMENTATION SECTION ============== //
 
+/* =====================================================
+   CROSS-DOMAIN & SUBDOMAIN HELPER FUNCTIONS
+===================================================== */
+
+// Get root domain for subdomain sharing
+function getRootDomain() {
+    const hostname = window.location.hostname;
+    const parts = hostname.split('.');
+    
+    // For localhost or IP addresses
+    if (parts.length <= 2 || parts[parts.length - 1].match(/^\d+$/)) {
+        return hostname;
+    }
+    
+    // For domains like example.co.uk (handles country-code TLDs)
+    if (parts.length > 2) {
+        // Check for common multi-part TLDs
+        const lastTwo = parts.slice(-2).join('.');
+        const multiPartTLDs = [
+            'co.uk', 'com.au', 'org.uk', 'net.au', 'gov.uk',
+            'ac.uk', 'edu.au', 'co.nz', 'co.za', 'co.jp'
+        ];
+        
+        if (multiPartTLDs.includes(lastTwo)) {
+            if (parts.length > 3) {
+                return '.' + parts.slice(-3).join('.');
+            }
+            return hostname;
+        }
+    }
+    
+    // Standard domain (example.com)
+    return '.' + parts.slice(-2).join('.');
+}
+
+// Set cookie for cross-domain/subdomain sharing
+function setCrossDomainCookie(name, value, days) {
+    if (!config.crossDomain.enabled) return;
+    
+    const d = new Date();
+    d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = 'expires=' + d.toUTCString();
+    
+    // Determine domain
+    let domain = '';
+    if (config.crossDomain.syncSubdomains) {
+        const rootDomain = getRootDomain();
+        if (rootDomain.startsWith('.')) {
+            domain = 'domain=' + rootDomain + ';';
+        }
+    }
+    
+    // Build cookie string
+    let cookieStr = name + '=' + encodeURIComponent(value) + ';' +
+                   expires + ';path=/;' + domain +
+                   'SameSite=' + config.crossDomain.sameSite + ';';
+    
+    if (config.crossDomain.secure && window.location.protocol === 'https:') {
+        cookieStr += 'Secure;';
+    }
+    
+    document.cookie = cookieStr;
+}
+
+// Get cross-domain cookie
+function getCrossDomainCookie(name) {
+    const nameEQ = name + '=';
+    const ca = document.cookie.split(';');
+    
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1);
+        if (c.indexOf(nameEQ) === 0) {
+            return decodeURIComponent(c.substring(nameEQ.length));
+        }
+    }
+    return null;
+}
+
+// Get consent from cross-domain storage
+function getCrossDomainConsent() {
+    if (!config.crossDomain.enabled) return null;
+    
+    // Try cookie first (for subdomains), then localStorage
+    const fromCookie = getCrossDomainCookie(config.crossDomain.cookieName);
+    const fromStorage = localStorage.getItem(config.crossDomain.cookieName);
+    
+    return fromCookie || fromStorage || null;
+}
+
+// Store consent for cross-domain sharing
+function storeCrossDomainConsent(consentData) {
+    if (!config.crossDomain.enabled) return;
+    
+    const consentString = JSON.stringify(consentData);
+    
+    // Store in localStorage
+    localStorage.setItem(config.crossDomain.cookieName, consentString);
+    
+    // Store in cookie for subdomain sharing
+    if (config.crossDomain.syncSubdomains) {
+        setCrossDomainCookie(
+            config.crossDomain.cookieName, 
+            consentString, 
+            config.crossDomain.cookieDuration
+        );
+    }
+    
+    // Update registry
+    const registry = JSON.parse(localStorage.getItem(config.crossDomain.registryName) || '{}');
+    registry[window.location.hostname] = {
+        consent: consentString,
+        timestamp: Date.now(),
+        gcs: getGcsFromConsent(consentData),
+        categories: consentData.categories
+    };
+    localStorage.setItem(config.crossDomain.registryName, JSON.stringify(registry));
+    
+    console.log('Cross-domain consent stored:', consentData.status);
+}
+
+// Convert consent to GCS signal
+function getGcsFromConsent(consentData) {
+    if (!consentData) return 'G100';
+    
+    if (consentData.status === 'accepted') return 'G111';
+    if (consentData.status === 'rejected') return 'G100';
+    if (consentData.status === 'custom') {
+        if (consentData.categories.analytics && consentData.categories.advertising) return 'G111';
+        if (consentData.categories.analytics && !consentData.categories.advertising) return 'G101';
+        if (!consentData.categories.analytics && consentData.categories.advertising) return 'G110';
+        return 'G100';
+    }
+    return 'G100';
+}
+
+// Apply consent from cross-domain source
+function applyCrossDomainConsent(consentData) {
+    console.log('Applying cross-domain consent:', consentData.status);
+    
+    // Update Google Consent Mode
+    const consentStates = {
+        'ad_storage': consentData.categories.advertising ? 'granted' : 'denied',
+        'analytics_storage': consentData.categories.analytics ? 'granted' : 'denied',
+        'ad_user_data': consentData.categories.advertising ? 'granted' : 'denied',
+        'ad_personalization': consentData.categories.advertising ? 'granted' : 'denied',
+        'personalization_storage': consentData.categories.performance ? 'granted' : 'denied',
+        'functionality_storage': 'granted',
+        'security_storage': 'granted'
+    };
+    
+    gtag('consent', 'update', consentStates);
+    
+    // Update Microsoft UET
+    if (config.uetConfig.enabled) {
+        const uetConsent = consentData.categories.advertising ? 'granted' : 'denied';
+        window.uetq.push('consent', 'update', {
+            'ad_storage': uetConsent
+        });
+    }
+    
+    // Update Microsoft Clarity
+    if (config.clarityConfig.enabled && typeof window.clarity === 'function') {
+        window.clarity('consent', consentData.categories.analytics);
+    }
+    
+    // Update blocking script
+    if (consentData.status === 'accepted' && typeof window.enableAllTracking === 'function') {
+        window.enableAllTracking();
+    } else if (consentData.status === 'rejected' && typeof window.disableAllTracking === 'function') {
+        window.disableAllTracking();
+    } else if (consentData.status === 'custom' && typeof window.enableTrackingByCategory === 'function') {
+        window.enableTrackingByCategory(consentData.categories);
+    }
+    
+    // Store locally
+    setCookie('cookie_consent', JSON.stringify(consentData), 365);
+    
+    // Log event
+    window.dataLayer.push({
+        'event': 'cross_domain_consent_applied',
+        'consent_mode': consentStates,
+        'gcs': getGcsFromConsent(consentData),
+        'consent_status': consentData.status,
+        'source': 'cross_domain',
+        'timestamp': new Date().toISOString()
+    });
+}
+
+// Check URL for incoming cross-domain consent
+function checkForCrossDomainConsent() {
+    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) return null;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const incomingGcs = urlParams.get(config.crossDomain.paramName);
+    
+    if (incomingGcs) {
+        let consentData;
+        
+        // Convert GCS to consent format
+        switch(incomingGcs) {
+            case 'G111': // All granted
+                consentData = {
+                    status: 'accepted',
+                    categories: {
+                        functional: true,
+                        analytics: true,
+                        performance: true,
+                        advertising: true,
+                        uncategorized: true
+                    }
+                };
+                break;
+            case 'G100': // All denied
+                consentData = {
+                    status: 'rejected',
+                    categories: {
+                        functional: false,
+                        analytics: false,
+                        performance: false,
+                        advertising: false,
+                        uncategorized: false
+                    }
+                };
+                break;
+            case 'G101': // Analytics only
+                consentData = {
+                    status: 'custom',
+                    categories: {
+                        functional: true,
+                        analytics: true,
+                        performance: false,
+                        advertising: false,
+                        uncategorized: false
+                    }
+                };
+                break;
+            case 'G110': // Advertising only
+                consentData = {
+                    status: 'custom',
+                    categories: {
+                        functional: true,
+                        analytics: false,
+                        performance: false,
+                        advertising: true,
+                        uncategorized: false
+                    }
+                };
+                break;
+            default:
+                return null;
+        }
+        
+        // Store and apply
+        storeCrossDomainConsent(consentData);
+        applyCrossDomainConsent(consentData);
+        
+        // Clean URL
+        urlParams.delete(config.crossDomain.paramName);
+        const newUrl = window.location.pathname + 
+                      (urlParams.toString() ? '?' + urlParams.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+        
+        return consentData;
+    }
+    
+    return null;
+}
+
+// Modify links to trusted domains
+function setupCrossDomainLinks() {
+    if (!config.crossDomain.enabled || config.crossDomain.trustedDomains.length === 0) {
+        return;
+    }
+    
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (!link || !link.href) return;
+        
+        try {
+            const url = new URL(link.href);
+            const isTrustedDomain = config.crossDomain.trustedDomains.some(domain => {
+                return url.hostname === domain || url.hostname.endsWith('.' + domain);
+            });
+            
+            if (isTrustedDomain) {
+                const currentConsent = getCrossDomainConsent();
+                if (currentConsent) {
+                    try {
+                        const consentData = JSON.parse(currentConsent);
+                        const gcs = getGcsFromConsent(consentData);
+                        url.searchParams.set(config.crossDomain.paramName, gcs);
+                        link.href = url.toString();
+                        
+                        console.log('Added cross-domain consent to link:', {
+                            to: url.hostname,
+                            gcs: gcs
+                        });
+                    } catch (err) {
+                        console.error('Error parsing consent:', err);
+                    }
+                }
+            }
+        } catch (err) {
+            // Invalid URL, ignore
+        }
+    }, true);
+}
+
+// Sync consent between tabs/windows
+function setupConsentSync() {
+    if (!config.crossDomain.enabled) return;
+    
+    window.addEventListener('storage', function(e) {
+        if (e.key === config.crossDomain.cookieName && e.newValue && e.oldValue !== e.newValue) {
+            try {
+                const consentData = JSON.parse(e.newValue);
+                
+                // Update cookie for subdomain sync
+                if (config.crossDomain.syncSubdomains) {
+                    setCrossDomainCookie(
+                        config.crossDomain.cookieName, 
+                        e.newValue, 
+                        config.crossDomain.cookieDuration
+                    );
+                }
+                
+                // Apply if auto-apply is enabled
+                if (config.crossDomain.autoApply) {
+                    applyCrossDomainConsent(consentData);
+                }
+            } catch (error) {
+                console.error('Error syncing consent:', error);
+            }
+        }
+    });
+}
+
+
+
+// Initialize dataLayer for Google Tag Manager
+window.dataLayer = window.dataLayer || [];
 
 // Initialize dataLayer for Google Tag Manager
 window.dataLayer = window.dataLayer || [];
@@ -1578,46 +1905,6 @@ gtag('consent', 'default', {
     'functionality_storage': 'denied',
     'security_storage': 'granted'
 });
-
-
-// Check if we have cross-domain consent BEFORE setting defaults
-// This allows cross-domain consent to override defaults
-let hasCrossDomainConsent = false;
-if (config.crossDomainConfig.enabled && config.crossDomainConfig.autoSyncOnLoad) {
-    const crossDomainConsent = getCrossDomainConsent();
-    if (crossDomainConsent) {
-        hasCrossDomainConsent = true;
-        console.log('🔗 Cross-domain consent found on page load');
-        
-        // Apply it immediately
-        applyConsentToModes(crossDomainConsent);
-        
-        // Update the default to match cross-domain consent
-        gtag('consent', 'default', {
-            'ad_storage': crossDomainConsent.categories.advertising ? 'granted' : 'denied',
-            'analytics_storage': crossDomainConsent.categories.analytics ? 'granted' : 'denied',
-            'ad_user_data': crossDomainConsent.categories.advertising ? 'granted' : 'denied',
-            'ad_personalization': crossDomainConsent.categories.advertising ? 'granted' : 'denied',
-            'personalization_storage': crossDomainConsent.categories.performance ? 'granted' : 'denied',
-            'functionality_storage': crossDomainConsent.categories.functional ? 'granted' : 'denied',
-            'security_storage': 'granted'
-        });
-    }
-}
-
-// Only set the default denial if no cross-domain consent was found
-if (!hasCrossDomainConsent) {
-    gtag('consent', 'default', {
-        'ad_storage': 'denied',
-        'analytics_storage': 'denied',
-        'ad_user_data': 'denied',
-        'ad_personalization': 'denied',
-        'personalization_storage': 'denied',
-        'functionality_storage': 'denied',
-        'security_storage': 'granted'
-    });
-}
-
 
 // Push initial GCS signal (G100) immediately after default consent
 window.dataLayer.push({
@@ -2773,365 +3060,6 @@ const translations = {
     },
  // ... (keep all other language translations the same)
 };
-
-
-/* =====================================================
-   CROSS-DOMAIN & SUBDOMAIN CONSENT SHARING FUNCTIONS
-===================================================== */
-
-// Function to get root domain (for subdomain cookie sharing)
-function getRootDomain() {
-    const parts = window.location.hostname.split('.');
-    if (parts.length <= 2) {
-        return '.' + parts.join('.');
-    }
-    // Get the last two parts (like .example.com)
-    return '.' + parts.slice(-2).join('.');
-}
-
-// Function to get parent domains (for cookie deletion/setting)
-function getAllParentDomains() {
-    const parts = window.location.hostname.split('.');
-    const domains = [];
-    
-    // Generate all possible parent domains
-    for (let i = 0; i < parts.length - 1; i++) {
-        const domain = '.' + parts.slice(i).join('.');
-        domains.push(domain);
-    }
-    
-    // Add current hostname
-    domains.push(window.location.hostname);
-    
-    return domains;
-}
-
-// Set cookie with domain specification for subdomain sharing
-function setDomainCookie(name, value, days, domain = null) {
-    const expires = new Date();
-    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
-    
-    let cookieString = `${name}=${value}; expires=${expires.toUTCString()}; path=${config.crossDomainConfig.cookieSettings.path}; SameSite=${config.crossDomainConfig.cookieSettings.sameSite}`;
-    
-    if (config.crossDomainConfig.cookieSettings.secure) {
-        cookieString += '; Secure';
-    }
-    
-    // Set domain based on strategy
-    if (config.crossDomainConfig.enabled) {
-        if (config.crossDomainConfig.cookieSettings.domainStrategy === 'root') {
-            cookieString += `; domain=${getRootDomain()}`;
-        } else if (config.crossDomainConfig.cookieSettings.domainStrategy === 'specific' && domain) {
-            cookieString += `; domain=${domain}`;
-        }
-        // 'auto' means let browser handle it (current domain only)
-    }
-    
-    document.cookie = cookieString;
-}
-
-// Get cookie from domain (searches all possible domains)
-function getDomainCookie(name) {
-    const cookies = document.cookie.split('; ');
-    for (const cookie of cookies) {
-        if (cookie.startsWith(name + '=')) {
-            return cookie.substring(name.length + 1);
-        }
-    }
-    return null;
-}
-
-// Delete cookie from all possible domains
-function deleteDomainCookie(name) {
-    const domains = getAllParentDomains();
-    const paths = ['/', '/admin', '/wp-admin', '/dashboard'];
-    const now = new Date().toUTCString();
-    
-    domains.forEach(domain => {
-        paths.forEach(path => {
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${path}; domain=${domain}`;
-        });
-    });
-    
-    // Also delete without domain
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-}
-
-// Hybrid storage: uses both localStorage and cookies
-function getCrossDomainConsent() {
-    if (!config.crossDomainConfig.enabled) return null;
-    
-    const storageMode = config.crossDomainConfig.storageMode;
-    const consentKey = config.crossDomainConfig.consentKey;
-    
-    if (storageMode === 'hybrid' || storageMode === 'localStorage') {
-        const lsConsent = localStorage.getItem(consentKey);
-        if (lsConsent) return JSON.parse(lsConsent);
-    }
-    
-    if (storageMode === 'hybrid' || storageMode === 'cookie') {
-        const cookieConsent = getDomainCookie(consentKey);
-        if (cookieConsent) return JSON.parse(cookieConsent);
-    }
-    
-    return null;
-}
-
-function setCrossDomainConsent(consentData) {
-    if (!config.crossDomainConfig.enabled) return;
-    
-    const storageMode = config.crossDomainConfig.storageMode;
-    const consentKey = config.crossDomainConfig.consentKey;
-    const registryKey = config.crossDomainConfig.registryKey;
-    const expirationDays = config.crossDomainConfig.cookieSettings.expirationDays;
-    
-    // Store in appropriate storage
-    if (storageMode === 'hybrid' || storageMode === 'localStorage') {
-        localStorage.setItem(consentKey, JSON.stringify(consentData));
-    }
-    
-    if (storageMode === 'hybrid' || storageMode === 'cookie') {
-        setDomainCookie(consentKey, JSON.stringify(consentData), expirationDays);
-    }
-    
-    // Update registry
-    const registry = JSON.parse(localStorage.getItem(registryKey) || '{}');
-    registry[window.location.hostname] = {
-        consent: consentData,
-        timestamp: Date.now(),
-        sync: true
-    };
-    localStorage.setItem(registryKey, JSON.stringify(registry));
-    
-    // Trigger storage event for subdomain sync
-    if (config.crossDomainConfig.autoSyncOnStorage) {
-        window.dispatchEvent(new StorageEvent('storage', {
-            key: consentKey,
-            newValue: JSON.stringify(consentData),
-            oldValue: localStorage.getItem(consentKey),
-            storageArea: localStorage
-        }));
-    }
-}
-
-// Check if domain is trusted
-function isTrustedDomain(url) {
-    if (!config.crossDomainConfig.enabled) return false;
-    
-    try {
-        const urlObj = new URL(url, window.location.origin);
-        return config.crossDomainConfig.trustedDomains.includes(urlObj.hostname);
-    } catch {
-        return false;
-    }
-}
-
-// Get consent from URL parameters
-function getConsentFromUrl() {
-    if (!config.crossDomainConfig.enabled || !config.crossDomainConfig.passConsentViaUrl) {
-        return null;
-    }
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const consentParam = urlParams.get('gcs');
-    
-    if (!consentParam) return null;
-    
-    // Map GCS signals to consent categories
-    const consentMap = {
-        'G100': { // All denied
-            status: 'rejected',
-            categories: {
-                functional: false,
-                analytics: false,
-                advertising: false,
-                performance: false,
-                uncategorized: false
-            }
-        },
-        'G111': { // All granted
-            status: 'accepted',
-            categories: {
-                functional: true,
-                analytics: true,
-                advertising: true,
-                performance: true,
-                uncategorized: true
-            }
-        },
-        'G101': { // Analytics only
-            status: 'custom',
-            categories: {
-                functional: true,
-                analytics: true,
-                advertising: false,
-                performance: false,
-                uncategorized: false
-            }
-        },
-        'G110': { // Advertising only
-            status: 'custom',
-            categories: {
-                functional: true,
-                analytics: false,
-                advertising: true,
-                performance: false,
-                uncategorized: false
-            }
-        }
-    };
-    
-    const consentData = consentMap[consentParam];
-    if (consentData) {
-        consentData.timestamp = Date.now();
-        consentData.source = 'cross-domain';
-        consentData.gcs = consentParam;
-        
-        // Clean URL
-        urlParams.delete('gcs');
-        const newUrl = window.location.pathname + 
-                      (urlParams.toString() ? '?' + urlParams.toString() : '');
-        window.history.replaceState({}, '', newUrl);
-        
-        return consentData;
-    }
-    
-    return null;
-}
-
-// Auto-apply cross-domain consent on page load
-function autoApplyCrossDomainConsent() {
-    if (!config.crossDomainConfig.enabled || !config.crossDomainConfig.autoSyncOnLoad) {
-        return;
-    }
-    
-    // 1. Check URL parameters first (cross-domain)
-    const urlConsent = getConsentFromUrl();
-    if (urlConsent) {
-        console.log('🔗 Applying cross-domain consent from URL:', urlConsent.gcs);
-        setCrossDomainConsent(urlConsent);
-        applyConsentToModes(urlConsent);
-        return true;
-    }
-    
-    // 2. Check existing cross-domain consent
-    const existingConsent = getCrossDomainConsent();
-    if (existingConsent) {
-        console.log('🔗 Applying existing cross-domain consent');
-        applyConsentToModes(existingConsent);
-        return true;
-    }
-    
-    return false;
-}
-
-// Apply consent to all configured modes
-function applyConsentToModes(consentData) {
-    const categories = consentData.categories;
-    
-    // Google Consent Mode
-    if (config.crossDomainConfig.syncModes.google) {
-        const consentStates = {
-            'ad_storage': categories.advertising ? 'granted' : 'denied',
-            'analytics_storage': categories.analytics ? 'granted' : 'denied',
-            'ad_user_data': categories.advertising ? 'granted' : 'denied',
-            'ad_personalization': categories.advertising ? 'granted' : 'denied',
-            'personalization_storage': categories.performance ? 'granted' : 'denied',
-            'functionality_storage': categories.functional ? 'granted' : 'denied',
-            'security_storage': 'granted'
-        };
-        
-        gtag('consent', 'update', consentStates);
-        
-        window.dataLayer.push({
-            'event': 'cross_domain_consent_applied',
-            'consent_mode': consentStates,
-            'gcs': consentData.gcs || 'G100',
-            'consent_source': consentData.source || 'cross-domain',
-            'timestamp': new Date().toISOString()
-        });
-    }
-    
-    // Microsoft UET Consent
-    if (config.crossDomainConfig.syncModes.uet && config.uetConfig.enabled) {
-        const uetConsent = categories.advertising ? 'granted' : 'denied';
-        window.uetq.push('consent', 'update', {
-            'ad_storage': uetConsent
-        });
-    }
-    
-    // Microsoft Clarity Consent
-    if (config.crossDomainConfig.syncModes.clarity && config.clarityConfig.enabled) {
-        const clarityConsent = categories.analytics;
-        if (typeof window.clarity === 'function') {
-            window.clarity('consent', clarityConsent);
-        }
-    }
-    
-    // Update blocking script's consent
-    if (window.enableTrackingByCategory) {
-        window.enableTrackingByCategory({
-            analytics: categories.analytics,
-            advertising: categories.advertising,
-            performance: categories.performance
-        });
-    }
-}
-
-// Listen for storage events (subdomain sync)
-function setupStorageSync() {
-    if (!config.crossDomainConfig.enabled || !config.crossDomainConfig.autoSyncOnStorage) {
-        return;
-    }
-    
-    window.addEventListener('storage', function(e) {
-        if (e.key === config.crossDomainConfig.consentKey && e.newValue) {
-            try {
-                const consentData = JSON.parse(e.newValue);
-                console.log('🔄 Subdomain consent sync received');
-                
-                // Update cookie for subdomain access
-                setDomainCookie(
-                    config.crossDomainConfig.consentKey,
-                    e.newValue,
-                    config.crossDomainConfig.cookieSettings.expirationDays
-                );
-                
-                // Apply the consent
-                applyConsentToModes(consentData);
-                
-            } catch (error) {
-                console.error('Error parsing sync consent:', error);
-            }
-        }
-    });
-}
-
-// Modify links to trusted domains with consent parameter
-function setupLinkModification() {
-    if (!config.crossDomainConfig.enabled || !config.crossDomainConfig.passConsentViaUrl) {
-        return;
-    }
-    
-    document.addEventListener('click', function(e) {
-        const link = e.target.closest('a');
-        if (!link || !link.href) return;
-        
-        const consentData = getCrossDomainConsent();
-        if (!consentData || !consentData.gcs) return;
-        
-        if (isTrustedDomain(link.href)) {
-            try {
-                const url = new URL(link.href, window.location.origin);
-                url.searchParams.set('gcs', consentData.gcs);
-                link.href = url.toString();
-            } catch (error) {
-                console.error('Error modifying link:', error);
-            }
-        }
-    }, true);
-}
-
 
 // Country to language mapping for auto-translation (keeping all mappings)
 const countryLanguageMap = {
@@ -4710,50 +4638,35 @@ function initializeCookieConsent(detectedCookies, language) {
         console.log('Cookie consent banner disabled for this URL');
         return; // Don't show the banner on this URL
     }
-  
-    // 1. FIRST: Check for cross-domain consent
-    let consentGiven = null;
-    let consentSource = 'local';
     
-    if (config.crossDomainConfig && config.crossDomainConfig.enabled && config.crossDomainConfig.autoSyncOnLoad) {
-        const crossDomainConsent = getCrossDomainConsent();
-        if (crossDomainConsent) {
-            consentGiven = crossDomainConsent;
-            consentSource = 'cross-domain';
-            console.log('🔗 Using cross-domain consent');
-            
-            // Apply it to modes immediately
-            applyConsentToModes(crossDomainConsent);
-            
-            // Also update regular cookie for backward compatibility
-            setCookie('cookie_consent', JSON.stringify(crossDomainConsent), 365);
-        }
-    }
+    // ====== CHECK FOR CONSENT ======
+    // Check both local cookie and cross-domain storage
+    const localConsent = getCookie('cookie_consent');
+    const crossDomainConsent = config.crossDomain.enabled ? getCrossDomainConsent() : null;
     
-    // 2. If no cross-domain consent, check regular cookie
-    if (!consentGiven) {
-        const regularCookie = getCookie('cookie_consent');
-        if (regularCookie) {
-            try {
-                consentGiven = JSON.parse(regularCookie);
-                consentSource = 'regular-cookie';
-                
-                // Also store in cross-domain storage if enabled
-                if (config.crossDomainConfig && config.crossDomainConfig.enabled) {
-                    setCrossDomainConsent(consentGiven);
-                }
-            } catch (error) {
-                console.error('Error parsing cookie consent:', error);
-                // If cookie is malformed, treat as no consent
-                consentGiven = null;
-            }
-        }
-    }
+    // Determine if consent is already given
+    const consentGiven = localConsent || crossDomainConsent;
     
     // Check if banner should be shown based on geo-targeting and schedule
     const geoAllowed = checkGeoTargeting(locationData);
     const bannerShouldBeShown = geoAllowed && shouldShowBanner();
     
+    // If we have cross-domain consent but no local consent, apply it
+    if (crossDomainConsent && !localConsent && config.crossDomain.autoApply) {
+        try {
+            const consentData = JSON.parse(crossDomainConsent);
+            console.log('Found cross-domain consent, applying:', consentData.status);
+            
+            // Don't show banner if configured
+            if (config.crossDomain.showPopup === false) {
+                config.behavior.autoShow = false;
+            }
+        } catch (e) {
+            console.error('Error applying cross-domain consent:', e);
+        }
+    }
+    
+    // Show banner logic
     if (!consentGiven && config.behavior.autoShow && bannerShouldBeShown) {
         // Detect if mobile device
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -4765,15 +4678,12 @@ function initializeCookieConsent(detectedCookies, language) {
             showCookieBanner();
         }, delay * 1000);
     } else if (consentGiven) {
-        // Update consent mode (might have been done already, but do it again for safety)
-        updateConsentMode(consentGiven);
-        loadCookiesAccordingToConsent(consentGiven);
+        const consentData = JSON.parse(consentGiven);
+        updateConsentMode(consentData);
+        loadCookiesAccordingToConsent(consentData);
         if (config.behavior.showFloatingButton) {
             showFloatingButton();
         }
-        
-        // Log consent source
-        console.log(`✅ Consent loaded from: ${consentSource}`);
     }
 
 
@@ -4865,7 +4775,7 @@ function initializeClarity(consentGranted) {
 
     
     // Setup password prompt events if needed
-    if (config.analytics && config.analytics.passwordProtect && !isDashboardAuthenticated) {
+    if (config.analytics.passwordProtect && !isDashboardAuthenticated) {
         setupPasswordPromptEvents();
     }
     
@@ -5371,23 +5281,18 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         categories: {
             functional: true,
             analytics: true,
-            advertising: true,
             performance: true,
+            advertising: true,
             uncategorized: true
         },
         timestamp: new Date().getTime()
     };
+
+     // STORE FOR CROSS-DOMAIN SHARING
+    storeCrossDomainConsent(consentData);
     
     addStoredParamsToURL();
-    
-    // Store in regular cookie (backward compatibility)
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
-    
-    // ALSO store in cross-domain storage
-    if (config.crossDomainConfig.enabled) {
-        setCrossDomainConsent(consentData);
-    }
-    
     updateConsentMode(consentData);
     
  
@@ -5459,15 +5364,13 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         },
         timestamp: new Date().getTime()
     };
+
+     // STORE FOR CROSS-DOMAIN SHARING
+    storeCrossDomainConsent(consentData);
+
     
-    // Store in regular cookie (backward compatibility)
+    
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
-    
-    // ALSO store in cross-domain storage
-    if (config.crossDomainConfig.enabled) {
-        setCrossDomainConsent(consentData);
-    }
-    
     updateConsentMode(consentData);
     clearNonEssentialCookies();
     
@@ -5574,15 +5477,11 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         },
         timestamp: new Date().getTime()
     };
+
+     // STORE FOR CROSS-DOMAIN SHARING
+    storeCrossDomainConsent(consentData);
     
-    // Store in regular cookie (backward compatibility)
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
-    
-    // ALSO store in cross-domain storage
-    if (config.crossDomainConfig.enabled) {
-        setCrossDomainConsent(consentData);
-    }
-    
     updateConsentMode(consentData);
     
     // Load scripts based on consent
@@ -5996,9 +5895,41 @@ function loadPerformanceCookies() {
     // This would typically load performance optimization scripts
 }
 
-
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
+    // ====== CROSS-DOMAIN INITIALIZATION ======
+    if (config.crossDomain.enabled) {
+        // 1. Check URL for incoming cross-domain consent
+        const urlConsent = checkForCrossDomainConsent();
+        
+        if (!urlConsent) {
+            // 2. Check stored cross-domain consent
+            const storedConsent = getCrossDomainConsent();
+            if (storedConsent) {
+                try {
+                    const consentData = JSON.parse(storedConsent);
+                    
+                    // Apply the consent
+                    applyCrossDomainConsent(consentData);
+                    
+                    // Don't show popup if configured
+                    if (config.crossDomain.showPopup === false) {
+                        config.behavior.autoShow = false;
+                    }
+                    
+                    console.log('Applied stored cross-domain consent');
+                } catch (e) {
+                    console.error('Error parsing stored consent:', e);
+                }
+            }
+        }
+        
+        // 3. Setup cross-domain features
+        setupCrossDomainLinks();
+        setupConsentSync();
+    }
+    
+    // ====== ORIGINAL INITIALIZATION CONTINUES ======
     // Ensure location data is loaded first
     try {
         if (!sessionStorage.getItem('locationData')) {
@@ -6051,22 +5982,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Detect user language
     const userLanguage = detectUserLanguage(locationData);
-    
-    // NEW: Initialize cross-domain consent sharing
-    if (config.crossDomainConfig && config.crossDomainConfig.enabled) {
-        // 1. Try to auto-apply cross-domain consent
-        const applied = autoApplyCrossDomainConsent();
-        
-        // 2. Setup storage sync for subdomains
-        setupStorageSync();
-        
-        // 3. Setup link modification for cross-domain
-        setupLinkModification();
-        
-        if (applied) {
-            console.log('✅ Cross-domain consent automatically applied');
-        }
-    }
 
     // Inject HTML elements
     injectConsentHTML(detectedCookies, userLanguage);
@@ -6107,44 +6022,12 @@ if (typeof window !== 'undefined') {
         saveSettings: saveCustomSettings,
         changeLanguage: changeLanguage,
         config: config,
-        // NEW: Control functions for restrictions
+         // NEW: Control functions for restrictions
         toggleRestrictions: toggleRestrictions,
         toggleScrollRestriction: toggleScrollRestriction,
         toggleClickRestriction: toggleClickRestriction,
         toggleBlurEffect: toggleBlurEffect,
-        setBlurDensity: setBlurDensity,
-        
-        // NEW: Cross-domain utility functions
-        getCrossDomainConsent: getCrossDomainConsent,
-        setCrossDomainConsent: setCrossDomainConsent,
-        syncConsentToDomain: function(domain) {
-            if (!config.crossDomainConfig.enabled) return;
-            
-            const consentData = getCrossDomainConsent();
-            if (consentData && consentData.gcs) {
-                const url = `https://${domain}?gcs=${consentData.gcs}`;
-                console.log(`🔗 Consent sync URL for ${domain}:`, url);
-                return url;
-            }
-            return null;
-        },
-        clearCrossDomainConsent: function() {
-            if (!config.crossDomainConfig.enabled) return;
-            
-            deleteDomainCookie(config.crossDomainConfig.consentKey);
-            localStorage.removeItem(config.crossDomainConfig.consentKey);
-            localStorage.removeItem(config.crossDomainConfig.registryKey);
-            
-            console.log('✅ Cross-domain consent cleared');
-        },
-        debugCrossDomain: function() {
-            console.log('🔍 Cross-domain Debug Info:');
-            console.log('Config:', config.crossDomainConfig);
-            console.log('Current consent:', getCrossDomainConsent());
-            console.log('Registry:', JSON.parse(localStorage.getItem(config.crossDomainConfig.registryKey) || '{}'));
-            console.log('Root domain:', getRootDomain());
-            console.log('All parent domains:', getAllParentDomains());
-        }
+        setBlurDensity: setBlurDensity
     };
 
 
@@ -6276,5 +6159,36 @@ window.resetCookieConsent = function() {
     localStorage.removeItem('__user_cookie_categories__');
     console.log('✅ Cookie consent reset. Refresh the page.');
 }; 
-}
 
+// Cross-domain debug functions
+window.debugCrossDomain = function() {
+    console.log('🔍 CROSS-DOMAIN DEBUG INFO');
+    console.log('Enabled:', config.crossDomain.enabled);
+    console.log('Trusted Domains:', config.crossDomain.trustedDomains);
+    console.log('Current Consent:', getCrossDomainConsent());
+    console.log('Local Cookie:', getCookie('cookie_consent'));
+    console.log('Root Domain:', getRootDomain());
+    
+    const registry = localStorage.getItem(config.crossDomain.registryName);
+    console.log('Registry:', registry ? JSON.parse(registry) : 'Empty');
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    console.log('URL GCS Param:', urlParams.get(config.crossDomain.paramName));
+};
+
+window.clearCrossDomain = function() {
+    localStorage.removeItem(config.crossDomain.cookieName);
+    localStorage.removeItem(config.crossDomain.registryName);
+    
+    // Clear cookies
+    document.cookie = config.crossDomain.cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;';
+    if (config.crossDomain.syncSubdomains) {
+        const rootDomain = getRootDomain();
+        if (rootDomain.startsWith('.')) {
+            document.cookie = config.crossDomain.cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + rootDomain + ';';
+        }
+    }
+    
+    console.log('✅ Cross-domain consent cleared. Refresh page.');
+};
+}
