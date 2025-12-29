@@ -1157,7 +1157,7 @@ crossDomainConfig: {
     consentKey: '__multi_domain_cookie_consent__',
     registryKey: '__multi_domain_consent_registry__',
     trustedDomains: [
-        // Add your trusted domains here
+         'dev-rpractice.pantheonsite.io', 'dpracticebdhere.myshopify.com'
         // Example: 'yourdomain.com', 'anotherdomain.com'
     ],
     shareToSubdomains: true,
