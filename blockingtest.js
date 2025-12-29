@@ -6275,15 +6275,6 @@ window.clearCrossDomain = function() {
 };
 
 
-    / ============================================================================
-// DEBUG RELOAD FUNCTION
-// ============================================================================
-window.debugReload = function() {
-    console.log("🔄 RELOAD DEBUG INFO");
-    console.log("Protection Flag:", window.RELOAD_PROTECTION);
-    console.log("Blocking Enabled:", window.COOKIE_SETTINGS?.BLOCKING_ENABLED);
-    console.log("Reload Enabled:", window.COOKIE_SETTINGS?.RELOAD_ENABLED);
-    console.log("Cross-domain Enabled:", config.crossDomain.enabled);
-};
+
     
 }
