@@ -5326,9 +5326,11 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
 
 
 function rejectAllCookies() {
-
-    hideCookieBanner(); // ← Add this line
+    hideCookieBanner();
     console.log("❌ Rejecting ALL cookies");
+    
+    // FIX: Prevent reload loop by setting a session flag
+    sessionStorage.setItem('just_rejected_cookies', 'true');
     
     // IMPORTANT: Call the blocking script function
     if (typeof window.disableAllTracking === 'function') {
@@ -5338,14 +5340,14 @@ function rejectAllCookies() {
         localStorage.removeItem("__user_cookie_consent__");
         localStorage.removeItem("__user_cookie_categories__");
         
-       // Only reload if reload feature is enabled
-if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-    setTimeout(() => {
-        window.location.reload();
-    }, 300);
-} else {
-    console.log("🟡 Page reload disabled - changes saved without refresh");
-}
+        // Only reload if reload feature is enabled
+        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else {
+            console.log("🟡 Page reload disabled - changes saved without refresh");
+        }
     }
     
     // Your existing code continues...
@@ -5365,16 +5367,12 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
         timestamp: new Date().getTime()
     };
 
-     // STORE FOR CROSS-DOMAIN SHARING
+    // STORE FOR CROSS-DOMAIN SHARING
     storeCrossDomainConsent(consentData);
-
-    
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     clearNonEssentialCookies();
-    
-   
     
     window.dataLayer.push({
         'event': 'cookie_consent_rejected',
@@ -5399,9 +5397,8 @@ if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
     
     console.log("✅ All cookies rejected, page will reload");
 
-      // ADD THIS LINE:
-   cleanup(); // Clean up memory using consolidated system
-    
+    // ADD THIS LINE:
+    cleanup(); // Clean up memory using consolidated system
 }
 
 
@@ -5898,7 +5895,13 @@ function loadPerformanceCookies() {
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
     // ====== CROSS-DOMAIN INITIALIZATION ======
-    if (config.crossDomain.enabled) {
+   // ====== CROSS-DOMAIN INITIALIZATION ======
+if (config.crossDomain.enabled) {
+    // FIX: Skip cross-domain consent if we just rejected on this page
+    if (sessionStorage.getItem('just_rejected_cookies') === 'true') {
+        console.log('Skipping cross-domain consent - just rejected cookies');
+        sessionStorage.removeItem('just_rejected_cookies');
+    } else {
         // 1. Check URL for incoming cross-domain consent
         const urlConsent = checkForCrossDomainConsent();
         
@@ -5923,11 +5926,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
         }
-        
-        // 3. Setup cross-domain features
-        setupCrossDomainLinks();
-        setupConsentSync();
     }
+    
+    // 3. Setup cross-domain features
+    setupCrossDomainLinks();
+    setupConsentSync();
+}
     
     // ====== ORIGINAL INITIALIZATION CONTINUES ======
     // Ensure location data is loaded first
