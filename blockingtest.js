@@ -939,30 +939,23 @@ window.cleanupCookieConsent = cleanup;
     
     /* ===================== BANNER HOOKS ===================== */
     
-window.enableAllTracking = function() {
-    console.log("✅ Enabling ALL tracking");
-    localStorage.setItem(CONSENT_KEY, "granted");
-    localStorage.setItem(CATEGORIES_KEY, JSON.stringify({
-        analytics: true,
-        advertising: true,
-        performance: true
-    }));
-    
-    if (RELOAD_ENABLED) {
-        // Check if already reloading from banner script
-        if (window.RELOAD_PROTECTION && window.RELOAD_PROTECTION.isReloading) {
-            console.log("🛡️ Banner script already handling reload, skipping");
-            return;
-        }
+    window.enableAllTracking = function() {
+        console.log("✅ Enabling ALL tracking");
+        localStorage.setItem(CONSENT_KEY, "granted");
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify({
+            analytics: true,
+            advertising: true,
+            performance: true
+        }));
         
-        setTimeout(() => {
-            console.log("🔄 Blocking script triggered reload");
-            window.location.reload();
-        }, 300);
-    } else if (DEBUG) {
-        console.log("🟡 Page reload disabled - changes applied without refresh");
-    }
-};
+        if (RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else if (DEBUG) {
+            console.log("🟡 Page reload disabled - changes applied without refresh");
+        }
+    };
     
 window.enableTrackingByCategory = function(categories) {
     console.log("✅ Enabling tracking for categories:", categories);
@@ -979,19 +972,16 @@ window.enableTrackingByCategory = function(categories) {
         localStorage.setItem(CONSENT_KEY, "partial");
     }
     
-    if (RELOAD_ENABLED) {
-        // Check if already reloading from banner script
-        if (window.RELOAD_PROTECTION && window.RELOAD_PROTECTION.isReloading) {
-            console.log("🛡️ Banner script already handling reload, skipping");
-            return;
-        }
-        
+    // Check if we're in cross-domain mode
+    const isCrossDomain = typeof config !== 'undefined' && config.crossDomain && config.crossDomain.enabled;
+    
+    // Only reload if not in cross-domain mode or if cross-domain auto-apply is disabled
+    if (RELOAD_ENABLED && (!isCrossDomain || !config.crossDomain.autoApply)) {
         setTimeout(() => {
-            console.log("🔄 Blocking script triggered reload for custom settings");
             window.location.reload();
-        }, 300);
+        }, 500);
     } else if (DEBUG) {
-        console.log("🟡 Page reload disabled - changes applied without refresh");
+        console.log("🟡 Page reload disabled (cross-domain mode or RELOAD_ENABLED = false)");
     }
 };
     
@@ -1000,19 +990,16 @@ window.enableTrackingByCategory = function(categories) {
     localStorage.removeItem(CONSENT_KEY);
     localStorage.removeItem(CATEGORIES_KEY);
     
-    if (RELOAD_ENABLED) {
-        // Check if already reloading from banner script
-        if (window.RELOAD_PROTECTION && window.RELOAD_PROTECTION.isReloading) {
-            console.log("🛡️ Banner script already handling reload, skipping");
-            return;
-        }
-        
+    // Check if we're in cross-domain mode
+    const isCrossDomain = typeof config !== 'undefined' && config.crossDomain && config.crossDomain.enabled;
+    
+    // Only reload if not in cross-domain mode or if cross-domain auto-apply is disabled
+    if (RELOAD_ENABLED && (!isCrossDomain || !config.crossDomain.autoApply)) {
         setTimeout(() => {
-            console.log("🔄 Blocking script triggered reload for reject");
             window.location.reload();
-        }, 300);
+        }, 500);
     } else if (DEBUG) {
-        console.log("🟡 Page reload disabled - changes applied without refresh");
+        console.log("🟡 Page reload disabled (cross-domain mode or RELOAD_ENABLED = false)");
     }
 };
     
@@ -1535,24 +1522,13 @@ geoConfig: {
 // ... end of config object
 
 
-
-// ============================================================================
-// RELOAD PROTECTION: Prevent infinite reload loops
-// ============================================================================
-window.RELOAD_PROTECTION = {
-    isReloading: false,
-    lastActionTime: 0,
-    timeout: null
-};
-
-
-
 /* ===================== EVENT HANDLER MANAGEMENT ===================== */
 // Using the consolidated global system from Step 1
 // Remove duplicate definitions - keep only the global ones above
 
 // ============== IMPLEMENTATION SECTION ============== //
 
+// ============== IMPLEMENTATION SECTION ============== //
 
 /* =====================================================
    CROSS-DOMAIN & SUBDOMAIN HELPER FUNCTIONS
@@ -5277,18 +5253,9 @@ function setBlurDensity(density) {
 
 // Cookie consent functions
 function acceptAllCookies() {
+    
     hideCookieBanner(); // ← Add this line
     console.log("✅ Accepting ALL cookies");
-    
-    // RELOAD PROTECTION: Check if already reloading
-    if (window.RELOAD_PROTECTION.isReloading) {
-        console.log("🛡️ Already reloading, skipping duplicate request");
-        return;
-    }
-    
-    // Set reload protection
-    window.RELOAD_PROTECTION.isReloading = true;
-    window.RELOAD_PROTECTION.lastActionTime = Date.now();
     
     // IMPORTANT: Call the blocking script function
     if (typeof window.enableAllTracking === 'function') {
@@ -5302,22 +5269,20 @@ function acceptAllCookies() {
             performance: true
         }));
         
-        // Only reload if reload feature is enabled
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            // Clear any existing timeout
-            if (window.RELOAD_PROTECTION.timeout) {
-                clearTimeout(window.RELOAD_PROTECTION.timeout);
-            }
-            
-            // Set single reload with protection
-            window.RELOAD_PROTECTION.timeout = setTimeout(() => {
-                console.log("🔄 Reloading page after accept all...");
-                window.location.reload();
-            }, 300);
-        } else {
-            console.log("🟡 Page reload disabled - changes saved without refresh");
-            window.RELOAD_PROTECTION.isReloading = false; // Reset flag
-        }
+      // Only reload if reload feature is enabled
+// ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
+if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
+    // Only reload if reload feature is enabled
+    if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+        setTimeout(() => {
+            window.location.reload();
+        }, 500); // Increased delay for cross-domain sync
+    } else {
+        console.log("🟡 Page reload disabled - changes saved without refresh");
+    }
+} else {
+    console.log("🟢 Cross-domain consent applied, no reload needed");
+}
     }
     
     // Your existing code continues...
@@ -5337,13 +5302,14 @@ function acceptAllCookies() {
         timestamp: new Date().getTime()
     };
 
-    // STORE FOR CROSS-DOMAIN SHARING
+     // STORE FOR CROSS-DOMAIN SHARING
     storeCrossDomainConsent(consentData);
     
     addStoredParamsToURL();
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     
+ 
     window.dataLayer.push({
         'event': 'cookie_consent_accepted',
         'consent_mode': {
@@ -5367,24 +5333,15 @@ function acceptAllCookies() {
     
     console.log("✅ All cookies accepted, page will reload");
 
-    // ADD THIS LINE:
+     // ADD THIS LINE:
     cleanup(); // Clean up memory using consolidated system
+    
 }
 
 
 function rejectAllCookies() {
     hideCookieBanner(); // ← Add this line
     console.log("❌ Rejecting ALL cookies");
-    
-    // RELOAD PROTECTION: Check if already reloading
-    if (window.RELOAD_PROTECTION.isReloading) {
-        console.log("🛡️ Already reloading, skipping duplicate request");
-        return;
-    }
-    
-    // Set reload protection
-    window.RELOAD_PROTECTION.isReloading = true;
-    window.RELOAD_PROTECTION.lastActionTime = Date.now();
     
     // IMPORTANT: Call the blocking script function
     if (typeof window.disableAllTracking === 'function') {
@@ -5393,23 +5350,6 @@ function rejectAllCookies() {
         // Fallback
         localStorage.removeItem("__user_cookie_consent__");
         localStorage.removeItem("__user_cookie_categories__");
-        
-        // Only reload if reload feature is enabled
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            // Clear any existing timeout
-            if (window.RELOAD_PROTECTION.timeout) {
-                clearTimeout(window.RELOAD_PROTECTION.timeout);
-            }
-            
-            // Set single reload with protection
-            window.RELOAD_PROTECTION.timeout = setTimeout(() => {
-                console.log("🔄 Reloading page after reject all...");
-                window.location.reload();
-            }, 300);
-        } else {
-            console.log("🟡 Page reload disabled - changes saved without refresh");
-            window.RELOAD_PROTECTION.isReloading = false; // Reset flag
-        }
     }
     
     // Your existing code continues...
@@ -5457,9 +5397,22 @@ function rejectAllCookies() {
     // Add this at the end of rejectAllCookies function
     disableInteractionRestrictions();
     
-    console.log("✅ All cookies rejected, page will reload");
+    console.log("✅ All cookies rejected");
+    
+    // ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
+    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
+        // Only reload if reload feature is enabled
+        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 500); // Increased delay for cross-domain sync
+        } else {
+            console.log("🟡 Page reload disabled - changes saved without refresh");
+        }
+    } else {
+        console.log("🟢 Cross-domain consent applied, no reload needed");
+    }
 
-    // ADD THIS LINE:
     cleanup(); // Clean up memory using consolidated system
 }
 
@@ -5476,16 +5429,6 @@ function saveCustomSettings() {
         advertising: advertisingChecked,
         performance: performanceChecked
     });
-    
-    // RELOAD PROTECTION: Check if already reloading
-    if (window.RELOAD_PROTECTION.isReloading) {
-        console.log("🛡️ Already reloading, skipping duplicate request");
-        return;
-    }
-    
-    // Set reload protection
-    window.RELOAD_PROTECTION.isReloading = true;
-    window.RELOAD_PROTECTION.lastActionTime = Date.now();
     
     // Store categories for the blocking script
     const categories = {
@@ -5504,27 +5447,7 @@ function saveCustomSettings() {
         // Set partial consent
         const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
         localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
-        
-        // Only reload if reload feature is enabled
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            // Clear any existing timeout
-            if (window.RELOAD_PROTECTION.timeout) {
-                clearTimeout(window.RELOAD_PROTECTION.timeout);
-            }
-            
-            // Set single reload with protection
-            window.RELOAD_PROTECTION.timeout = setTimeout(() => {
-                console.log("🔄 Reloading page after custom settings...");
-                window.location.reload();
-            }, 300);
-        } else {
-            console.log("🟡 Page reload disabled - changes saved without refresh");
-            window.RELOAD_PROTECTION.isReloading = false; // Reset flag
-        }
     }
-    
-    // Continue with your existing analytics code...
-    // Rest of your function stays the same...
     
     // Restore stored query parameters when saving custom settings
     addStoredParamsToURL();
@@ -5563,12 +5486,10 @@ function saveCustomSettings() {
     // Load scripts based on consent
     if (analyticsChecked) {
         console.log("📊 Loading analytics scripts...");
-        // You can load analytics scripts here if needed
     }
     
     if (advertisingChecked) {
         console.log("🎯 Loading marketing scripts...");
-        // You can load marketing scripts here if needed
     }
     
     // Clear cookies for unselected categories
@@ -5626,18 +5547,28 @@ function saveCustomSettings() {
             'location_data': locationData
         });
     }
-   
+    
     // NEW: Disable interaction restrictions when user saves custom settings
     disableInteractionRestrictions();
    
-    console.log("✅ Custom settings saved and page will reload");
+    console.log("✅ Custom settings saved");
+    
+    // ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
+    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
+        // Only reload if reload feature is enabled
+        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 500); // Increased delay for cross-domain sync
+        } else {
+            console.log("🟡 Page reload disabled - changes saved without refresh");
+        }
+    } else {
+        console.log("🟢 Cross-domain consent applied, no reload needed");
+    }
 
-    // ADD THIS LINE:
     cleanup(); // Clean up memory using consolidated system
 }
-
-
-
 
 // Helper functions
 function clearNonEssentialCookies() {
@@ -5970,15 +5901,6 @@ function loadPerformanceCookies() {
 
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
-
-       // ====== RELOAD PROTECTION RESET ======
-    // Reset reload protection flag on page load
-    window.RELOAD_PROTECTION = {
-        isReloading: false,
-        lastActionTime: 0,
-        timeout: null
-    };
-    
     // ====== CROSS-DOMAIN INITIALIZATION ======
     if (config.crossDomain.enabled) {
         // 1. Check URL for incoming cross-domain consent
@@ -6273,8 +6195,4 @@ window.clearCrossDomain = function() {
     
     console.log('✅ Cross-domain consent cleared. Refresh page.');
 };
-
-
-
-    
 }
