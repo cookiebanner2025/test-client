@@ -1814,45 +1814,194 @@ function checkForCrossDomainConsent() {
 }
 
 // Modify links to trusted domains
+// Modified to work BOTH WAYS
 function setupCrossDomainLinks() {
     if (!config.crossDomain.enabled || config.crossDomain.trustedDomains.length === 0) {
         return;
     }
     
-    document.addEventListener('click', function(e) {
-        const link = e.target.closest('a');
-        if (!link || !link.href) return;
-        
+    // Function to add consent to a URL
+    function addConsentToURL(urlString) {
         try {
-            const url = new URL(link.href);
+            const url = new URL(urlString);
             const isTrustedDomain = config.crossDomain.trustedDomains.some(domain => {
+                // Check exact match or subdomain
                 return url.hostname === domain || url.hostname.endsWith('.' + domain);
             });
             
             if (isTrustedDomain) {
-                const currentConsent = getCrossDomainConsent();
+                // Get current consent from any source
+                let currentConsent = null;
+                
+                // Try cross-domain cookie first
+                currentConsent = getCrossDomainCookie(config.crossDomain.cookieName);
+                
+                // If not found, try localStorage
+                if (!currentConsent) {
+                    currentConsent = localStorage.getItem(config.crossDomain.cookieName);
+                }
+                
+                // If not found, try regular cookie
+                if (!currentConsent) {
+                    currentConsent = getCookie('cookie_consent');
+                }
+                
                 if (currentConsent) {
                     try {
                         const consentData = JSON.parse(currentConsent);
                         const gcs = getGcsFromConsent(consentData);
-                        url.searchParams.set(config.crossDomain.paramName, gcs);
-                        link.href = url.toString();
                         
-                        console.log('Added cross-domain consent to link:', {
-                            to: url.hostname,
-                            gcs: gcs
-                        });
+                        // Only add if not already present
+                        if (!url.searchParams.has(config.crossDomain.paramName)) {
+                            url.searchParams.set(config.crossDomain.paramName, gcs);
+                            console.log('✅ Added consent to URL:', {
+                                from: window.location.hostname,
+                                to: url.hostname,
+                                gcs: gcs,
+                                status: consentData.status
+                            });
+                        }
+                        
+                        return url.toString();
+                        
                     } catch (err) {
                         console.error('Error parsing consent:', err);
                     }
                 }
             }
         } catch (err) {
-            // Invalid URL, ignore
+            // Invalid URL, return original
+        }
+        return urlString;
+    }
+    
+    // 1. Modify all links on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const links = document.querySelectorAll('a[href]');
+        links.forEach(link => {
+            try {
+                const originalHref = link.getAttribute('href');
+                if (originalHref && !originalHref.startsWith('#')) {
+                    const newHref = addConsentToURL(originalHref);
+                    if (newHref !== originalHref) {
+                        link.setAttribute('href', newHref);
+                        link.setAttribute('data-consent-added', 'true');
+                    }
+                }
+            } catch (e) {
+                // Skip invalid URLs
+            }
+        });
+    });
+    
+    // 2. Modify dynamically added links
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeName === 'A' && node.href) {
+                    try {
+                        const newHref = addConsentToURL(node.href);
+                        if (newHref !== node.href) {
+                            node.href = newHref;
+                            node.setAttribute('data-consent-added', 'true');
+                        }
+                    } catch (e) {
+                        // Skip
+                    }
+                } else if (node.querySelectorAll) {
+                    // Check for links inside added nodes
+                    const links = node.querySelectorAll('a[href]');
+                    links.forEach(link => {
+                        try {
+                            const newHref = addConsentToURL(link.href);
+                            if (newHref !== link.href) {
+                                link.href = newHref;
+                                link.setAttribute('data-consent-added', 'true');
+                            }
+                        } catch (e) {
+                            // Skip
+                        }
+                    });
+                }
+            });
+        });
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    // 3. Also handle clicks in case we missed something
+    document.addEventListener('click', function(e) {
+        let target = e.target;
+        
+        // Find the closest link
+        while (target && target.nodeName !== 'A') {
+            target = target.parentElement;
+        }
+        
+        if (target && target.href) {
+            try {
+                const newHref = addConsentToURL(target.href);
+                if (newHref !== target.href && !target.getAttribute('data-consent-added')) {
+                    e.preventDefault();
+                    target.setAttribute('href', newHref);
+                    target.setAttribute('data-consent-added', 'true');
+                    
+                    // Wait a tick then follow the link
+                    setTimeout(() => {
+                        window.location.href = newHref;
+                    }, 10);
+                }
+            } catch (err) {
+                // Let normal navigation proceed
+            }
         }
     }, true);
 }
+// Add this AFTER your setupCrossDomainLinks function
+function forceConsentOnNavigation() {
+    // Intercept ALL navigation
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    history.pushState = function(state, title, url) {
+        if (url) {
+            const newUrl = addConsentToURL(url.toString());
+            return originalPushState.call(this, state, title, newUrl);
+        }
+        return originalPushState.call(this, state, title, url);
+    };
+    
+    history.replaceState = function(state, title, url) {
+        if (url) {
+            const newUrl = addConsentToURL(url.toString());
+            return originalReplaceState.call(this, state, title, newUrl);
+        }
+        return originalReplaceState.call(this, state, title, url);
+    };
+    
+    // Also intercept window.location changes
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+        get: function() {
+            return originalLocation;
+        },
+        set: function(value) {
+            if (typeof value === 'string') {
+                const newUrl = addConsentToURL(value);
+                originalLocation.href = newUrl;
+            } else {
+                originalLocation.href = value.href || value;
+            }
+        }
+    });
+}
 
+// Call it in your initialization
+// Add this line in your DOMContentLoaded or initialization function:
+forceConsentOnNavigation();
 // Sync consent between tabs/windows
 // Sync consent between tabs/windows AND across domains
 function setupConsentSync() {
@@ -6166,6 +6315,52 @@ window.showBlockingSettings = function() {
 // Clean up event listeners on page unload
 // Optional: Debug function for testing
 if (typeof window !== 'undefined') {
+
+    // NEW DEBUG FUNCTION - Add this right here
+    window.testCrossDomainLinks = function() {
+        console.log('🔗 TESTING CROSS-DOMAIN LINKS:');
+        console.log('Current domain:', window.location.hostname);
+        console.log('Current consent:', getCookie('cookie_consent'));
+        console.log('Cross-domain consent:', getCrossDomainConsent());
+        
+        // Find all links to trusted domains
+        const links = document.querySelectorAll('a[href]');
+        let foundLinks = [];
+        
+        links.forEach(link => {
+            try {
+                const url = new URL(link.href);
+                const isTrusted = config.crossDomain.trustedDomains.some(domain => 
+                    url.hostname === domain || url.hostname.endsWith('.' + domain)
+                );
+                
+                if (isTrusted && url.hostname !== window.location.hostname) {
+                    foundLinks.push({
+                        text: link.textContent.substring(0, 30),
+                        href: link.href,
+                        hasParam: url.searchParams.has(config.crossDomain.paramName)
+                    });
+                }
+            } catch (e) {}
+        });
+        
+        console.log('Found links to other domains:', foundLinks);
+        
+        if (foundLinks.length === 0) {
+            console.log('❌ No links found to other trusted domains.');
+            console.log('Make sure you have links between the domains.');
+        } else {
+            foundLinks.forEach(link => {
+                if (link.hasParam) {
+                    console.log(`✅ ${link.text}... has consent parameter`);
+                } else {
+                    console.log(`❌ ${link.text}... MISSING consent parameter`);
+                }
+            });
+        }
+    };
+
+    
     window.debugEventListeners = function() {
         console.log('📊 Event Handler Debug:');
         console.log(`Total global handlers: ${window.cookieConsentHandlers ? window.cookieConsentHandlers.size : 0}`);
