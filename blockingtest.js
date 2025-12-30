@@ -834,8 +834,6 @@ function cleanupAllGlobalHandlers() {
 
 /* ===================== CLEANUP SYSTEM ===================== */
 // SINGLE CONSOLIDATED CLEANUP FUNCTION
-/* ===================== CLEANUP SYSTEM ===================== */
-// SINGLE CONSOLIDATED CLEANUP FUNCTION
 function cleanup() {
     if (DEBUG) console.log("🔄 Starting complete cleanup...");
     
@@ -930,37 +928,11 @@ function cleanup() {
     // 9. Clean up all global event handlers (only use this system)
     cleanupAllGlobalHandlers();
     
-    // 10. NEW: Clean up real-time sync event listeners
-    try {
-        // Remove storage event listener for cross-domain sync
-        if (typeof window.handleStorageSync === 'function') {
-            window.removeEventListener('storage', window.handleStorageSync);
-            delete window.handleStorageSync;
-            if (DEBUG) console.log("✅ Storage sync listener cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('Storage sync listener already removed');
-    }
-    
-    try {
-        // Remove message event listener for cross-domain sync
-        if (typeof window.handleMessageSync === 'function') {
-            window.removeEventListener('message', window.handleMessageSync);
-            delete window.handleMessageSync;
-            if (DEBUG) console.log("✅ Message sync listener cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('Message sync listener already removed');
-    }
-    
-    // 11. Clear the cleanup registry itself
+    // 10. Clear the cleanup registry itself
     window.cookieBlockingCleanup = {};
     
     if (DEBUG) console.log("✅ Complete cleanup performed");
 }
-
-// Register the cleanup function globally
-window.cleanupCookieConsent = cleanup;
 
 // Register the cleanup function globally
 window.cleanupCookieConsent = cleanup;
@@ -1594,262 +1566,6 @@ function getRootDomain() {
     return '.' + parts.slice(-2).join('.');
 }
 
-
-
-/* ===================== REAL-TIME SYNC FUNCTIONS ===================== */
-
-// NEW: Function to sync consent across domains in real-time
-function syncConsentAcrossDomains(consentData) {
-    if (!config.crossDomain.enabled) return;
-    
-    console.log('🔄 Syncing consent across domains:', consentData.status);
-    
-    // 1. Store in cross-domain storage
-    storeCrossDomainConsent(consentData);
-    
-    // 2. Update URL parameters on ALL links to trusted domains
-    updateAllLinksWithConsent(consentData);
-    
-    // 3. Update the current page's URL (if needed)
-    updateCurrentUrlWithConsent(consentData);
-    
-    // 4. Trigger storage event for same-tab/window sync
-    triggerStorageUpdate(consentData);
-    
-    // 5. Sync with the blocking script immediately
-    syncWithBlockingScript(consentData);
-    
-    // Log the sync event
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-        'event': 'cross_domain_sync_triggered',
-        'consent_status': consentData.status,
-        'gcs': getGcsFromConsent(consentData),
-        'timestamp': new Date().toISOString(),
-        'source_domain': window.location.hostname
-    });
-}
-
-// NEW: Update ALL links with current consent
-function updateAllLinksWithConsent(consentData) {
-    if (!config.crossDomain.enabled || config.crossDomain.trustedDomains.length === 0) {
-        return;
-    }
-    
-    const gcs = getGcsFromConsent(consentData);
-    const allLinks = document.querySelectorAll('a[href]');
-    
-    allLinks.forEach(link => {
-        try {
-            const url = new URL(link.href, window.location.origin);
-            const isTrustedDomain = config.crossDomain.trustedDomains.some(domain => {
-                return url.hostname === domain || 
-                       url.hostname.endsWith('.' + domain) ||
-                       domain.startsWith('*') && url.hostname.includes(domain.substring(1));
-            });
-            
-            if (isTrustedDomain) {
-                // Remove existing consent parameter
-                url.searchParams.delete(config.crossDomain.paramName);
-                // Add new consent parameter
-                url.searchParams.set(config.crossDomain.paramName, gcs);
-                
-                // Update the link
-                link.href = url.toString();
-                
-                console.log('🔗 Updated link with consent:', {
-                    to: url.hostname,
-                    gcs: gcs,
-                    text: link.textContent.substring(0, 30)
-                });
-            }
-        } catch (err) {
-            // Invalid URL, ignore
-        }
-    });
-}
-
-// NEW: Update current URL with consent (for sharing)
-function updateCurrentUrlWithConsent(consentData) {
-    if (!config.crossDomain.enabled) return;
-    
-    const currentUrl = new URL(window.location.href);
-    const gcs = getGcsFromConsent(consentData);
-    
-    // Only update if we don't already have the same parameter
-    const currentGcs = currentUrl.searchParams.get(config.crossDomain.paramName);
-    if (currentGcs !== gcs) {
-        currentUrl.searchParams.set(config.crossDomain.paramName, gcs);
-        window.history.replaceState({}, '', currentUrl.toString());
-        console.log('📍 Updated current URL with consent:', gcs);
-    }
-}
-
-// NEW: Trigger storage event for same-tab sync
-function triggerStorageUpdate(consentData) {
-    // This triggers the storage event listener in setupConsentSync()
-    const consentString = JSON.stringify(consentData);
-    const oldValue = localStorage.getItem(config.crossDomain.cookieName);
-    
-    if (oldValue !== consentString) {
-        localStorage.setItem(config.crossDomain.cookieName, consentString);
-        
-        // Manually dispatch storage event (for same window)
-        const event = new StorageEvent('storage', {
-            key: config.crossDomain.cookieName,
-            oldValue: oldValue,
-            newValue: consentString,
-            url: window.location.href,
-            storageArea: localStorage
-        });
-        
-        window.dispatchEvent(event);
-    }
-}
-
-// NEW: Sync with the blocking script immediately
-function syncWithBlockingScript(consentData) {
-    // Update the blocking script's localStorage to match
-    const blockingConsentStatus = consentData.status === 'accepted' ? 'granted' : 
-                                  consentData.status === 'rejected' ? 'rejected' : 'partial';
-    
-    localStorage.setItem('__user_cookie_consent__', blockingConsentStatus);
-    
-    if (consentData.status === 'custom') {
-        localStorage.setItem('__user_cookie_categories__', JSON.stringify({
-            analytics: consentData.categories.analytics,
-            advertising: consentData.categories.advertising,
-            performance: consentData.categories.performance
-        }));
-    } else if (consentData.status === 'accepted') {
-        localStorage.setItem('__user_cookie_categories__', JSON.stringify({
-            analytics: true,
-            advertising: true,
-            performance: true
-        }));
-    } else if (consentData.status === 'rejected') {
-        localStorage.removeItem('__user_cookie_categories__');
-    }
-}
-
-// NEW: Setup real-time sync for cross-tab/window communication
-// NEW: Setup real-time sync for cross-tab/window communication
-function setupRealTimeSync() {
-    if (!config.crossDomain.enabled) return;
-    
-    // Store the handler functions so we can remove them later
-    window.handleStorageSync = function(e) {
-        if (e.key === config.crossDomain.cookieName && e.newValue) {
-            try {
-                const consentData = JSON.parse(e.newValue);
-                console.log('📡 Received real-time sync from another tab:', consentData.status);
-                
-                // Apply the synced consent
-                if (config.crossDomain.autoApply) {
-                    applyCrossDomainConsent(consentData);
-                }
-                
-                // Sync with blocking script
-                syncWithBlockingScript(consentData);
-                
-                // Update links
-                updateAllLinksWithConsent(consentData);
-            } catch (error) {
-                console.error('❌ Error processing real-time sync:', error);
-            }
-        }
-    };
-    
-    window.handleMessageSync = function(e) {
-        // Security check: only accept messages from trusted domains
-        const isTrustedOrigin = config.crossDomain.trustedDomains.some(domain => {
-            return e.origin.includes(domain) || 
-                   e.origin === window.location.origin;
-        });
-        
-        if (!isTrustedOrigin) return;
-        
-        if (e.data && e.data.type === 'COOKIE_CONSENT_SYNC') {
-            console.log('📡 Received cross-domain sync via postMessage:', e.data.consent);
-            
-            try {
-                const consentData = e.data.consent;
-                
-                // Store and apply
-                storeCrossDomainConsent(consentData);
-                
-                if (config.crossDomain.autoApply) {
-                    applyCrossDomainConsent(consentData);
-                }
-                
-                // Sync with blocking script
-                syncWithBlockingScript(consentData);
-                
-                // Acknowledge receipt
-                e.source.postMessage({
-                    type: 'COOKIE_CONSENT_SYNC_ACK',
-                    received: true,
-                    domain: window.location.hostname
-                }, e.origin);
-            } catch (error) {
-                console.error('❌ Error processing cross-domain sync:', error);
-            }
-        }
-    };
-    
-    // 1. Listen for storage events (cross-tab/window)
-    window.addEventListener('storage', window.handleStorageSync);
-    
-    // 2. Listen for message events (cross-domain via postMessage)
-    window.addEventListener('message', window.handleMessageSync);
-    
-    console.log('✅ Real-time sync setup complete');
-}
-    
-    // 2. Listen for message events (cross-domain via postMessage)
-    window.addEventListener('message', function(e) {
-        // Security check: only accept messages from trusted domains
-        const isTrustedOrigin = config.crossDomain.trustedDomains.some(domain => {
-            return e.origin.includes(domain) || 
-                   e.origin === window.location.origin;
-        });
-        
-        if (!isTrustedOrigin) return;
-        
-        if (e.data && e.data.type === 'COOKIE_CONSENT_SYNC') {
-            console.log('📡 Received cross-domain sync via postMessage:', e.data.consent);
-            
-            try {
-                const consentData = e.data.consent;
-                
-                // Store and apply
-                storeCrossDomainConsent(consentData);
-                
-                if (config.crossDomain.autoApply) {
-                    applyCrossDomainConsent(consentData);
-                }
-                
-                // Sync with blocking script
-                syncWithBlockingScript(consentData);
-                
-                // Acknowledge receipt
-                e.source.postMessage({
-                    type: 'COOKIE_CONSENT_SYNC_ACK',
-                    received: true,
-                    domain: window.location.hostname
-                }, e.origin);
-            } catch (error) {
-                console.error('❌ Error processing cross-domain sync:', error);
-            }
-        }
-    });
-    
-    console.log('✅ Real-time sync setup complete');
-}
-
-
-
-
 // Set cookie for cross-domain/subdomain sharing
 function setCrossDomainCookie(name, value, days) {
     if (!config.crossDomain.enabled) return;
@@ -1906,12 +1622,15 @@ function getCrossDomainConsent() {
 }
 
 // Store consent for cross-domain sharing
+// Store consent for cross-domain sharing
 function storeCrossDomainConsent(consentData) {
     if (!config.crossDomain.enabled) return;
     
     const consentString = JSON.stringify(consentData);
+    const currentTime = Date.now();
+    const gcs = getGcsFromConsent(consentData);
     
-    // Store in localStorage
+    // Store in localStorage (primary storage)
     localStorage.setItem(config.crossDomain.cookieName, consentString);
     
     // Store in cookie for subdomain sharing
@@ -1923,17 +1642,41 @@ function storeCrossDomainConsent(consentData) {
         );
     }
     
-    // Update registry
+    // Update registry with detailed info
     const registry = JSON.parse(localStorage.getItem(config.crossDomain.registryName) || '{}');
     registry[window.location.hostname] = {
         consent: consentString,
-        timestamp: Date.now(),
-        gcs: getGcsFromConsent(consentData),
-        categories: consentData.categories
+        timestamp: currentTime,
+        gcs: gcs,
+        categories: consentData.categories,
+        status: consentData.status,
+        lastUpdated: new Date(currentTime).toISOString()
     };
+    
+    // Clean up old entries (older than 7 days)
+    const sevenDaysAgo = currentTime - (7 * 24 * 60 * 60 * 1000);
+    Object.keys(registry).forEach(domain => {
+        if (registry[domain].timestamp < sevenDaysAgo) {
+            delete registry[domain];
+        }
+    });
+    
     localStorage.setItem(config.crossDomain.registryName, JSON.stringify(registry));
     
-    console.log('Cross-domain consent stored:', consentData.status);
+    console.log('✅ Cross-domain consent stored:', {
+        status: consentData.status,
+        domain: window.location.hostname,
+        time: new Date(currentTime).toLocaleTimeString(),
+        gcs: gcs
+    });
+    
+    // Trigger storage event for other tabs/windows
+    window.dispatchEvent(new StorageEvent('storage', {
+        key: config.crossDomain.cookieName,
+        newValue: consentString,
+        oldValue: localStorage.getItem(config.crossDomain.cookieName),
+        storageArea: localStorage
+    }));
 }
 
 // Convert consent to GCS signal
@@ -2153,7 +1896,82 @@ function setupConsentSync() {
     });
 }
 
+// NEW: Real-time sync to all trusted domains
+function updateAllDomainsInRegistry(consentData) {
+    if (!config.crossDomain.enabled) return;
+    
+    try {
+        const registry = JSON.parse(localStorage.getItem(config.crossDomain.registryName) || '{}');
+        const currentTime = Date.now();
+        const gcs = getGcsFromConsent(consentData);
+        
+        // Update registry with current consent
+        registry[window.location.hostname] = {
+            consent: JSON.stringify(consentData),
+            timestamp: currentTime,
+            gcs: gcs,
+            categories: consentData.categories
+        };
+        
+        // Save updated registry
+        localStorage.setItem(config.crossDomain.registryName, JSON.stringify(registry));
+        
+        console.log('✅ Updated registry with current consent:', {
+            domain: window.location.hostname,
+            status: consentData.status,
+            timestamp: new Date(currentTime).toLocaleString()
+        });
+        
+        // Push event to dataLayer
+        window.dataLayer.push({
+            'event': 'consent_synced_to_registry',
+            'domain': window.location.hostname,
+            'consent_status': consentData.status,
+            'gcs': gcs,
+            'timestamp': new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Error updating registry:', error);
+    }
+}
 
+// NEW: Check for recent consent updates from other domains
+function checkForRecentConsentUpdates() {
+    if (!config.crossDomain.enabled) return null;
+    
+    try {
+        const registry = JSON.parse(localStorage.getItem(config.crossDomain.registryName) || '{}');
+        const currentDomain = window.location.hostname;
+        
+        // Find the most recent consent from ANY domain (not current domain)
+        let mostRecentConsent = null;
+        let mostRecentTime = 0;
+        
+        Object.entries(registry).forEach(([domain, data]) => {
+            if (domain !== currentDomain && data.timestamp > mostRecentTime) {
+                mostRecentTime = data.timestamp;
+                mostRecentConsent = data;
+            }
+        });
+        
+        // If we found a recent consent (within last 5 minutes)
+        if (mostRecentConsent && (Date.now() - mostRecentTime < 5 * 60 * 1000)) {
+            console.log('🔄 Found recent consent update from another domain:', {
+                fromDomain: Object.keys(registry).find(key => registry[key] === mostRecentConsent),
+                status: JSON.parse(mostRecentConsent.consent).status,
+                timeAgo: Math.round((Date.now() - mostRecentTime) / 1000) + ' seconds ago'
+            });
+            
+            return mostRecentConsent.consent;
+        }
+        
+    } catch (error) {
+        console.error('Error checking for recent updates:', error);
+    }
+    
+    return null;
+}
 
 // Initialize dataLayer for Google Tag Manager
 window.dataLayer = window.dataLayer || [];
@@ -4925,6 +4743,7 @@ function shouldShowBanner() {
 }
 
 // Main initialization function
+// Main initialization function
 function initializeCookieConsent(detectedCookies, language) {
     // NEW: Check if we should show on this URL
     if (!shouldShowOnCurrentUrl()) {
@@ -4938,24 +4757,92 @@ function initializeCookieConsent(detectedCookies, language) {
     const crossDomainConsent = config.crossDomain.enabled ? getCrossDomainConsent() : null;
     
     // Determine if consent is already given
-    const consentGiven = localConsent || crossDomainConsent;
+    let consentGiven = localConsent || crossDomainConsent;
+    let consentData = null;
     
     // Check if banner should be shown based on geo-targeting and schedule
     const geoAllowed = checkGeoTargeting(locationData);
     const bannerShouldBeShown = geoAllowed && shouldShowBanner();
     
-    // If we have cross-domain consent but no local consent, apply it
-    if (crossDomainConsent && !localConsent && config.crossDomain.autoApply) {
-        try {
-            const consentData = JSON.parse(crossDomainConsent);
-            console.log('Found cross-domain consent, applying:', consentData.status);
-            
-            // Don't show banner if configured
-            if (config.crossDomain.showPopup === false) {
-                config.behavior.autoShow = false;
+    // ====== NEW: BIDIRECTIONAL CROSS-DOMAIN SYNC ======
+    if (config.crossDomain.enabled) {
+        console.log('🔗 Cross-domain mode enabled - checking for consent...');
+        
+        // Priority 1: Check if we have cross-domain consent (from other domain)
+        if (crossDomainConsent && !localConsent) {
+            try {
+                consentData = JSON.parse(crossDomainConsent);
+                console.log('🔄 Found cross-domain consent from other domain:', consentData.status);
+                
+                // Apply the cross-domain consent locally
+                setCookie('cookie_consent', crossDomainConsent, 365);
+                
+                // Update Google Consent Mode
+                updateConsentMode(consentData);
+                
+                // Update blocking script
+                if (typeof window.enableAllTracking === 'function' && typeof window.enableTrackingByCategory === 'function') {
+                    if (consentData.status === 'accepted') {
+                        window.enableAllTracking();
+                    } else if (consentData.status === 'rejected') {
+                        window.disableAllTracking();
+                    } else if (consentData.status === 'custom') {
+                        window.enableTrackingByCategory(consentData.categories);
+                    }
+                }
+                
+                // Don't show banner if configured
+                if (config.crossDomain.showPopup === false) {
+                    config.behavior.autoShow = false;
+                }
+                
+                consentGiven = crossDomainConsent;
+                
+                // Log event
+                window.dataLayer.push({
+                    'event': 'cross_domain_consent_applied',
+                    'consent_status': consentData.status,
+                    'source': 'cross_domain',
+                    'timestamp': new Date().toISOString()
+                });
+                
+            } catch (e) {
+                console.error('Error applying cross-domain consent:', e);
             }
-        } catch (e) {
-            console.error('Error applying cross-domain consent:', e);
+        }
+        // Priority 2: If we have local consent but not in cross-domain storage, sync it
+        else if (localConsent && !crossDomainConsent) {
+            try {
+                consentData = JSON.parse(localConsent);
+                console.log('📤 Syncing local consent to cross-domain storage:', consentData.status);
+                
+                // Store in cross-domain storage
+                storeCrossDomainConsent(consentData);
+                
+            } catch (e) {
+                console.error('Error syncing local consent:', e);
+            }
+        }
+        // Priority 3: If we have both, ensure they match
+        else if (localConsent && crossDomainConsent) {
+            try {
+                const localData = JSON.parse(localConsent);
+                const crossData = JSON.parse(crossDomainConsent);
+                
+                // Check if they match
+                if (JSON.stringify(localData) !== JSON.stringify(crossData)) {
+                    console.log('⚠️ Consent mismatch detected. Using cross-domain consent.');
+                    
+                    // Use cross-domain consent (newer/from other domain)
+                    setCookie('cookie_consent', crossDomainConsent, 365);
+                    consentData = crossData;
+                    updateConsentMode(crossData);
+                } else {
+                    consentData = localData;
+                }
+            } catch (e) {
+                console.error('Error comparing consent data:', e);
+            }
         }
     }
     
@@ -4971,11 +4858,20 @@ function initializeCookieConsent(detectedCookies, language) {
             showCookieBanner();
         }, delay * 1000);
     } else if (consentGiven) {
-        const consentData = JSON.parse(consentGiven);
-        updateConsentMode(consentData);
-        loadCookiesAccordingToConsent(consentData);
-        if (config.behavior.showFloatingButton) {
-            showFloatingButton();
+        if (!consentData) {
+            try {
+                consentData = JSON.parse(consentGiven);
+            } catch (e) {
+                console.error('Error parsing consent data:', e);
+            }
+        }
+        
+        if (consentData) {
+            updateConsentMode(consentData);
+            loadCookiesAccordingToConsent(consentData);
+            if (config.behavior.showFloatingButton) {
+                showFloatingButton();
+            }
         }
     }
 
@@ -5586,12 +5482,13 @@ if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
         },
         timestamp: new Date().getTime()
     };
-    // ADD THIS LINE for real-time sync:
-    syncConsentAcrossDomains(consentData);
 
      // STORE FOR CROSS-DOMAIN SHARING
     storeCrossDomainConsent(consentData);
-    
+        // NEW: REAL-TIME SYNC - Update all domains in registry
+    if (config.crossDomain.enabled) {
+        updateAllDomainsInRegistry(consentData);
+    }
     addStoredParamsToURL();
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
@@ -5655,10 +5552,13 @@ function rejectAllCookies() {
         },
         timestamp: new Date().getTime()
     };
-// ADD THIS LINE for real-time sync:
-    syncConsentAcrossDomains(consentData);
+
     // STORE FOR CROSS-DOMAIN SHARING
     storeCrossDomainConsent(consentData);
+        // NEW: REAL-TIME SYNC - Update all domains in registry
+    if (config.crossDomain.enabled) {
+        updateAllDomainsInRegistry(consentData);
+    }
     
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
@@ -5763,11 +5663,12 @@ function saveCustomSettings() {
         timestamp: new Date().getTime()
     };
 
-    // ADD THIS LINE for real-time sync:
-    syncConsentAcrossDomains(consentData);
     // STORE FOR CROSS-DOMAIN SHARING
     storeCrossDomainConsent(consentData);
-    
+        // NEW: REAL-TIME SYNC - Update all domains in registry
+    if (config.crossDomain.enabled) {
+        updateAllDomainsInRegistry(consentData);
+    }
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     
@@ -6219,10 +6120,40 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 3. Setup cross-domain features
         setupCrossDomainLinks();
         setupConsentSync();
-
-        // ADD THIS LINE for real-time sync:
-        setupRealTimeSync(); // NEW: Initialize real-time sync
     }
+
+
+
+            // 4. NEW: Check for real-time updates from other domains
+        const recentUpdate = checkForRecentConsentUpdates();
+        if (recentUpdate) {
+            try {
+                const consentData = JSON.parse(recentUpdate);
+                console.log('🔄 Applying real-time consent update from other domain');
+                
+                // Apply immediately
+                setCookie('cookie_consent', recentUpdate, 365);
+                updateConsentMode(consentData);
+                
+                // Update blocking script
+                if (typeof window.enableAllTracking === 'function' && typeof window.enableTrackingByCategory === 'function') {
+                    if (consentData.status === 'accepted') {
+                        window.enableAllTracking();
+                    } else if (consentData.status === 'rejected') {
+                        window.disableAllTracking();
+                    } else if (consentData.status === 'custom') {
+                        window.enableTrackingByCategory(consentData.categories);
+                    }
+                }
+                
+                // Store in cross-domain storage
+                storeCrossDomainConsent(consentData);
+                
+            } catch (e) {
+                console.error('Error applying real-time update:', e);
+            }
+        }
+
     
     // ====== ORIGINAL INITIALIZATION CONTINUES ======
     // Ensure location data is loaded first
@@ -6486,4 +6417,39 @@ window.clearCrossDomain = function() {
     
     console.log('✅ Cross-domain consent cleared. Refresh page.');
 };
+
+
+    // ====== DEBUG HELPER FUNCTIONS ======
+window.debugConsentFlow = function() {
+    console.log('🔍 CONSENT FLOW DEBUG');
+    console.log('Current Domain:', window.location.hostname);
+    
+    const localConsent = getCookie('cookie_consent');
+    const crossConsent = getCrossDomainConsent();
+    const registry = localStorage.getItem(config.crossDomain.registryName);
+    
+    console.log('Local Cookie Consent:', localConsent ? JSON.parse(localConsent) : 'None');
+    console.log('Cross-Domain Consent:', crossConsent ? JSON.parse(crossConsent) : 'None');
+    console.log('Registry:', registry ? JSON.parse(registry) : 'Empty');
+    
+    console.log('Cross-Domain Enabled:', config.crossDomain.enabled);
+    console.log('Trusted Domains:', config.crossDomain.trustedDomains);
+};
+
+window.forceConsentSync = function() {
+    const localConsent = getCookie('cookie_consent');
+    if (localConsent) {
+        try {
+            const consentData = JSON.parse(localConsent);
+            storeCrossDomainConsent(consentData);
+            console.log('✅ Forced consent sync completed');
+        } catch (e) {
+            console.error('Error forcing sync:', e);
+        }
+    } else {
+        console.log('❌ No local consent to sync');
+    }
+};
+
+    
 }
