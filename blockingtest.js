@@ -1073,7 +1073,42 @@ window.enableTrackingByCategory = function(categories) {
         console.log("   }");
         console.log("========================================");
     }
+        // ===================== CROSS-DOMAIN SYNC LISTENER =====================
+    // Listen for consent changes from the cookie banner script
+    window.addEventListener('storage', function(e) {
+        if (e.key === config?.crossDomain?.cookieName || 
+            e.key === "__user_cookie_consent__" || 
+            e.key === "__user_cookie_categories__") {
+            
+            console.log("🔄 Blocking script detected consent change:", e.key);
+            
+            // Force re-evaluation of blocking logic
+            const storedConsent = localStorage.getItem("__user_cookie_consent__");
+            const storedCategories = localStorage.getItem("__user_cookie_categories__");
+            
+            if (storedConsent === "granted") {
+                console.log("✅ Consent granted via cross-domain, cleaning up blocking");
+                if (typeof window.cleanupCookieConsent === 'function') {
+                    window.cleanupCookieConsent();
+                }
+            } else if (storedConsent === "partial" || !storedConsent) {
+                console.log("🔄 Partial or no consent, blocking will continue");
+                // Blocking script will continue with new category settings
+            }
+        }
+    });
     
+    // Also listen for custom event from cookie banner
+    document.addEventListener('consentUpdated', function(e) {
+        console.log("🔄 Consent updated via custom event:", e.detail);
+        
+        // Reload blocking logic
+        if (e.detail.status === "granted" && typeof window.cleanupCookieConsent === 'function') {
+            window.cleanupCookieConsent();
+        }
+    });
+    
+})();
 })();
 
 
@@ -1668,8 +1703,40 @@ function getGcsFromConsent(consentData) {
 }
 
 // Apply consent from cross-domain source
+// Apply consent from cross-domain source (ENHANCED)
 function applyCrossDomainConsent(consentData) {
-    console.log('Applying cross-domain consent:', consentData.status);
+    console.log('🔄 Applying cross-domain consent:', consentData.status);
+    
+    // Convert to blocking script format
+    let blockingConsent = "partial";
+    let blockingCategories = {
+        analytics: consentData.categories.analytics || false,
+        advertising: consentData.categories.advertising || false,
+        performance: consentData.categories.performance || false
+    };
+    
+    if (consentData.status === 'accepted') {
+        blockingConsent = "granted";
+        blockingCategories = {
+            analytics: true,
+            advertising: true,
+            performance: true
+        };
+    } else if (consentData.status === 'rejected') {
+        blockingConsent = "partial";
+        blockingCategories = {
+            analytics: false,
+            advertising: false,
+            performance: false
+        };
+    }
+    
+    // CRITICAL: Update blocking script storage FIRST
+    localStorage.setItem("__user_cookie_consent__", blockingConsent);
+    localStorage.setItem("__user_cookie_categories__", JSON.stringify(blockingCategories));
+    
+    // Also update the banner script storage
+    storeCrossDomainConsent(consentData);
     
     // Update Google Consent Mode
     const consentStates = {
@@ -1697,17 +1764,19 @@ function applyCrossDomainConsent(consentData) {
         window.clarity('consent', consentData.categories.analytics);
     }
     
-    // Update blocking script
-    if (consentData.status === 'accepted' && typeof window.enableAllTracking === 'function') {
-        window.enableAllTracking();
-    } else if (consentData.status === 'rejected' && typeof window.disableAllTracking === 'function') {
-        window.disableAllTracking();
-    } else if (consentData.status === 'custom' && typeof window.enableTrackingByCategory === 'function') {
-        window.enableTrackingByCategory(consentData.categories);
-    }
-    
-    // Store locally
+    // Store in banner cookie
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
+    
+    // Trigger custom event for blocking script
+    const consentEvent = new CustomEvent('consentUpdated', {
+        detail: {
+            status: consentData.status,
+            categories: consentData.categories,
+            source: 'cross_domain',
+            timestamp: new Date().toISOString()
+        }
+    });
+    document.dispatchEvent(consentEvent);
     
     // Log event
     window.dataLayer.push({
@@ -1718,6 +1787,8 @@ function applyCrossDomainConsent(consentData) {
         'source': 'cross_domain',
         'timestamp': new Date().toISOString()
     });
+    
+    console.log('✅ Cross-domain consent applied successfully');
 }
 
 // Check URL for incoming cross-domain consent
@@ -1858,6 +1929,152 @@ function setupBackButtonSupport() {
         }, 100);
     });
 }
+
+
+// Handle page visibility changes (for back/forward navigation)
+function setupPageVisibilityHandler() {
+    if (!config.crossDomain.enabled) return;
+    
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            // User returned to this tab (possibly via back button)
+            console.log('👁️ Page became visible, checking for consent updates');
+            
+            // Check for cross-domain consent changes
+            setTimeout(() => {
+                const crossDomainConsent = getCrossDomainConsent();
+                if (crossDomainConsent) {
+                    try {
+                        const consentData = JSON.parse(crossDomainConsent);
+                        const currentConsent = getCookie('cookie_consent');
+                        
+                        if (currentConsent) {
+                            const currentData = JSON.parse(currentConsent);
+                            
+                            // If consent has changed, apply it
+                            if (JSON.stringify(currentData.categories) !== JSON.stringify(consentData.categories)) {
+                                console.log('🔄 Consent changed while tab was hidden, applying update');
+                                applyCrossDomainConsent(consentData);
+                                
+                                // Force page reload if blocking is active
+                                if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 300);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error checking consent on visibility change:', e);
+                    }
+                }
+            }, 100);
+        }
+    });
+}
+
+
+// Sync consent between banner and blocking script on page load
+function syncConsentOnPageLoad() {
+    if (!config.crossDomain.enabled) return;
+    
+    // Check for any pending cross-domain consent
+    const crossDomainConsent = getCrossDomainConsent();
+    const blockingConsent = localStorage.getItem("__user_cookie_consent__");
+    
+    console.log('🔄 Syncing consent on page load:');
+    console.log('Cross-domain consent:', crossDomainConsent ? 'Exists' : 'None');
+    console.log('Blocking script consent:', blockingConsent || 'None');
+    
+    // If we have cross-domain consent but blocking script doesn't know about it
+    if (crossDomainConsent && (!blockingConsent || blockingConsent === "null")) {
+        try {
+            const consentData = JSON.parse(crossDomainConsent);
+            console.log('🔄 Applying cross-domain consent to blocking script');
+            
+            // Convert to blocking script format
+            let blockingConsentStatus = "partial";
+            let blockingCategories = {
+                analytics: consentData.categories.analytics || false,
+                advertising: consentData.categories.advertising || false,
+                performance: consentData.categories.performance || false
+            };
+            
+            if (consentData.status === 'accepted') {
+                blockingConsentStatus = "granted";
+                blockingCategories = {
+                    analytics: true,
+                    advertising: true,
+                    performance: true
+                };
+            } else if (consentData.status === 'rejected') {
+                blockingConsentStatus = "partial";
+                blockingCategories = {
+                    analytics: false,
+                    advertising: false,
+                    performance: false
+                };
+            }
+            
+            localStorage.setItem("__user_cookie_consent__", blockingConsentStatus);
+            localStorage.setItem("__user_cookie_categories__", JSON.stringify(blockingCategories));
+            
+            console.log('✅ Blocking script consent synced');
+            
+            // If consent is granted, trigger cleanup
+            if (consentData.status === 'accepted' && typeof window.cleanupCookieConsent === 'function') {
+                setTimeout(() => {
+                    window.cleanupCookieConsent();
+                }, 100);
+            }
+        } catch (e) {
+            console.error('Error syncing consent:', e);
+        }
+    }
+    
+    // Also check if we need to sync from blocking script to banner
+    const bannerConsent = getCookie('cookie_consent');
+    if (blockingConsent && blockingConsent !== "null" && !bannerConsent) {
+        console.log('🔄 Syncing from blocking script to banner');
+        
+        try {
+            const categories = JSON.parse(localStorage.getItem("__user_cookie_categories__") || '{}');
+            
+            let consentData = {
+                status: 'custom',
+                categories: {
+                    functional: true,
+                    analytics: categories.analytics || false,
+                    performance: categories.performance || false,
+                    advertising: categories.advertising || false,
+                    uncategorized: false
+                }
+            };
+            
+            if (blockingConsent === "granted") {
+                consentData.status = 'accepted';
+                consentData.categories = {
+                    functional: true,
+                    analytics: true,
+                    performance: true,
+                    advertising: true,
+                    uncategorized: true
+                };
+            } else if (!categories.analytics && !categories.advertising && !categories.performance) {
+                consentData.status = 'rejected';
+            }
+            
+            storeCrossDomainConsent(consentData);
+            setCookie('cookie_consent', JSON.stringify(consentData), 365);
+            
+            console.log('✅ Banner consent synced from blocking script');
+        } catch (e) {
+            console.error('Error syncing from blocking script:', e);
+        }
+    }
+}
+
+
 
 // Modify links to trusted domains
 function setupCrossDomainLinks() {
@@ -5317,38 +5534,7 @@ function acceptAllCookies() {
     hideCookieBanner(); // ← Add this line
     console.log("✅ Accepting ALL cookies");
     
-    // IMPORTANT: Call the blocking script function
-    if (typeof window.enableAllTracking === 'function') {
-        window.enableAllTracking();
-    } else {
-        // Fallback
-        localStorage.setItem("__user_cookie_consent__", "granted");
-        localStorage.setItem("__user_cookie_categories__", JSON.stringify({
-            analytics: true,
-            advertising: true,
-            performance: true
-        }));
-        
-      // Only reload if reload feature is enabled
-// ONLY RELOAD IF CROSS-DOMAIN IS NOT APPLYING CONSENT
-if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
-    // Only reload if reload feature is enabled
-    if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-        setTimeout(() => {
-            window.location.reload();
-        }, 500); // Increased delay for cross-domain sync
-    } else {
-        console.log("🟡 Page reload disabled - changes saved without refresh");
-    }
-} else {
-    console.log("🟢 Cross-domain consent applied, no reload needed");
-}
-    }
-    
-    // Your existing code continues...
-    initializeClarity(true);
-    sendClarityConsentSignal(true);
-    
+    // Store consent in ALL locations (SYNCED)
     const consentData = {
         status: 'accepted',
         gcs: 'G111',
@@ -5362,11 +5548,7 @@ if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
         timestamp: new Date().getTime()
     };
 
-
-     // STORE FOR CROSS-DOMAIN SHARING (BIDIRECTIONAL)
-    storeCrossDomainConsent(consentData);
-    
-    // IMPORTANT: Also update the blocking script's storage
+    // CRITICAL: Store in blocking script storage FIRST
     localStorage.setItem("__user_cookie_consent__", "granted");
     localStorage.setItem("__user_cookie_categories__", JSON.stringify({
         analytics: true,
@@ -5374,11 +5556,24 @@ if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
         performance: true
     }));
     
-    addStoredParamsToURL();
+    // Store in banner storage
+    storeCrossDomainConsent(consentData);
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
     
- 
+    // Call blocking script function
+    if (typeof window.enableAllTracking === 'function') {
+        window.enableAllTracking();
+    }
+    
+    // Load analytics scripts
+    initializeClarity(true);
+    sendClarityConsentSignal(true);
+    
+    // Restore query parameters
+    addStoredParamsToURL();
+    
+    // DataLayer tracking
     window.dataLayer.push({
         'event': 'cookie_consent_accepted',
         'consent_mode': {
@@ -5397,34 +5592,32 @@ if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
         'location_data': locationData
     });
 
-    // NEW: Disable interaction restrictions when user accepts
+    // Disable interaction restrictions
     disableInteractionRestrictions();
     
     console.log("✅ All cookies accepted, page will reload");
 
-     // ADD THIS LINE:
-    cleanup(); // Clean up memory using consolidated system
-    
-}
+    // Reload logic
+    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) {
+        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else {
+            console.log("🟡 Page reload disabled - changes saved without refresh");
+        }
+    } else {
+        console.log("🟢 Cross-domain consent applied, no reload needed");
+    }
 
+    cleanup(); // Clean up memory using consolidated system
+}
 
 function rejectAllCookies() {
     hideCookieBanner(); // ← Add this line
     console.log("❌ Rejecting ALL cookies");
     
-    // IMPORTANT: Call the blocking script function
-    if (typeof window.disableAllTracking === 'function') {
-        window.disableAllTracking();
-    } else {
-        // Fallback
-        localStorage.removeItem("__user_cookie_consent__");
-        localStorage.removeItem("__user_cookie_categories__");
-    }
-    
-    // Your existing code continues...
-    initializeClarity(false);
-    sendClarityConsentSignal(false);
-    
+    // Store consent in ALL locations (SYNCED)
     const consentData = {
         status: 'rejected',
         gcs: 'G100',
@@ -5438,17 +5631,39 @@ function rejectAllCookies() {
         timestamp: new Date().getTime()
     };
 
-     // STORE FOR CROSS-DOMAIN SHARING (BIDIRECTIONAL)
+    // CRITICAL: Store in blocking script storage FIRST
+    localStorage.setItem("__user_cookie_consent__", "partial"); // Blocking script expects "partial" for reject
+    localStorage.setItem("__user_cookie_categories__", JSON.stringify({
+        analytics: false,
+        advertising: false,
+        performance: false
+    }));
+    
+    // Store in banner storage
     storeCrossDomainConsent(consentData);
-    
-    // IMPORTANT: Also update the blocking script's storage
-    localStorage.removeItem("__user_cookie_consent__");
-    localStorage.removeItem("__user_cookie_categories__");
-    
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
+    
+    // Call blocking script function
+    if (typeof window.disableAllTracking === 'function') {
+        window.disableAllTracking();
+    } else {
+        // Fallback for blocking script
+        localStorage.removeItem("__user_cookie_consent__");
+        localStorage.removeItem("__user_cookie_categories__");
+        // Re-add with correct values
+        localStorage.setItem("__user_cookie_consent__", "partial");
+        localStorage.setItem("__user_cookie_categories__", JSON.stringify({
+            analytics: false,
+            advertising: false,
+            performance: false
+        }));
+    }
+    
+    // Clear non-essential cookies
     clearNonEssentialCookies();
     
+    // DataLayer tracking
     window.dataLayer.push({
         'event': 'cookie_consent_rejected',
         'consent_mode': {
@@ -5467,15 +5682,12 @@ function rejectAllCookies() {
         'location_data': locationData
     });
 
-    // Add this at the end of rejectAllCookies function
+    // Disable interaction restrictions
     disableInteractionRestrictions();
     
-    console.log("✅ All cookies rejected");
-    
-    // SIMPLE FIX: Always reload when rejecting all cookies
     console.log("✅ All cookies rejected - reloading page to apply changes");
     
-    // Check if reload is enabled in settings
+    // ALWAYS reload when rejecting
     if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED !== false) {
         setTimeout(() => {
             window.location.reload();
@@ -5501,28 +5713,7 @@ function saveCustomSettings() {
         performance: performanceChecked
     });
     
-    // Store categories for the blocking script
-    const categories = {
-        analytics: analyticsChecked,
-        advertising: advertisingChecked,
-        performance: performanceChecked
-    };
-    
-    // IMPORTANT: Call the blocking script function
-    if (typeof window.enableTrackingByCategory === 'function') {
-        window.enableTrackingByCategory(categories);
-    } else {
-        // Fallback if function doesn't exist yet
-        localStorage.setItem("__user_cookie_categories__", JSON.stringify(categories));
-        
-        // Set partial consent
-        const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
-        localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
-    }
-    
-    // Restore stored query parameters when saving custom settings
-    addStoredParamsToURL();
-    
+    // Determine GCS signal
     let gcsSignal;
     if (analyticsChecked && advertisingChecked) {
         gcsSignal = 'G111'; // Both granted
@@ -5534,6 +5725,7 @@ function saveCustomSettings() {
         gcsSignal = 'G110'; // Ads granted, analytics denied
     }
 
+    // Create consent data
     const consentData = {
         status: 'custom',
         gcs: gcsSignal,
@@ -5548,26 +5740,41 @@ function saveCustomSettings() {
         timestamp: new Date().getTime()
     };
 
-     // STORE FOR CROSS-DOMAIN SHARING (BIDIRECTIONAL)
-    storeCrossDomainConsent(consentData);
-    
-    // IMPORTANT: Also update the blocking script's storage
+    // CRITICAL: Store in blocking script storage FIRST
     localStorage.setItem("__user_cookie_categories__", JSON.stringify({
         analytics: analyticsChecked,
         advertising: advertisingChecked,
         performance: performanceChecked
     }));
     
-    // Set partial consent in blocking script
     const allEnabled = analyticsChecked && advertisingChecked && performanceChecked;
     localStorage.setItem("__user_cookie_consent__", allEnabled ? "granted" : "partial");
     
+    // Store in banner storage
+    storeCrossDomainConsent(consentData);
     setCookie('cookie_consent', JSON.stringify(consentData), 365);
     updateConsentMode(consentData);
+    
+    // Call blocking script function
+    if (typeof window.enableTrackingByCategory === 'function') {
+        window.enableTrackingByCategory({
+            analytics: analyticsChecked,
+            advertising: advertisingChecked,
+            performance: performanceChecked
+        });
+    }
+    
+    // Restore stored query parameters
+    addStoredParamsToURL();
     
     // Load scripts based on consent
     if (analyticsChecked) {
         console.log("📊 Loading analytics scripts...");
+        initializeClarity(true);
+        sendClarityConsentSignal(true);
+    } else {
+        initializeClarity(false);
+        sendClarityConsentSignal(false);
     }
     
     if (advertisingChecked) {
@@ -5580,7 +5787,7 @@ function saveCustomSettings() {
     if (!advertisingChecked) clearCategoryCookies('advertising');
     if (!consentData.categories.uncategorized) clearCategoryCookies('uncategorized');
     
-    // Your existing dataLayer code continues...
+    // DataLayer tracking
     const consentStates = {
         'ad_storage': consentData.categories.advertising ? 'granted' : 'denied',
         'analytics_storage': consentData.categories.analytics ? 'granted' : 'denied',
@@ -5630,15 +5837,12 @@ function saveCustomSettings() {
         });
     }
     
-    // NEW: Disable interaction restrictions when user saves custom settings
+    // Disable interaction restrictions
     disableInteractionRestrictions();
    
-    console.log("✅ Custom settings saved");
-    
-    // SIMPLE FIX: Always reload when saving custom settings
     console.log("✅ Custom settings saved - reloading page to apply changes");
     
-    // Check if reload is enabled in settings
+    // ALWAYS reload when saving custom settings
     if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED !== false) {
         setTimeout(() => {
             window.location.reload();
@@ -5649,9 +5853,6 @@ function saveCustomSettings() {
 
     cleanup(); // Clean up memory using consolidated system
 }
-
-
-
 // Helper functions
 function clearNonEssentialCookies() {
     const cookies = document.cookie.split(';');
@@ -6015,6 +6216,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         setupConsentSync();
          // 4. Setup back button support for cross-domain
         setupBackButtonSupport();
+        // 5. Sync consent between scripts
+        setTimeout(syncConsentOnPageLoad, 500);
+
+         // 6. Setup page visibility handler
+        setupPageVisibilityHandler();
     }
     
     // ====== ORIGINAL INITIALIZATION CONTINUES ======
@@ -6315,4 +6521,7 @@ window.testBidirectionalFlow = function() {
         console.log('❌ No other trusted domain found in config');
     }
 };
+
+
+    
 }
