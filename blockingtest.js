@@ -1622,13 +1622,8 @@ function getCrossDomainConsent() {
 }
 
 // Store consent for cross-domain sharing
-// Store consent for cross-domain sharing
 function storeCrossDomainConsent(consentData) {
     if (!config.crossDomain.enabled) return;
-    
-    // Add timestamp to track when consent was changed
-    consentData.timestamp = Date.now();
-    consentData.updatedBy = window.location.hostname;
     
     const consentString = JSON.stringify(consentData);
     
@@ -1654,15 +1649,7 @@ function storeCrossDomainConsent(consentData) {
     };
     localStorage.setItem(config.crossDomain.registryName, JSON.stringify(registry));
     
-    console.log('Cross-domain consent stored:', consentData.status, 'from:', window.location.hostname);
-    
-    // NEW: Force storage event to trigger in other tabs
-    window.dispatchEvent(new StorageEvent('storage', {
-        key: config.crossDomain.cookieName,
-        newValue: consentString,
-        oldValue: localStorage.getItem(config.crossDomain.cookieName),
-        storageArea: localStorage
-    }));
+    console.log('Cross-domain consent stored:', consentData.status);
 }
 
 // Convert consent to GCS signal
@@ -1736,9 +1723,22 @@ function applyCrossDomainConsent(consentData) {
 // Check URL for incoming cross-domain consent
 function checkForCrossDomainConsent() {
     if (!config.crossDomain.enabled || !config.crossDomain.autoApply) return null;
+
+        // NEW: Also check for GCS in localStorage from previous page
+    const storedGCS = sessionStorage.getItem('last_gcs_signal');
+    if (storedGCS) {
+        console.log('Found stored GCS from previous navigation:', storedGCS);
+        // You could apply this if no URL param exists
+    }
     
     const urlParams = new URLSearchParams(window.location.search);
     const incomingGcs = urlParams.get(config.crossDomain.paramName);
+
+       // NEW: Store for future use
+    if (incomingGcs) {
+        sessionStorage.setItem('last_gcs_signal', incomingGcs);
+        console.log('Storing GCS for potential future use:', incomingGcs);
+    }
     
     if (incomingGcs) {
         let consentData;
@@ -1814,208 +1814,189 @@ function checkForCrossDomainConsent() {
 }
 
 // Modify links to trusted domains
-// Modified to work BOTH WAYS
 function setupCrossDomainLinks() {
     if (!config.crossDomain.enabled || config.crossDomain.trustedDomains.length === 0) {
         return;
     }
     
-    // Function to add consent to a URL
-    function addConsentToURL(urlString) {
+    // Get current domain's consent to share
+    const currentConsent = getCrossDomainConsent();
+    let gcs = 'G100'; // Default: all denied
+    
+    if (currentConsent) {
         try {
-            const url = new URL(urlString);
+            const consentData = JSON.parse(currentConsent);
+            gcs = getGcsFromConsent(consentData);
+        } catch (err) {
+            console.error('Error parsing consent:', err);
+        }
+    }
+    
+    // Store for use in click handler
+    window.__currentGCS = gcs;
+    
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (!link || !link.href) return;
+        
+        try {
+            const url = new URL(link.href);
+            const currentDomain = window.location.hostname;
+            const targetDomain = url.hostname;
+            
+            // Skip if same domain (no need for cross-domain param)
+            if (currentDomain === targetDomain) return;
+            
+            // Check if target is a trusted domain
             const isTrustedDomain = config.crossDomain.trustedDomains.some(domain => {
-                // Check exact match or subdomain
-                return url.hostname === domain || url.hostname.endsWith('.' + domain);
+                return targetDomain === domain || targetDomain.endsWith('.' + domain);
             });
             
             if (isTrustedDomain) {
-                // Get current consent from any source
-                let currentConsent = null;
-                
-                // Try cross-domain cookie first
-                currentConsent = getCrossDomainCookie(config.crossDomain.cookieName);
-                
-                // If not found, try localStorage
-                if (!currentConsent) {
-                    currentConsent = localStorage.getItem(config.crossDomain.cookieName);
-                }
-                
-                // If not found, try regular cookie
-                if (!currentConsent) {
-                    currentConsent = getCookie('cookie_consent');
-                }
-                
-                if (currentConsent) {
+                // Use the pre-calculated GCS or calculate fresh
+                let consentToShare = window.__currentGCS;
+                if (!consentToShare && currentConsent) {
                     try {
                         const consentData = JSON.parse(currentConsent);
-                        const gcs = getGcsFromConsent(consentData);
-                        
-                        // Only add if not already present
-                        if (!url.searchParams.has(config.crossDomain.paramName)) {
-                            url.searchParams.set(config.crossDomain.paramName, gcs);
-                            console.log('✅ Added consent to URL:', {
-                                from: window.location.hostname,
-                                to: url.hostname,
-                                gcs: gcs,
-                                status: consentData.status
-                            });
-                        }
-                        
-                        return url.toString();
-                        
+                        consentToShare = getGcsFromConsent(consentData);
                     } catch (err) {
                         console.error('Error parsing consent:', err);
+                        consentToShare = 'G100';
+                    }
+                }
+                
+                // Add or update the GCS parameter
+                url.searchParams.set(config.crossDomain.paramName, consentToShare);
+                
+                // Update the link href
+                const newHref = url.toString();
+                if (link.href !== newHref) {
+                    link.href = newHref;
+                    
+                    console.log('🔗 Added cross-domain consent to link:', {
+                        from: currentDomain,
+                        to: targetDomain,
+                        gcs: consentToShare,
+                        url: newHref
+                    });
+                    
+                    // Optional: Send to dataLayer for tracking
+                    if (window.dataLayer) {
+                        window.dataLayer.push({
+                            'event': 'cross_domain_link_prepared',
+                            'from_domain': currentDomain,
+                            'to_domain': targetDomain,
+                            'gcs_signal': consentToShare,
+                            'timestamp': new Date().toISOString()
+                        });
                     }
                 }
             }
         } catch (err) {
-            // Invalid URL, return original
+            // Invalid URL, ignore
+            console.debug('Invalid URL in cross-domain link handler:', err);
         }
-        return urlString;
-    }
+    }, true);
     
-    // 1. Modify all links on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const links = document.querySelectorAll('a[href]');
-        links.forEach(link => {
-            try {
-                const originalHref = link.getAttribute('href');
-                if (originalHref && !originalHref.startsWith('#')) {
-                    const newHref = addConsentToURL(originalHref);
-                    if (newHref !== originalHref) {
-                        link.setAttribute('href', newHref);
-                        link.setAttribute('data-consent-added', 'true');
-                    }
-                }
-            } catch (e) {
-                // Skip invalid URLs
-            }
-        });
-    });
-    
-    // 2. Modify dynamically added links
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            mutation.addedNodes.forEach(function(node) {
-                if (node.nodeName === 'A' && node.href) {
-                    try {
-                        const newHref = addConsentToURL(node.href);
-                        if (newHref !== node.href) {
-                            node.href = newHref;
-                            node.setAttribute('data-consent-added', 'true');
-                        }
-                    } catch (e) {
-                        // Skip
-                    }
-                } else if (node.querySelectorAll) {
-                    // Check for links inside added nodes
-                    const links = node.querySelectorAll('a[href]');
-                    links.forEach(link => {
-                        try {
-                            const newHref = addConsentToURL(link.href);
-                            if (newHref !== link.href) {
-                                link.href = newHref;
-                                link.setAttribute('data-consent-added', 'true');
-                            }
-                        } catch (e) {
-                            // Skip
-                        }
-                    });
-                }
+    // Also check for form submissions
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        if (!form || !form.action) return;
+        
+        try {
+            const url = new URL(form.action);
+            const currentDomain = window.location.hostname;
+            const targetDomain = url.hostname;
+            
+            if (currentDomain === targetDomain) return;
+            
+            const isTrustedDomain = config.crossDomain.trustedDomains.some(domain => {
+                return targetDomain === domain || targetDomain.endsWith('.' + domain);
             });
-        });
-    });
-    
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-    
-    // 3. Also handle clicks in case we missed something
-    document.addEventListener('click', function(e) {
-        let target = e.target;
-        
-        // Find the closest link
-        while (target && target.nodeName !== 'A') {
-            target = target.parentElement;
-        }
-        
-        if (target && target.href) {
-            try {
-                const newHref = addConsentToURL(target.href);
-                if (newHref !== target.href && !target.getAttribute('data-consent-added')) {
-                    e.preventDefault();
-                    target.setAttribute('href', newHref);
-                    target.setAttribute('data-consent-added', 'true');
-                    
-                    // Wait a tick then follow the link
-                    setTimeout(() => {
-                        window.location.href = newHref;
-                    }, 10);
+            
+            if (isTrustedDomain) {
+                let consentToShare = window.__currentGCS;
+                if (!consentToShare) consentToShare = 'G100';
+                
+                // Add hidden input with GCS value
+                const inputName = config.crossDomain.paramName;
+                let existingInput = form.querySelector(`input[name="${inputName}"]`);
+                
+                if (!existingInput) {
+                    existingInput = document.createElement('input');
+                    existingInput.type = 'hidden';
+                    existingInput.name = inputName;
+                    form.appendChild(existingInput);
                 }
-            } catch (err) {
-                // Let normal navigation proceed
+                existingInput.value = consentToShare;
+                
+                console.log('📝 Added cross-domain consent to form:', {
+                    from: currentDomain,
+                    to: targetDomain,
+                    gcs: consentToShare
+                });
             }
+        } catch (err) {
+            console.debug('Invalid form action URL:', err);
         }
     }, true);
 }
-// Add this AFTER your setupCrossDomainLinks function
-function forceConsentOnNavigation() {
-    // Intercept ALL navigation
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
+
+
+
+// Track navigation state for better cross-domain handling
+function setupNavigationTracking() {
+    if (!config.crossDomain.enabled) return;
     
-    history.pushState = function(state, title, url) {
-        if (url) {
-            const newUrl = addConsentToURL(url.toString());
-            return originalPushState.call(this, state, title, newUrl);
-        }
-        return originalPushState.call(this, state, title, url);
-    };
-    
-    history.replaceState = function(state, title, url) {
-        if (url) {
-            const newUrl = addConsentToURL(url.toString());
-            return originalReplaceState.call(this, state, title, newUrl);
-        }
-        return originalReplaceState.call(this, state, title, url);
-    };
-    
-    // Also intercept window.location changes
-    const originalLocation = window.location;
-    Object.defineProperty(window, 'location', {
-        get: function() {
-            return originalLocation;
-        },
-        set: function(value) {
-            if (typeof value === 'string') {
-                const newUrl = addConsentToURL(value);
-                originalLocation.href = newUrl;
-            } else {
-                originalLocation.href = value.href || value;
+    // Store current consent before leaving the page
+    window.addEventListener('beforeunload', function() {
+        const currentConsent = getCrossDomainConsent();
+        if (currentConsent) {
+            try {
+                const consentData = JSON.parse(currentConsent);
+                const gcs = getGcsFromConsent(consentData);
+                sessionStorage.setItem('pending_cross_domain_gcs', gcs);
+                sessionStorage.setItem('pending_cross_domain_source', window.location.hostname);
+                
+                console.log('📤 Prepared cross-domain consent for next page:', {
+                    source: window.location.hostname,
+                    gcs: gcs
+                });
+            } catch (err) {
+                console.error('Error preparing cross-domain consent:', err);
             }
         }
     });
+    
+    // Check for pending consent on page load
+    const pendingGCS = sessionStorage.getItem('pending_cross_domain_gcs');
+    const pendingSource = sessionStorage.getItem('pending_cross_domain_source');
+    
+    if (pendingGCS && pendingSource) {
+        console.log('📥 Found pending cross-domain consent from:', pendingSource, 'GCS:', pendingGCS);
+        
+        // Clear after reading
+        sessionStorage.removeItem('pending_cross_domain_gcs');
+        sessionStorage.removeItem('pending_cross_domain_source');
+        
+        // If no URL param exists, you could apply this consent
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has(config.crossDomain.paramName)) {
+            console.log('No URL param found, could apply stored consent from:', pendingSource);
+        }
+    }
 }
 
-// Call it in your initialization
-// Add this line in your DOMContentLoaded or initialization function:
-forceConsentOnNavigation();
 // Sync consent between tabs/windows
-// Sync consent between tabs/windows AND across domains
 function setupConsentSync() {
     if (!config.crossDomain.enabled) return;
     
-    // 1. Listen for localStorage changes (same browser, different tabs)
     window.addEventListener('storage', function(e) {
         if (e.key === config.crossDomain.cookieName && e.newValue && e.oldValue !== e.newValue) {
             try {
                 const consentData = JSON.parse(e.newValue);
                 
-                console.log('🔄 Storage event - consent changed:', consentData.status);
-                
-                // Store in cookie for subdomain sync
+                // Update cookie for subdomain sync
                 if (config.crossDomain.syncSubdomains) {
                     setCrossDomainCookie(
                         config.crossDomain.cookieName, 
@@ -2024,61 +2005,15 @@ function setupConsentSync() {
                     );
                 }
                 
-                // Apply the consent change
-                applyCrossDomainConsent(consentData);
-                
-                // Force update local cookie too
-                setCookie('cookie_consent', e.newValue, 365);
-                
+                // Apply if auto-apply is enabled
+                if (config.crossDomain.autoApply) {
+                    applyCrossDomainConsent(consentData);
+                }
             } catch (error) {
-                console.error('Error syncing consent from storage:', error);
+                console.error('Error syncing consent:', error);
             }
         }
     });
-    
-    // 2. Poll for cross-domain changes (for different domains)
-    startCrossDomainPolling();
-}
-
-// NEW FUNCTION: Poll for consent changes from other domains
-function startCrossDomainPolling() {
-    if (!config.crossDomain.enabled || !config.crossDomain.autoApply) return;
-    
-    let lastConsentCheck = getCrossDomainConsent();
-    
-    // Check for consent changes every 2 seconds
-    setInterval(() => {
-        const currentConsent = getCrossDomainConsent();
-        
-        // If consent changed and it's not from our own domain's recent action
-        if (currentConsent && currentConsent !== lastConsentCheck) {
-            try {
-                const consentData = JSON.parse(currentConsent);
-                console.log('🔄 Cross-domain poll - consent changed:', consentData.status);
-                
-                // Apply the new consent
-                applyCrossDomainConsent(consentData);
-                
-                // Update local cookie
-                setCookie('cookie_consent', currentConsent, 365);
-                
-                lastConsentCheck = currentConsent;
-                
-                // Reload if needed (but not if we just applied consent)
-                if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-                    const isRecentChange = Date.now() - consentData.timestamp < 5000;
-                    if (!isRecentChange) {
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
-                    }
-                }
-                
-            } catch (error) {
-                console.error('Error applying polled consent:', error);
-            }
-        }
-    }, 2000); // Check every 2 seconds
 }
 
 
@@ -6114,6 +6049,10 @@ function loadPerformanceCookies() {
 document.addEventListener('DOMContentLoaded', async function() {
     // ====== CROSS-DOMAIN INITIALIZATION ======
     if (config.crossDomain.enabled) {
+
+        // Add this line:
+        setupNavigationTracking();
+        
         // 1. Check URL for incoming cross-domain consent
         const urlConsent = checkForCrossDomainConsent();
         
@@ -6315,52 +6254,6 @@ window.showBlockingSettings = function() {
 // Clean up event listeners on page unload
 // Optional: Debug function for testing
 if (typeof window !== 'undefined') {
-
-    // NEW DEBUG FUNCTION - Add this right here
-    window.testCrossDomainLinks = function() {
-        console.log('🔗 TESTING CROSS-DOMAIN LINKS:');
-        console.log('Current domain:', window.location.hostname);
-        console.log('Current consent:', getCookie('cookie_consent'));
-        console.log('Cross-domain consent:', getCrossDomainConsent());
-        
-        // Find all links to trusted domains
-        const links = document.querySelectorAll('a[href]');
-        let foundLinks = [];
-        
-        links.forEach(link => {
-            try {
-                const url = new URL(link.href);
-                const isTrusted = config.crossDomain.trustedDomains.some(domain => 
-                    url.hostname === domain || url.hostname.endsWith('.' + domain)
-                );
-                
-                if (isTrusted && url.hostname !== window.location.hostname) {
-                    foundLinks.push({
-                        text: link.textContent.substring(0, 30),
-                        href: link.href,
-                        hasParam: url.searchParams.has(config.crossDomain.paramName)
-                    });
-                }
-            } catch (e) {}
-        });
-        
-        console.log('Found links to other domains:', foundLinks);
-        
-        if (foundLinks.length === 0) {
-            console.log('❌ No links found to other trusted domains.');
-            console.log('Make sure you have links between the domains.');
-        } else {
-            foundLinks.forEach(link => {
-                if (link.hasParam) {
-                    console.log(`✅ ${link.text}... has consent parameter`);
-                } else {
-                    console.log(`❌ ${link.text}... MISSING consent parameter`);
-                }
-            });
-        }
-    };
-
-    
     window.debugEventListeners = function() {
         console.log('📊 Event Handler Debug:');
         console.log(`Total global handlers: ${window.cookieConsentHandlers ? window.cookieConsentHandlers.size : 0}`);
@@ -6453,43 +6346,37 @@ window.clearCrossDomain = function() {
     console.log('✅ Cross-domain consent cleared. Refresh page.');
 };
 
-
-    // NEW FUNCTION: Force cross-domain sync
-window.syncCrossDomainConsent = function() {
-    console.log('🔄 Manual cross-domain sync triggered');
+    // Debug function to test cross-domain links
+window.testCrossDomainLinks = function() {
+    console.log('🔗 TESTING CROSS-DOMAIN LINKS');
+    console.log('Current domain:', window.location.hostname);
+    console.log('Current GCS:', window.__currentGCS || 'Not set');
+    console.log('Trusted domains:', config.crossDomain.trustedDomains);
     
-    // Get current consent from storage
-    const consentString = localStorage.getItem(config.crossDomain.cookieName);
-    if (!consentString) {
-        console.log('No consent found to sync');
-        return;
-    }
+    // Find all links to trusted domains
+    const links = Array.from(document.querySelectorAll('a')).filter(link => {
+        try {
+            const url = new URL(link.href, window.location.href);
+            return config.crossDomain.trustedDomains.some(domain => 
+                url.hostname === domain || url.hostname.endsWith('.' + domain)
+            ) && url.hostname !== window.location.hostname;
+        } catch {
+            return false;
+        }
+    });
     
-    try {
-        const consentData = JSON.parse(consentString);
+    console.log(`Found ${links.length} cross-domain links:`);
+    links.forEach((link, i) => {
+        const url = new URL(link.href, window.location.href);
+        const hasParam = url.searchParams.has(config.crossDomain.paramName);
+        console.log(`${i+1}. ${link.href} - GCS param: ${hasParam ? '✅ Yes' : '❌ No'}`);
         
-        // Force update cookies and apply
-        if (config.crossDomain.syncSubdomains) {
-            setCrossDomainCookie(
-                config.crossDomain.cookieName, 
-                consentString, 
-                config.crossDomain.cookieDuration
-            );
-        }
-        
-        applyCrossDomainConsent(consentData);
-        
-        console.log('✅ Consent synced:', consentData.status);
-        
-        // Reload if needed
-        if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
-        }
-        
-    } catch (error) {
-        console.error('Error syncing consent:', error);
-    }
+        // Highlight in page for visual confirmation
+        link.style.border = hasParam ? '2px solid green' : '2px solid red';
+        link.style.padding = '2px';
+    });
+    
+    return links;
 };
+    
 }
