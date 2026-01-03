@@ -4746,41 +4746,67 @@ function initializeClarity(consentGranted) {
     setupBannerTriggers();
     
 // Setup cookie details toggles - FIXED VERSION
-function setupCookieDetailsToggles() {
-    // Use event delegation for better reliability
-    document.addEventListener('click', function(e) {
-        // Check if clicked element is a cookie details header or the toggle-details span
-        const header = e.target.closest('.cookie-details-header');
-        if (header) {
-            const content = header.nextElementSibling;
-            const toggle = header.querySelector('.toggle-details');
-            
-            if (content && toggle) {
-                if (content.style.display === 'none' || !content.style.display) {
-                    content.style.display = 'block';
-                    toggle.textContent = '−';
-                } else {
-                    content.style.display = 'none';
-                    toggle.textContent = '+';
-                }
-                e.preventDefault();
-            }
-        }
-    });
+function setupCookieDetailToggles() {
+    console.log('Setting up cookie detail toggles...');
     
-    // Also set initial state
-    document.querySelectorAll('.cookie-details-header').forEach(header => {
+    document.querySelectorAll('.cookie-details-header').forEach((header, index) => {
+        // Get references
         const content = header.nextElementSibling;
         const toggle = header.querySelector('.toggle-details');
-        if (content) {
+        
+        // Ensure content is hidden initially if it has the right class
+        if (content && content.classList.contains('main-cookie-details-content')) {
             content.style.display = 'none';
-            if (toggle) toggle.textContent = '+';
         }
+        
+        // Remove any existing click handlers
+        const newHeader = header.cloneNode(true);
+        header.parentNode.replaceChild(newHeader, header);
+        
+        // Get fresh references after replacing
+        const freshContent = newHeader.nextElementSibling;
+        const freshToggle = newHeader.querySelector('.toggle-details');
+        
+        // Add click handler
+        newHeader.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            if (freshContent.style.display === 'none' || freshContent.style.display === '') {
+                freshContent.style.display = 'block';
+                if (freshToggle) freshToggle.textContent = '−';
+            } else {
+                freshContent.style.display = 'none';
+                if (freshToggle) freshToggle.textContent = '+';
+            }
+        });
     });
 }
 
-// Call it immediately
-setupCookieDetailsToggles();
+// Initialize immediately
+setupCookieDetailToggles();
+
+// Also run when DOM changes
+const toggleObserver = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.addedNodes.length) {
+            for (let node of mutation.addedNodes) {
+                if (node.nodeType === 1 && 
+                    (node.classList && node.classList.contains('cookie-details-header') || 
+                     node.querySelector && node.querySelector('.cookie-details-header'))) {
+                    setTimeout(setupCookieDetailToggles, 50);
+                    break;
+                }
+            }
+        }
+    });
+});
+
+if (document.body) {
+    toggleObserver.observe(document.body, { 
+        childList: true, 
+        subtree: true 
+    });
+}
     
 
 // Setup cookie value toggles for mobile
