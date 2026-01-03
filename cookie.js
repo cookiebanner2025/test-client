@@ -4745,41 +4745,43 @@ function initializeClarity(consentGranted) {
     // NEW: Setup banner triggers
     setupBannerTriggers();
     
-    // Setup cookie details toggles
 // Setup cookie details toggles - FIXED VERSION
 function setupCookieDetailsToggles() {
-    console.log('🔧 Setting up cookie details toggles...');
-    
-    const headers = document.querySelectorAll('.cookie-details-header');
-    console.log(`Found ${headers.length} cookie detail headers`);
-    
-    headers.forEach((header, index) => {
-        // Remove any existing listeners first
-        const newHeader = header.cloneNode(true);
-        header.parentNode.replaceChild(newHeader, header);
-        
-        // Add new event listener
-        newHeader.addEventListener('click', function() {
-            console.log('📋 Cookie details header clicked');
-            const content = this.nextElementSibling;
-            const toggle = this.querySelector('.toggle-details');
+    // Use event delegation for better reliability
+    document.addEventListener('click', function(e) {
+        // Check if clicked element is a cookie details header or the toggle-details span
+        const header = e.target.closest('.cookie-details-header');
+        if (header) {
+            const content = header.nextElementSibling;
+            const toggle = header.querySelector('.toggle-details');
             
-            if (content.style.display === 'none' || !content.style.display) {
-                content.style.display = 'block';
-                toggle.textContent = '−';
-                console.log('✅ Cookie details expanded');
-            } else {
-                content.style.display = 'none';
-                toggle.textContent = '+';
-                console.log('✅ Cookie details collapsed');
+            if (content && toggle) {
+                if (content.style.display === 'none' || !content.style.display) {
+                    content.style.display = 'block';
+                    toggle.textContent = '−';
+                } else {
+                    content.style.display = 'none';
+                    toggle.textContent = '+';
+                }
+                e.preventDefault();
             }
-        });
-        
-        // Also add a class for styling if needed
-        newHeader.style.cursor = 'pointer';
-        console.log(`✅ Header ${index + 1} setup complete`);
+        }
+    });
+    
+    // Also set initial state
+    document.querySelectorAll('.cookie-details-header').forEach(header => {
+        const content = header.nextElementSibling;
+        const toggle = header.querySelector('.toggle-details');
+        if (content) {
+            content.style.display = 'none';
+            if (toggle) toggle.textContent = '+';
+        }
     });
 }
+
+// Call it immediately
+setupCookieDetailsToggles();
+    
 
 // Setup cookie value toggles for mobile
 function handleCookieValueToggle(e) {
@@ -5068,7 +5070,11 @@ function setupEventListeners() {
         languageSelect.addEventListener('change', handleLanguageChange);
     }
     
- 
+    // Cookie details toggle
+    document.querySelectorAll('.cookie-details-header').forEach((header, index) => {
+        
+        header.addEventListener('click', handleHeaderClick);
+    });
     
     // Cookie value toggle
    
@@ -6013,16 +6019,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Detect user language
     const userLanguage = detectUserLanguage(locationData);
 
-   // Inject HTML elements
-injectConsentHTML(detectedCookies, userLanguage);
+    // Inject HTML elements
+    injectConsentHTML(detectedCookies, userLanguage);
 
-// Setup cookie details toggles IMMEDIATELY after injection
-setTimeout(() => {
-    setupCookieDetailsToggles();
-}, 100);
-
-// Initialize cookie consent
-initializeCookieConsent(detectedCookies, userLanguage);
+    // Initialize cookie consent
+    initializeCookieConsent(detectedCookies, userLanguage);
 });
 
 
