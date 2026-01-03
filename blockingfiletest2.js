@@ -151,8 +151,6 @@ clarityConfig: {
     // Microsoft UET Configuration
     uetConfig: {
         enabled: true,
-        defaultTagId: '137027166', // Fallback if auto-detection fails
-        autoDetectTagId: true,     // Try to detect UET tag ID automatically
         defaultConsent: 'denied',  // 'denied' or 'granted'
         enforceInEEA: true,        // Enforce consent mode in EEA countries
         msd: window.location.hostname // Add this line for Microsoft Domain handling
