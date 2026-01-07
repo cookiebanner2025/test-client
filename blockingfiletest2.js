@@ -1023,78 +1023,137 @@ window.COOKIE_SETTINGS = {
             }
         }
         
-        // Check analytics cookies - ONLY block if analytics consent is FALSE
-        if (!getCategoryConsent('analytics')) {
+        // IMPORTANT FIX: Check if analytics consent is TRUE - if true, DON'T block analytics cookies
+        if (getCategoryConsent('analytics')) {
+            // User has consented to analytics - check if this is an analytics cookie
+            let isAnalyticsCookie = false;
             for (const cookie of ANALYTICS_DATA.cookies) {
-                // ============================================================================
-                // IMPROVED: Safer cookie matching for analytics
-                // ============================================================================
                 if (cookie.endsWith('_') || cookie.endsWith('-')) {
-                    // Prefix cookies like _ga_, _gat_UA-
                     if (cookieName.startsWith(cookie)) {
-                        if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                        isAnalyticsCookie = true;
+                        break;
+                    }
+                } else if (cookieName === cookie) {
+                    isAnalyticsCookie = true;
+                    break;
+                } else if (cookieName.includes('_ga') && cookie === '_ga') {
+                    // Special handling for _ga variations
+                    isAnalyticsCookie = true;
+                    break;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    isAnalyticsCookie = true;
+                    break;
+                }
+            }
+            // If it's an analytics cookie and user consented, DON'T block it
+            if (isAnalyticsCookie) {
+                return false;
+            }
+        } else {
+            // User has NOT consented to analytics - check if this is an analytics cookie to block
+            for (const cookie of ANALYTICS_DATA.cookies) {
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName} (user declined analytics)`);
                         return true;
                     }
                 } else if (cookieName === cookie) {
-                    // Exact match
-                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName} (exact match, user declined analytics)`);
                     return true;
+                } else if (cookieName.includes('_ga') && cookie === '_ga') {
+                    // Special handling for _ga variations
+                    if (cookieName.startsWith('_ga')) {
+                        if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName} (_ga variation, user declined analytics)`);
+                        return true;
+                    }
                 } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    // Fallback
-                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName} (broad match, user declined analytics)`);
                     return true;
                 }
             }
         }
         
-        // Check marketing cookies - ONLY block if advertising consent is FALSE
-        if (!getCategoryConsent('advertising')) {
+        // IMPORTANT FIX: Check if marketing consent is TRUE - if true, DON'T block marketing cookies
+        if (getCategoryConsent('advertising')) {
+            // User has consented to marketing - check if this is a marketing cookie
+            let isMarketingCookie = false;
             for (const cookie of MARKETING_DATA.cookies) {
-                // ============================================================================
-                // IMPROVED: Safer cookie matching for marketing
-                // ============================================================================
                 if (cookie.endsWith('_') || cookie.endsWith('-')) {
-                    // Prefix cookies
                     if (cookieName.startsWith(cookie)) {
-                        if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                        isMarketingCookie = true;
+                        break;
+                    }
+                } else if (cookieName === cookie) {
+                    isMarketingCookie = true;
+                    break;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    isMarketingCookie = true;
+                    break;
+                }
+            }
+            // If it's a marketing cookie and user consented, DON'T block it
+            if (isMarketingCookie) {
+                return false;
+            }
+        } else {
+            // User has NOT consented to marketing - check if this is a marketing cookie to block
+            for (const cookie of MARKETING_DATA.cookies) {
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName} (user declined marketing)`);
                         return true;
                     }
                 } else if (cookieName === cookie) {
-                    // Exact match
-                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName} (exact match, user declined marketing)`);
                     return true;
                 } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    // Fallback
-                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName} (broad match, user declined marketing)`);
                     return true;
                 }
             }
         }
         
-        // Check performance cookies - ONLY block if performance consent is FALSE
-        if (!getCategoryConsent('performance')) {
+        // IMPORTANT FIX: Check if performance consent is TRUE - if true, DON'T block performance cookies
+        if (getCategoryConsent('performance')) {
+            // User has consented to performance - check if this is a performance cookie
+            let isPerformanceCookie = false;
             for (const cookie of PERFORMANCE_DATA.cookies) {
-                // ============================================================================
-                // IMPROVED: Safer cookie matching for performance
-                // ============================================================================
                 if (cookie.endsWith('_') || cookie.endsWith('-')) {
-                    // Prefix cookies
                     if (cookieName.startsWith(cookie)) {
-                        if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                        isPerformanceCookie = true;
+                        break;
+                    }
+                } else if (cookieName === cookie) {
+                    isPerformanceCookie = true;
+                    break;
+                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
+                    isPerformanceCookie = true;
+                    break;
+                }
+            }
+            // If it's a performance cookie and user consented, DON'T block it
+            if (isPerformanceCookie) {
+                return false;
+            }
+        } else {
+            // User has NOT consented to performance - check if this is a performance cookie to block
+            for (const cookie of PERFORMANCE_DATA.cookies) {
+                if (cookie.endsWith('_') || cookie.endsWith('-')) {
+                    if (cookieName.startsWith(cookie)) {
+                        if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName} (user declined performance)`);
                         return true;
                     }
                 } else if (cookieName === cookie) {
-                    // Exact match
-                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName} (exact match, user declined performance)`);
                     return true;
                 } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    // Fallback
-                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName} (broad match, user declined performance)`);
                     return true;
                 }
             }
         }
         
+        // If we get here, the cookie is not in any category OR user has consented to its category
         return false;
     }
     
