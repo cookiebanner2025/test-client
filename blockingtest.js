@@ -3,13 +3,10 @@ window.COOKIE_SETTINGS = {
     RELOAD_ENABLED: true       // Set to false to turn OFF page reloads
 };
 
-
 /* ============================================================
    COOKIE BLOCKING FIREWALL - INTEGRATED WITH CUSTOM BANNER
    This blocks all cookies and trackers BEFORE consent is given
 ============================================================ */
-
-
 
 (function () {
     'use strict';
@@ -128,1059 +125,449 @@ window.COOKIE_SETTINGS = {
     }
     
     /* ===================== CATEGORY DEFINITIONS ===================== */
-    // ANALYTICS DOMAINS & COOKIES - EXTENSIVELY EXPANDED
+    // ANALYTICS DOMAINS & COOKIES - EXPANDED
     const ANALYTICS_DATA = {
         domains: [
             // Google Analytics
             "google-analytics.com", "www.google-analytics.com", "analytics.google.com",
-            "stats.g.doubleclick.net",
             // Google Tag Manager
             "googletagmanager.com", "www.googletagmanager.com",
             // Microsoft Clarity
             "clarity.ms", "www.clarity.ms",
             // Hotjar
-            "hotjar.com", "insights.hotjar.com", "script.hotjar.com",
-            // Amplitude
-            "amplitude.com", "api.amplitude.com", "cdn.amplitude.com",
-            // Mixpanel
-            "mixpanel.com", "api.mixpanel.com", "cdn.mixpanel.com",
-            // Segment
-            "segment.com", "cdn.segment.com", "api.segment.io",
-            // Heap Analytics
-            "heap.io", "cdn.heap.io", "api.heap.io",
-            // Matomo/Piwik
-            "matomo.org", "piwik.org", "cdn.matomo.cloud",
-            // FullStory
-            "fullstory.com", "rs.fullstory.com", "edge.fullstory.com",
-            // LogRocket
-            "logrocket.com", "cdn.logrocket.com", "api.logrocket.com",
-            // Mouseflow
-            "mouseflow.com", "cdn.mouseflow.com", "api.mouseflow.com",
-            // Smartlook
-            "smartlook.com", "api.smartlook.com", "cdn.smartlook.com",
-            // Lucky Orange
-            "luckyorange.com", "cdn.luckyorange.com", "api.luckyorange.com",
-            // Crazy Egg
-            "crazyegg.com", "script.crazyegg.com", "track.crazyegg.com",
-            // Yandex Metrica
-            "mc.yandex.ru", "yandex.ru", "metrika.yandex.ru",
-            // Baidu Analytics
-            "hm.baidu.com", "api.share.baidu.com",
+            "hotjar.com", "insights.hotjar.com",
             // Adobe Analytics
-            "omniture.com", "sc.omtrdc.net", "stats.omniture.com",
-            // Chartbeat
-            "chartbeat.com", "static.chartbeat.com", "api.chartbeat.com",
-            // Parse.ly
-            "parsely.com", "cdn.parsely.com", "api.parsely.com",
-            // GoSquared
-            "gosquared.com", "data.gosquared.com", "api.gosquared.com",
+            "adobe.com", "omniture.com", "2o7.net",
+            // Segment
+            "segment.com", "cdn.segment.com",
+            // Mixpanel
+            "mixpanel.com", "api.mixpanel.com",
+            // Heap Analytics
+            "heap.io", "cdn.heap.io",
+            // FullStory
+            "fullstory.com", "rs.fullstory.com",
+            // Mouseflow
+            "mouseflow.com", "cdn.mouseflow.com",
+            // LogRocket
+            "logrocket.com", "cdn.logrocket.com",
+            // Matomo (formerly Piwik)
+            "matomo.org", "piwik.pro",
+            // Yandex Metrica
+            "mc.yandex.ru", "yandex.ru",
+            // Baidu Analytics
+            "hm.baidu.com", "eiv.baidu.com",
             // Kissmetrics
-            "kissmetrics.com", "cdn.kissmetrics.com", "api.kissmetrics.io",
-            // Woopra
-            "woopra.com", "cdn.woopra.com", "api.woopra.com",
+            "kissmetrics.com",
+            // Crazy Egg
+            "crazyegg.com",
+            // Lucky Orange
+            "luckyorange.com",
             // Clicky
-            "getclicky.com", "in.getclicky.com", "static.getclicky.com",
-            // Fathom Analytics
-            "usefathom.com", "cdn.usefathom.com", "api.usefathom.com",
-            // Plausible Analytics
-            "plausible.io", "analytics.plausible.io", "script.plausible.io",
-            // Simple Analytics
-            "simpleanalytics.com", "api.simpleanalytics.com",
-            // Umami
-            "umami.is", "analytics.umami.is",
-            // PostHog
-            "posthog.com", "app.posthog.com", "cdn.posthog.com",
-            // Countly
-            "count.ly", "cdn.count.ly", "api.count.ly",
-            // Piwik PRO
-            "piwik.pro", "cdn.piwik.pro", "api.piwik.pro",
-            // AT Internet
-            "atinternet.com", "xiti.com", "hit.atinternet.com",
-            // Nielsen
-            "nielsen.com", "imrworldwide.com",
-            // ComScore
-            "comscore.com", "scorecardresearch.com",
-            // Quantum Metric
-            "quantummetric.com", "cdn.quantummetric.com",
-            // Glassbox
-            "glassbox.com", "cdn.glassbox.com",
-            // Contentsquare
-            "contentsquare.com", "cdn.contentsquare.com",
-            // Decibel
-            "decibelinsight.com", "cdn.decibelinsight.com",
-            // SessionCam
-            "sessioncam.com", "cdn.sessioncam.com",
-            // Dynatrace
-            "dynatrace.com", "js.dynatrace.com",
+            "getclicky.com",
+            // Chartbeat
+            "chartbeat.com",
+            // Parse.ly
+            "parsely.com",
+            // Amplitude
+            "amplitude.com",
+            // Heap Analytics
+            "heapanalytics.com",
+            // Snowplow
+            "snowplowanalytics.com",
+            // Piwik Pro
+            "piwik.pro",
             // New Relic
-            "newrelic.com", "js-agent.newrelic.com",
-            // AppDynamics
-            "appdynamics.com", "cdn.appdynamics.com",
-            // Sentry
-            "sentry.io", "browser.sentry-cdn.com",
-            // Rollbar
-            "rollbar.com", "cdn.rollbar.com",
-            // Bugsnag
-            "bugsnag.com", "d2wy8f7a9ursnm.cloudfront.net",
-            // Google Optimize
-            "googleoptimize.com", "www.googleoptimize.com",
+            "nr-data.net",
             // Optimizely
-            "optimizely.com", "cdn.optimizely.com",
-            // VWO
-            "vwo.com", "dev.visualwebsiteoptimizer.com",
-            // AB Tasty
-            "abtasty.com", "try.abtasty.com",
-            // Kameleoon
-            "kameleoon.com", "cdn.kameleoon.com",
-            // Dynamic Yield
-            "dynamicyield.com", "cdn.dynamicyield.com",
-            // Monetate
-            "monetate.com", "d2mz5en2dwinso.cloudfront.net",
-            // Evergage
-            "evergage.com", "cdn.evergage.com",
-            // Quantum Metric
-            "quantummetric.com", "cdn.quantummetric.com",
-            // WalkMe
-            "walkme.com", "cdn.walkme.com",
-            // Pendo
-            "pendo.io", "cdn.pendo.io",
-            // Userlane
-            "userlane.com", "cdn.userlane.com",
-            // Userpilot
-            "userpilot.com", "cdn.userpilot.com",
-            // Appcues
-            "appcues.com", "fast.appcues.com",
-            // Usabilla
-            "usabilla.com", "w.usabilla.com",
-            // Qualaroo
-            "qualaroo.com", "cdn.qualaroo.com",
-            // Survicate
-            "survicate.com", "survey.survicate.com",
-            // Typeform
-            "typeform.com", "api.typeform.com",
-            // SurveyMonkey
-            "surveymonkey.com", "api.surveymonkey.com",
-            // GetFeedback
-            "getfeedback.com", "cdn.getfeedback.com",
-            // Delighted
-            "delighted.com", "api.delighted.com",
-            // Nicereply
-            "nicereply.com", "cdn.nicereply.com",
-            // Zendesk
-            "zendesk.com", "static.zdassets.com",
-            // Intercom
-            "intercom.com", "widget.intercom.io",
-            // Drift
-            "drift.com", "js.driftt.com",
-            // LiveChat
-            "livechat.com", "cdn.livechatinc.com",
-            // Freshchat
-            "freshchat.com", "wchat.freshchat.com",
-            // Tawk.to
-            "tawk.to", "embed.tawk.to",
-            // Crisp
-            "crisp.chat", "client.crisp.chat",
-            // Olark
-            "olark.com", "cdn.olark.com",
-            // SnapEngage
-            "snapengage.com", "cdn.snapengage.com",
-            // Zoho SalesIQ
-            "zoho.com", "salesiq.zoho.com"
+            "optimizely.com"
         ],
         cookies: [
-            // Google Analytics/GTM
+            // Google Analytics
             "_ga", "_gid", "_gat", "_ga_", "_gat_UA-", "_gat_gtag", "_dc_gtm_",
-            "_gac_", "_gcl_aw", "_gcl_dc", "_gcl_gb", "_gcl_ha",
-            // Google Optimize
-            "_gaexp", "_opt_awcid", "_opt_awmid", "_opt_awgid", "_opt_awkid",
-            "_opt_utmc",
             // Microsoft Clarity
-            "_clck", "_clsk", "_cltk", "CLID", "ANONCHK", "SM", "_clck",
-            "_clsk", "_cltk", "MUID",
+            "_clck", "_clsk", "_cltk", "CLID", "ANONCHK", "SM",
             // Hotjar
             "_hjid", "_hjIncludedInPageviewSample", "_hjClosedSurveyInvites",
             "_hjDonePolls", "_hjMinimizedPolls", "_hjShownFeedbackMessage",
-            "_hjAbsoluteSessionInProgress", "_hjFirstSeen", "_hjTLDTest",
-            "_hjUserAttributesHash", "_hjCachedUserAttributes",
-            "_hjLocalStorageTest", "_hjIncludedInSessionSample",
-            "_hjViewportId", "_hjRecordingEnabled",
+            "_hjSession_", "_hjAbsoluteSessionInProgress",
             // HubSpot
-            "__hssc", "__hssrc", "__hstc", "hubspotutk", "hsfirstvisit",
-            "messagesUtk", "hs-messages-is-open", "hs-messages-hide-welcome-message",
-            "__hs_opt_out", "__hs_do_not_track", "__hs_initial_opt_in",
-            "__hs_cookie_cat_pref", "__hs_cookie_cat_pur",
-            // Matomo/Piwik
-            "_pk_id", "_pk_ref", "_pk_cvar", "_pk_ses", "_pk_hsr",
-            // Amplitude
-            "amplitude_id", "amplitude_device_id", "amplitude_session_id",
+            "hubspotutk", "__hssc", "__hssrc", "__hstc", "hsfirstvisit",
+            // Matomo
+            "_pk_id", "_pk_ses", "_pk_ref", "_pk_cvar", "_pk_hsr",
+            // Segment
+            "ajs_anonymous_id", "ajs_user_id", "ajs_group_id", "ajs_properties",
+            // Adobe Analytics
+            "s_cc", "s_sq", "AMCV_", "s_vi", "demdex",
             // Mixpanel
             "mp_", "distinct_id",
-            // Segment
-            "ajs_anonymous_id", "ajs_user_id", "ajs_group_id",
-            // Heap
-            "heap", "heap_id", "heap_user_id",
+            // Heap Analytics
+            "_hp2_id", "_hp2_ses",
             // FullStory
-            "fs_uid", "fs_screen",
-            // LogRocket
-            "lr", "lr_env", "lr_user",
+            "_fsuid", "_fssid",
             // Mouseflow
-            "mf_", "mf_user", "mf_session",
-            // Smartlook
-            "sl_", "sl_id", "sl_session",
-            // Lucky Orange
-            "lo_", "lo_session", "lo_user",
-            // Crazy Egg
-            "ce_", "ce_user",
+            "mf_", "mf_user",
             // Yandex Metrica
-            "_ym_", "_ym_uid", "_ym_d",
-            // Adobe Analytics
-            "s_cc", "s_sq", "s_vi", "s_fid",
-            // Chartbeat
-            "__chartbeat2", "__chartbeat4",
-            // Parse.ly
-            "parsely_", "_parsely_",
+            "_ym_uid", "_ym_d", "_ym_isad", "yandexuid", "ymex",
+            // Baidu Analytics
+            "HMACCOUNT", "Hm_lvt_", "Hm_lpvt_",
             // Kissmetrics
-            "km_", "km_ai", "km_lv",
-            // Woopra
-            "woopra_", "woopra_id",
+            "km_ai", "km_lv", "km_ni",
+            // Crazy Egg
+            "is_returning", "ce_need_secure",
+            // Lucky Orange
+            "__lotl", "__lo_u", "__lo_v",
             // Clicky
-            "_jsuid", "_first_pageview",
-            // Fathom
-            "_fathom",
-            // Plausible
-            "_plausible",
-            // PostHog
-            "_ph", "ph_",
-            // Quantum Metric
-            "qm_", "qm_id",
-            // Glassbox
-            "gbx_", "gbx_id",
-            // Contentsquare
-            "cs_", "cs_id",
-            // Dynatrace
-            "dt_", "dtCookie", "dtLatC", "dtPC", "dtSa",
+            "_jsuid", "clicky_id", "outbound_email",
+            // Chartbeat
+            "_cb", "_cb_ls", "_cb_svref",
+            // Parse.ly
+            "_parsely_", "parsely_",
+            // Amplitude
+            "amplitude_id", "amplitude_session_id",
+            // Snowplow
+            "_sp_id", "_sp_ses",
             // New Relic
-            "NRAGENT",
-            // Sentry
-            "sentry_",
-            // Rollbar
-            "rollbar_",
-            // Bugsnag
-            "bugsnag_",
+            "NRBA_POOL", "NRBA_SESSION",
             // Optimizely
-            "optimizely_", "optimizelyEndUserId",
-            // VWO
-            "_vwo_", "_vwo_uuid",
-            // AB Tasty
-            "ABTasty", "ABTastySession",
-            // Kameleoon
-            "kameleoon_",
-            // Dynamic Yield
-            "dy_", "dyid",
-            // Monetate
-            "mt_", "mt.v",
-            // Evergage
-            "evergage_",
-            // WalkMe
-            "walkme_",
-            // Pendo
-            "_pendo_",
-            // Userlane
-            "ul_",
-            // Userpilot
-            "up_",
-            // Appcues
-            "ac_",
-            // Qualaroo
-            "qualaroo_",
-            // Survicate
-            "sv_",
-            // Intercom
-            "intercom-id-", "intercom-session-",
-            // Drift
-            "drift_", "drift_aid",
-            // LiveChat
-            "livechat_",
-            // Freshchat
-            "fc_",
-            // Tawk.to
-            "tawk_",
-            // Crisp
-            "crisp-",
-            // Olark
-            "olark_",
-            // SnapEngage
-            "se_",
-            // Zoho
-            "zoho_"
+            "optimizelyEndUserId", "optimizelySegments",
+            // General Analytics
+            "_vwo_uuid", "_vwo_sn", "_vwo_ds", "_fbp", "_fbc",
+            // Tealium
+            "utag_main", "utag_env"
         ]
     };
-
-    // MARKETING/ADVERTISING DOMAINS & COOKIES - EXTENSIVELY EXPANDED
+    
+    // MARKETING/ADVERTISING DOMAINS & COOKIES - EXPANDED
     const MARKETING_DATA = {
         domains: [
-            // Google Ads/AdSense
+            // Google Ads
             "googleadservices.com", "www.googleadservices.com", "doubleclick.net",
             "www.doubleclick.net", "googlesyndication.com", "googleads.g.doubleclick.net",
-            "pagead2.googlesyndication.com", "partner.googleadservices.com",
-            "adservice.google.com", "www.googletagservices.com",
-            // Google Marketing Platform
-            "marketingplatform.google.com", "analytics.google.com",
             // Facebook/Meta
             "facebook.com", "www.facebook.com", "connect.facebook.net",
-            "fbcdn.net", "fbsbx.com", "graph.facebook.com", "staticxx.facebook.com",
-            "an.facebook.com", "pixel.facebook.com",
-            // Instagram (Meta)
-            "instagram.com", "www.instagram.com", "graph.instagram.com",
-            // WhatsApp Business (Meta)
-            "whatsapp.com", "web.whatsapp.com",
-            // Microsoft Ads/Bing
-            "bing.com", "bat.bing.com", "c.bing.com", "c.live.com",
-            // Microsoft Advertising
-            "ads.microsoft.com", "advertising.microsoft.com",
-            // LinkedIn (Microsoft)
-            "linkedin.com", "www.linkedin.com", "snap.licdn.com",
-            "px.ads.linkedin.com", "platform.linkedin.com",
+            "fbcdn.net", "fbsbx.com", "facebook.net",
+            // Microsoft Ads
+            "bing.com", "bat.bing.com",
             // TikTok
-            "tiktok.com", "analytics.tiktok.com", "ads.tiktok.com",
-            "business-api.tiktok.com", "p16-tiktok.com",
+            "tiktok.com", "analytics.tiktok.com", "ads.tiktok.com", "tiktokcdn.com",
+            // LinkedIn
+            "linkedin.com", "www.linkedin.com", "snap.licdn.com", "px.ads.linkedin.com",
             // Pinterest
-            "pinterest.com", "www.pinterest.com", "ads.pinterest.com",
-            "analytics.pinterest.com", "log.pinterest.com",
+            "pinterest.com", "www.pinterest.com", "ct.pinterest.com",
             // Twitter/X
-            "twitter.com", "x.com", "ads.twitter.com", "analytics.twitter.com",
-            "t.co", "platform.twitter.com",
+            "twitter.com", "x.com", "ads.twitter.com", "ads.x.com",
             // Snapchat
-            "snapchat.com", "www.snapchat.com", "ads.snapchat.com",
-            "tr.snapchat.com", "app.snapchat.com",
+            "snapchat.com", "sc-static.net",
             // Reddit
-            "reddit.com", "www.reddit.com", "ads.reddit.com",
-            "events.reddit.com", "pixel.redditmedia.com",
-            // Quora
-            "quora.com", "www.quora.com", "ads.quora.com",
-            "qprod.quora.com", "pixel.quora.com",
+            "reddit.com", "redditstatic.com", "redditmedia.com",
             // Criteo
-            "criteo.com", "cas.criteo.com", "dynamic.criteo.com",
-            "rtax.criteo.com", "pubsdk-af.com",
+            "criteo.com", "cas.criteo.com",
             // Taboola
-            "taboola.com", "cdn.taboola.com", "trc.taboola.com",
-            "api.taboola.com", "images.taboola.com",
+            "taboola.com", "cdn.taboola.com",
             // Outbrain
-            "outbrain.com", "widgets.outbrain.com", "tr.outbrain.com",
-            "api.outbrain.com", "odb.outbrain.com",
-            // RevContent
-            "revcontent.com", "api.revcontent.com", "labs-cdn.revcontent.com",
-            // AdRoll
-            "adroll.com", "d.adroll.com", "a.adroll.com",
+            "outbrain.com", "widgets.outbrain.com",
             // Amazon Advertising
-            "amazon-adsystem.com", "aax-us-east.amazon-adsystem.com",
-            "fls-na.amazon-adsystem.com", "c.amazon-adsystem.com",
-            // Media.net
-            "media.net", "contextual.media.net", "publisher.media.net",
-            // Yahoo Gemini
-            "gemini.yahoo.com", "ads.yahoo.com", "sp.ads.yahoo.com",
+            "amazon-adsystem.com", "fls-na.amazon-adsystem.com",
             // Verizon Media
-            "verizonmedia.com", "ads.verizonmedia.com",
-            // AOL Advertising
-            "aol.com", "ads.aol.com",
-            // OpenX
-            "openx.net", "servedbyopenx.com", "u.openx.net",
-            // PubMatic
-            "pubmatic.com", "ads.pubmatic.com", "image2.pubmatic.com",
+            "verizonmedia.com", "ads.yahoo.com",
+            // The Trade Desk
+            "adsrvr.org", "match.adsrvr.org",
+            // MediaMath
+            "mathtag.com", "mediamath.com",
             // Rubicon Project
-            "rubiconproject.com", "token.rubiconproject.com",
-            "fastlane.rubiconproject.com",
+            "rubiconproject.com", "tap.rubiconproject.com",
+            // OpenX
+            "openx.net", "openx.org",
+            // PubMatic
+            "pubmatic.com", "ads.pubmatic.com",
             // Index Exchange
-            "indexexchange.com", "as-sec.casalemedia.com",
+            "indexexchange.com", "casalemedia.com",
             // Sovrn
-            "sovrn.com", "ap.lijit.com", "beacon.sojern.com",
-            // TripleLift
-            "triplelift.com", "ib.3lift.com",
-            // Sharethrough
-            "sharethrough.com", "native.sharethrough.com",
-            // Nativo
-            "nativo.com", "api.nativo.com",
-            // GumGum
-            "gumgum.com", "rtb.gumgum.com",
-            // Teads
-            "teads.tv", "cdn.teads.tv",
-            // Connatix
-            "connatix.com", "cdn.connatix.com",
-            // Seedtag
-            "seedtag.com", "cdn.seedtag.com",
-            // Improve Digital
-            "improvedigital.com", "sync.improvedigital.com",
-            // Smart AdServer
-            "smartadserver.com", "cdn.smartadserver.com",
+            "sovrn.com", "ap.lijit.com",
             // AdForm
             "adform.net", "track.adform.net",
-            // Sizmek
-            "sizmek.com", "bs.serving-sys.com",
-            // Conversant
-            "conversantmedia.com", "mediaplex.com",
-            // The Trade Desk
-            "thetradedesk.com", "insight.adsrvr.org",
-            // AppNexus (now Xandr)
-            "xandr.com", "ib.adnxs.com",
-            // MediaMath
-            "mediamath.com", "pixel.mathtag.com",
-            // DataXu
-            "dataxu.com", "warp.dataxu.com",
-            // Turn (now Amobee)
-            "amobee.com", "pixel.turn.com",
-            // Simpli.fi
-            "simpli.fi", "i.simpli.fi",
-            // Centro
-            "centro.net", "beacon.centro.net",
-            // Basis (now Centro)
-            "basis.net", "cdn.basis.net",
-            // Adelphic
-            "adelphic.com", "dsp.adelphic.com",
-            // StackAdapt
-            "stackadapt.com", "api.stackadapt.com",
-            // Choozle
-            "choozle.com", "cdn.choozle.com",
             // Quantcast
-            "quantcast.com", "pixel.quantserve.com",
-            // Lotame
-            "lotame.com", "bcp.crwdcntrl.net",
-            // BlueKai (Oracle)
-            "bluekai.com", "stags.bluekai.com",
-            // Oracle Data Cloud
-            "oracle.com", "dmp.turn.com",
-            // Neustar
-            "neustar.biz", "loadm.exelator.com",
-            // Acxiom
-            "acxiom.com", "logs.acxiom.com",
-            // Experian
-            "experian.com", "tags.experianaperture.com",
-            // TransUnion
-            "transunion.com", "t.traxion.com",
-            // Epsilon
-            "epsilon.com", "ab.epsilon.com",
-            // Merkle
-            "merkleinc.com", "cm.everesttech.net",
-            // LiveRamp
-            "liveramp.com", "idsync.rlcdn.com",
-            // Adobe Advertising Cloud
-            "adobe.com", "dpm.demdex.net",
-            // Salesforce DMP
-            "salesforce.com", "tags.tiqcdn.com",
-            // Krux (Salesforce)
-            "krux.com", "beacon.krxd.net",
-            // Adobe Audience Manager
-            "demdex.net", "dpm.demdex.net",
-            // Nielsen DMP
-            "nielsen.com", "segment-data.zqtk.net",
-            // ComScore Audience
-            "comscore.com", "sb.scorecardresearch.com",
-            // Integral Ad Science
-            "integralads.com", "cdn.integralads.com",
-            // DoubleVerify
-            "doubleverify.com", "cdn.doubleverify.com",
-            // Moat
-            "moat.com", "z.moatads.com",
-            // Pixalate
-            "pixalate.com", "collector-px677xvx8l.pixalate.com",
-            // Protected Media
-            "protected.media", "api.protected.media",
-            // GeoEdge
-            "geoedge.com", "cdn.geoedge.com",
-            // Confiant
-            "confiant.com", "cdn.confiant.com",
-            // Grapeshot
-            "grapeshot.co.uk", "rtb.grapeshot.co.uk",
-            // Peer39
-            "peer39.com", "tagger.opecloud.com",
-            // Semasio
-            "semasio.com", "us.umijs.semasio.com",
-            // Ads.txt
-            "adstxt.com", "api.adstxt.com",
-            // Ads.cert
-            "adscert.com", "api.adscert.com",
-            // IAB
-            "iab.com", "cdn.iab.com",
-            // TrustArc
-            "trustarc.com", "consent.trustarc.com",
-            // OneTrust
-            "onetrust.com", "cdn.cookielaw.org",
-            // Cookiebot
-            "cookiebot.com", "consent.cookiebot.com",
-            // Quantcast Choice
-            "quantcast.com", "quantcast.mgr.consensu.org",
-            // Didomi
-            "didomi.io", "sdk.privacy-center.org",
-            // Sourcepoint
-            "sourcepoint.com", "cdn.privacy-mgmt.com",
-            // Usercentrics
-            "usercentrics.com", "api.usercentrics.com",
-            // Crownpeak
-            "crownpeak.com", "tagmanager.crownpeak.com",
-            // Ensighten
-            "ensighten.com", "cdn.ensighten.com",
-            // Tealium
-            "tealium.com", "tags.tiqcdn.com",
-            // Segment (CDP)
-            "segment.com", "cdn.segment.com",
-            // mParticle
-            "mparticle.com", "cdn.mparticle.com",
-            // Lytics
-            "lytics.com", "api.lytics.io",
-            // Blueshift
-            "blueshift.com", "cdn.blueshift.com",
-            // Zeotap
-            "zeotap.com", "cdn.zeotap.com",
-            // ActionIQ
-            "actioniq.com", "cdn.actioniq.com",
-            // Simon Data
-            "simondata.com", "cdn.simondata.com",
-            // Treasure Data
-            "treasuredata.com", "cdn.treasuredata.com",
-            // Exponea
-            "exponea.com", "cdn.exponea.com",
-            // Emarsys
-            "emarsys.com", "cdn.emarsys.com",
-            // Klaviyo
-            "klaviyo.com", "static.klaviyo.com",
-            // Mailchimp
-            "mailchimp.com", "chimpstatic.com",
-            // HubSpot Marketing
-            "hubspot.com", "js.hs-scripts.com",
-            // Marketo
-            "marketo.com", "munchkin.marketo.net",
-            // Pardot
-            "pardot.com", "pi.pardot.com",
-            // Eloqua
-            "eloqua.com", "tracking.eloqua.com",
-            // Act-On
-            "act-on.com", "go.actonsoftware.com",
-            // SharpSpring
-            "sharpspring.com", "ws.sharpSpring.com",
-            // ActiveCampaign
-            "activecampaign.com", "trackcmp.net",
-            // GetResponse
-            "getresponse.com", "app.getresponse.com",
-            // ConvertKit
-            "convertkit.com", "cdn.convertkit.com",
-            // Drip
-            "drip.com", "cdn.getdrip.com",
-            // Sendinblue
-            "sendinblue.com", "sibautomation.com",
-            // Brevo (formerly Sendinblue)
-            "brevo.com", "sibapp.com",
-            // MailerLite
-            "mailerlite.com", "cdn.mailerlite.com",
-            // Campaign Monitor
-            "campaignmonitor.com", "createsend.com",
-            // Constant Contact
-            "constantcontact.com", "tracking.constantcontact.com",
-            // AWeber
-            "aweber.com", "forms.aweber.com",
-            // iContact
-            "icontact.com", "forms.icontact.com",
-            // VerticalResponse
-            "verticalresponse.com", "vrresponse.com"
+            "quantcast.com", "quantserve.com",
+            // ShareThis
+            "sharethis.com", "platform.sharethis.com",
+            // AddThis
+            "addthis.com", "s7.addthis.com",
+            // AdRoll
+            "adroll.com", "d.adroll.com",
+            // Liveramp
+            "liveramp.com", "rlcdn.com",
+            // LiveIntent
+            "liveintent.com", "liadm.com",
+            // StackAdapt
+            "stackadapt.com", "sync.stackadapt.com",
+            // RTB House
+            "creativecdn.com", "rtbhouse.com",
+            // Yieldmo
+            "yieldmo.com", "ads.yieldmo.com",
+            // TripleLift
+            "triplelift.com", "ib.3lift.com",
+            // Magnite
+            "magnite.com", "securepubads.g.doubleclick.net",
+            // Xandr
+            "xandr.com", "adnxs.com",
+            // Spotify Ads
+            "spotify.com", "ads.spotify.com",
+            // Twitch Ads
+            "twitch.tv", "twitchcdn.net"
         ],
         cookies: [
-            // Google Ads/AdSense
-            "__gads", "_gcl_aw", "_gcl_dc", "_gcl_gb", "_gcl_ha",
-            "IDE", "DSID", "FLC", "AID", "TAID", "exchange_uid",
-            "id", "fc", "rpb", "google_experiment_mod",
-            // Google Marketing Platform
-            "__gpi", "_gcl_au",
-            // Facebook/Meta
-            "_fbp", "_fbc", "fr", "xs", "c_user", "datr", "sb",
-            "wd", "presence", "dpr", "locale", "pl", "act",
-            "m_pixel_ratio", "usida", "lu", "m_datr",
-            // Instagram
-            "ig_", "ig_nrcb", "ig_did", "mid", "csrftoken",
-            "sessionid", "ds_user_id", "rur", "urlgen",
-            // LinkedIn
-            "lidc", "li_at", "bcookie", "bscookie", "li_sugr",
-            "UserMatchHistory", "AnalyticsSyncHistory", "lang",
-            "liap", "lissc", "li_theme", "li_theme_set",
+            // Google Ads
+            "_gcl", "_gcl_au", "gclid", "IDE", "NID", "DSID", "FPLC",
+            "1P_JAR", "CONSENT", "AEC", "__Secure-3PAPISID", "__Secure-3PSID",
+            "SIDCC", "SAPISID", "SSID", "HSID", "APISID", "SID",
+            // Facebook
+            "_fbp", "_fbc", "fr", "xs", "c_user", "datr", "sb", "lu", "wd",
+            "presence", "act", "m_pixel_ratio", "pl", "usida", "dbln", "locale",
+            // Microsoft Ads
+            "_uetvid", "_uetsid", "_uetmsclkid", "MUID", "MUIDB", "ANON",
+            "_uetmsd", "_uetmsdns", "MSCC", "_EDGE_S", "_EDGE_V",
             // TikTok
-            "_ttp", "ttclid", "tt_sessionid", "tt_csrf_token",
-            "bd_ticket", "bd_signature", "odin_tt",
+            "_ttp", "ttclid", "tt_sessionid", "tt_medium", "tt_campaign",
+            "tt_source", "tt_content", "tt_term", "tt_placement",
+            // LinkedIn
+            "lidc", "bcookie", "li_sugr", "bscookie", "UserMatchHistory",
+            "lang", "liap", "lidc", "li_theme", "li_theme_set",
             // Pinterest
-            "_pinterest_sess", "_pinterest_ct", "_pinterest_ct_rt",
-            "_auth", "_routing_id", "session", "csrftoken",
-            "G_ENABLED_IDPS", "epik",
+            "_pinterest_ct_ua", "_pinterest_sess", "cm_sub", "_pin_unauth",
+            "_auth", "_pinterest_referrer", "_pinterest_cm",
             // Twitter/X
-            "guest_id", "personalization_id", "remember_checked_on",
-            "lang", "twid", "ct0", "auth_token", "kdt",
+            "personalization_id", "guest_id", "ct0", "auth_token", "twid",
+            "remember_checked_on", "lang", "kdt", "dnt",
             // Snapchat
-            "sc_at", "xsrftoken", "remember_device", "web_client_id",
+            "sc_at", "_scid", "_sctr", "snap_ga", "_sn_n", "_sn_v",
             // Reddit
-            "reddit_session", "loid", "session_tracker", "token",
-            "edgebucket", "recentclicks2", "csv",
-            // Quora
-            "m-b", "m-s", "m-ts", "m-last", "m-uid",
+            "reddaid", "loid", "loidcreated", "session_tracker", "csv",
+            "edgebucket", "recent_srs", "token",
             // Criteo
-            "criteo", "uid", "criteo_localstorage", "crtg_",
-            "crtg_content", "crtg_r", "crtg_u",
+            "criteo", "uid", "criteo_localization", "criteo_write_test",
+            "crtg_", "cto_lwid", "cto_bundle",
             // Taboola
-            "t_gid", "t_user", "t_session", "taboola_usg",
-            "taboola_top_articles",
+            "t_gid", "t_sessionid", "taboola_usg", "taboola_sg",
+            "taboola_top_articles", "taboola_session",
             // Outbrain
-            "obuid", "obreg", "obcl", "obrt", "obref",
-            // RevContent
-            "rcuid", "rcreg", "rclk", "rcref",
-            // AdRoll
-            "adroll", "ar_", "ai_user", "ai_session",
-            // Amazon
-            "ad-id", "ad-privacy", "amzn_", "sess-at-",
-            // Media.net
-            "medianet", "mnet_uid", "mnet_sess",
-            // Yahoo
-            "B", "D", "F", "G", "HP", "IU", "T", "Y",
-            // Verizon/AOL
-            "A1", "A1S", "A3", "APID", "APH", "APIDTS",
+            "obuid", "obcl", "outbrain_cid", "outbrain_sid",
+            "outbrain_guid", "ob_recommender_session",
+            // Amazon Advertising
+            "ad-id", "ad-privacy", "adblk", "amzn_ads_",
+            // Verizon Media
+            "TUUID", "TUUID_TIMESTAMP", "B", "GUC",
+            // The Trade Desk
+            "TDID", "TDCPM", "TDATS", "TDPID",
+            // MediaMath
+            "mmapi", "mmdata", "mmuid", "mmfvv",
+            // Rubicon Project
+            "khaos", "put_", "rpx", "rud",
             // OpenX
-            "i", "pd", "ox_", "ouid",
+            "i", "oo", "pd", "pxrc",
             // PubMatic
-            "KADUSERCOOKIE", "KTPC", "PUBMDCID",
-            // Rubicon
-            "khaos", "put_", "rpx",
+            "KRTBCOOKIE_", "PUBMDCID", "PugT",
             // Index Exchange
-            "ics", "icx", "stx",
+            "ck1", "ck2", "ck3", "ck4",
             // Sovrn
-            "ljt_reader", "lfst_suid", "lfst_exp",
+            "ljt_reader", "ljt_referrer",
+            // AdForm
+            "uid", "tracking", "C",
+            // Quantcast
+            "d", "qc_shared", "__qca",
+            // ShareThis
+            "__unam", "_stid", "_st_ses",
+            // AddThis
+            "_atuvc", "_atuvs", "loc", "uvc",
+            // AdRoll
+            "__adroll", "__ar_v4", "adroll_x",
+            // Liveramp
+            "_cc_cc", "_cc_id", "_cc_aud",
+            // LiveIntent
+            "li_", "lipbid",
+            // StackAdapt
+            "sadb", "sadr", "sadu",
+            // RTB House
+            "rth_", "rtk_",
+            // Yieldmo
+            "ymid", "ym_uid",
             // TripleLift
             "tl_", "tlx",
-            // Sharethrough
-            "stx", "str_",
-            // Nativo
-            "nativo", "ntv_",
-            // GumGum
-            "gg_", "gumgum",
-            // Teads
-            "tt_", "teads",
-            // Connatix
-            "cnx_", "connatix",
-            // Seedtag
-            "st_", "seedtag",
-            // Smart AdServer
-            "sas_", "smart",
-            // AdForm
-            "uid", "token", "ADFORMID",
-            // Sizmek
-            "SM", "DSPOPT", "DSP",
-            // Conversant
-            "cnvr", "cv_",
-            // The Trade Desk
-            "TDID", "TDCPM", "TDPID",
-            // AppNexus/Xandr
-            "sess", "uuid2", "anj",
-            // MediaMath
-            "mmapi", "mmdata",
-            // DataXu
-            "dx_", "dxid",
-            // Turn/Amobee
-            "turn_", "turnid",
-            // Simpli.fi
-            "sf_", "sfid",
-            // Centro
-            "ctr_", "ctrid",
-            // Basis
-            "bs_", "bsid",
-            // StackAdapt
-            "sa_", "said",
-            // Choozle
-            "ch_", "chid",
-            // Quantcast
-            "d", "mc", "__qca",
-            // Lotame
-            "lotame", "lotame_",
-            // BlueKai
-            "bkdc", "bku",
-            // Oracle
-            "oracle", "ora_",
-            // Neustar
-            "ns_", "nsid",
-            // Acxiom
-            "ax_", "axid",
-            // Experian
-            "ex_", "exid",
-            // TransUnion
-            "tu_", "tuid",
-            // Epsilon
-            "ep_", "epid",
-            // Merkle
-            "mk_", "mkid",
-            // LiveRamp
-            "lr_", "lrid",
-            // Adobe
-            "demdex", "dpm", "d_mid",
-            // Salesforce
-            "sfdc", "sf_",
-            // Krux
-            "kx", "kxid",
-            // Nielsen
-            "nielsen", "nid",
-            // ComScore
-            "comscore", "scid",
-            // Integral Ad Science
-            "ias_", "iasid",
-            // DoubleVerify
-            "dv_", "dvid",
-            // Moat
-            "moat_", "moatid",
-            // Pixalate
-            "px_", "pxid",
-            // Protected Media
-            "pm_", "pmid",
-            // GeoEdge
-            "ge_", "geid",
-            // Confiant
-            "cf_", "cfid",
-            // Grapeshot
-            "gs_", "gsid",
-            // Peer39
-            "p39_", "p39id",
-            // Semasio
-            "sm_", "smid",
-            // TrustArc
-            "truste", "consentUUID",
-            // OneTrust
-            "OptanonAlertBoxClosed", "OptanonConsent",
-            "OptanonCategoryC0001", "OptanonCategoryC0002",
-            "OptanonCategoryC0003", "OptanonCategoryC0004",
-            // Cookiebot
-            "CookieConsent", "cookieconsent_status",
-            "cookieconsent_preferences_disabled",
-            // Quantcast Choice
-            "__qc", "__qca", "__qcamp",
-            // Didomi
-            "didomi_token", "euconsent-v2",
-            // Sourcepoint
-            "sp_", "spid",
-            // Usercentrics
-            "uc_", "ucid",
-            // Tealium
-            "utag_main", "utuid",
-            // Segment
-            "ajs_", "ajs_anonymous_id",
-            // mParticle
-            "mp_", "mpid",
-            // Lytics
-            "ly_", "lyid",
-            // Blueshift
-            "bsft_", "bsftid",
-            // Zeotap
-            "zt_", "ztid",
-            // ActionIQ
-            "aiq_", "aiqid",
-            // Simon Data
-            "sd_", "sdid",
-            // Treasure Data
-            "td_", "tdid",
-            // Exponea
-            "exp_", "expid",
-            // Emarsys
-            "ems_", "emsid",
-            // Klaviyo
-            "__kla_id", "klaviyo",
-            // Mailchimp
-            "mailchimp_landing_site",
-            "mailchimp.campaign.id", "mailchimp_user_email",
-            // HubSpot
-            "__hstc", "__hssc", "__hssrc", "hubspotutk",
-            // Marketo
-            "_mkto_trk", "mkto_", "BIGipServer",
-            // Pardot
-            "visitor_id", "visitor_id_hash",
-            // Eloqua
-            "ELOQUA", "ELQSTATUS",
-            // Act-On
-            "acton_", "actonid",
-            // SharpSpring
-            "ss_", "ssid",
-            // ActiveCampaign
-            "ac_", "acid",
-            // GetResponse
-            "gr_", "grid",
-            // ConvertKit
-            "ck_", "ckid",
-            // Drip
-            "drip_", "dripid",
-            // Sendinblue/Brevo
-            "sib_", "sibid",
-            // MailerLite
-            "ml_", "mlid",
-            // Campaign Monitor
-            "cm_", "cmid",
-            // Constant Contact
-            "cc_", "ccid",
-            // AWeber
-            "aw_", "awid",
-            // iContact
-            "ic_", "icid",
-            // VerticalResponse
-            "vr_", "vrid"
+            // Magnite
+            "mg_", "mgid",
+            // Xandr
+            "anj", "sess",
+            // Spotify Ads
+            "sp_", "sp_t",
+            // Twitch Ads
+            "twitch_", "twitch_token",
+            // Other ad networks
+            "uuid", "uuid2", "ruds", "sync",
+            "everest_g_v2", "everest_session_v2",
+            "kyn", "pxcel", "rlas3", "tap.php",
+            "uid", "uids", "uidr", "u",
+            "zync", "zuuid", "zuuid_ts"
         ]
     };
-
-    // PERFORMANCE DOMAINS & COOKIES - EXTENSIVELY EXPANDED
+    
+    // PERFORMANCE DOMAINS & COOKIES (Keep original for compatibility) - EXPANDED
     const PERFORMANCE_DATA = {
         domains: [
-            // CDNs
-            "cloudflare.com", "cdn.cloudflare.com", "ajax.cloudflare.com",
+            // CDN Networks
+            "cloudflare.com", "cdn.cloudflare.com",
             "akamaihd.net", "edgekey.net", "edgesuite.net",
-            "akamaized.net", "akamai.net",
-            // Fastly
-            "fastly.net", "global.prod.fastly.net",
-            // Amazon CloudFront
-            "cloudfront.net", "d2c8v52ll5s99u.cloudfront.net",
-            // StackPath
-            "stackpath.com", "cdn.stackpath.com",
-            // KeyCDN
-            "keycdn.com", "cdn.keycdn.com",
-            // BunnyCDN
-            "bunny.net", "cdn.bunny.net",
-            // Google Cloud CDN
-            "cdn.cloud.google.com", "storage.googleapis.com",
-            // Microsoft Azure CDN
-            "azureedge.net", "vo.msecnd.net",
-            // Oracle Cloud CDN
-            "oraclecloud.com", "cdn.oraclecloud.com",
-            // IBM Cloud CDN
-            "ibm.com", "cdn.ibm.com",
-            // Cache/Tiered Networks
-            "cachefly.net", "cdn.cachefly.net",
-            "limelight.com", "cdn.limelight.com",
-            "incapdns.net", "cdn.incapdns.net",
-            "cedexis.net", "cdn.cedexis.net",
-            // DNS Providers
-            "dnsimple.com", "cdn.dnsimple.com",
-            "dyn.com", "cdn.dyn.com",
-            "nsone.net", "cdn.nsone.net",
-            // Load Balancers
-            "awsalb.com", "elb.amazonaws.com",
-            "azure.com", "trafficmanager.net",
-            // Performance Monitoring
-            "newrelic.com", "js-agent.newrelic.com",
-            "dynatrace.com", "js.dynatrace.com",
-            "appdynamics.com", "cdn.appdynamics.com",
-            "datadoghq.com", "dpm.demdex.net",
-            // Speed Optimization
+            "fastly.net", "cdn.fastly.net",
+            "azureedge.net", "cdn.azureedge.net",
+            "awsstatic.com", "cloudfront.net",
+            // Optimization Platforms
             "cloudinary.com", "res.cloudinary.com",
-            "imgix.net", "cdn.imgix.net",
-            "images-amazon.com", "images-na.ssl-images-amazon.com",
-            // Web Performance
-            "webpagetest.org", "www.webpagetest.org",
-            "gtmetrix.com", "cdn.gtmetrix.com",
-            "pingdom.com", "stats.pingdom.com",
-            // Real User Monitoring
-            "rum.com", "cdn.rum.com",
-            "boomerang.com", "cdn.boomerang.com",
-            // Compression Services
-            "cloudflare.com", "cdnjs.cloudflare.com",
-            "jdelivr.net", "cdn.jsdelivr.net",
-            "unpkg.com", "cdn.unpkg.com",
-            // Font Services
-            "fonts.googleapis.com", "fonts.gstatic.com",
-            "typekit.net", "use.typekit.net",
-            "fontawesome.com", "cdn.fontawesome.com",
-            // Image Optimization
-            "imageshack.com", "cdn.imageshack.com",
-            "imgur.com", "i.imgur.com",
-            "flickr.com", "staticflickr.com"
+            "imgix.net", "images.imgix.net",
+            "optimizely.com", "cdn.optimizely.com",
+            // Performance Monitoring
+            "newrelic.com", "nr-data.net",
+            "dynatrace.com", "ruxit.com",
+            "appdynamics.com", "cdn.appdynamics.com",
+            // Video Performance
+            "vimeo.com", "player.vimeo.com",
+            "youtube.com", "youtube-nocookie.com",
+            "dailymotion.com", "cdn.dailymotion.com"
         ],
         cookies: [
-            // CloudFlare
-            "__cfduid", "__cf_bm", "__cflb", "__cfruid",
-            // Akamai
-            "ak_bmsc", "akavpau_", "akaas_",
-            // AWS
-            "AWSALB", "AWSALBCORS", "AWSALBTG", "AWSALBTGCORS",
-            // Fastly
-            "__fastly", "__fastly_session",
-            // Load Balancer
-            "BIGipServer", "JSESSIONID", "route",
-            // Performance Monitoring
+            // CDN Cookies
+            "__cfduid", "__cf_bm", "AWSALB", "AWSALBCORS",
+            "AWSALBTG", "AWSALBTGCORS", "cf_use_ob",
+            // Load Balancer Cookies
+            "ARRAffinity", "ARRAffinitySameSite",
+            "SERVERID", "BIGipServer",
+            // Performance Optimization
+            "__utmv", "__utmx", "__utmxx",
+            "_vwo_uuid", "_vwo_ds",
+            // Video Performance
+            "vuid", "player", "VISITOR_INFO1_LIVE",
+            "YSC", "PREF", "dmvk", "dm_last_visit",
+            // Monitoring
             "dtCookie", "dtLatC", "dtPC", "dtSa",
             "rxVisitor", "rxvt",
-            // New Relic
-            "JSESSIONIDNR", "NRAGENT",
-            // Dynatrace
-            "dt", "rxvt", "dtPC",
-            // AppDynamics
-            "ADRUM", "ADRUM_",
-            // Datadog
-            "dd_s", "dd_cookie_test_",
-            // Session/Connection
-            "SRV", "SERVERID", "TS", "TS01", "TS010",
-            "TS011", "TS012", "TS013", "TS014", "TS015",
-            // Cache
-            "X-Mapping", "X-Cache", "X-Cache-Lookup",
-            // CDN
-            "cdn", "cdnid", "cdn_sid",
-            // Compression
-            "gzip", "deflate", "br",
-            // Font
-            "typekit", "tk_",
-            // Image Optimization
-            "imgopt", "img_",
-            // Web Performance
-            "wpt", "wptid",
-            // Real User Monitoring
-            "rum", "rumid",
-            // Speed Test
-            "st", "stid"
+            "ADRUM", "ADRUM_BT", "ADRUM_BTa",
+            // Session Management
+            "JSESSIONID", "PHPSESSID", "ASP.NET_SessionId",
+            "cf_chl_", "cf_clearance"
         ]
     };
-
-    // ESSENTIAL DOMAINS & COOKIES - EXTENSIVELY EXPANDED
+    
+    // ESSENTIAL DOMAINS & COOKIES (ALWAYS ALLOWED) - EXPANDED
+    // ============================================================================
     const ESSENTIAL_DATA = {
         domains: [
-            // Current Domain
             window.location.hostname,
-            // Shopify
+            // CDN Libraries
+            "cdnjs.cloudflare.com", "ajax.googleapis.com",
+            "fonts.googleapis.com", "fonts.gstatic.com",
+            "maps.googleapis.com", "ajax.aspnetcdn.com",
+            "code.jquery.com", "maxcdn.bootstrapcdn.com",
+            // Payment Processors
+            "stripe.com", "paypal.com", "braintreegateway.com",
+            "checkout.stripe.com", "www.paypal.com",
+            // ============================================================================
+            // ADDED: Shopify domains for better Shopify compatibility
+            // ============================================================================
             "shopify.com", "*.shopify.com",
             "myshopify.com", "*.myshopify.com",
             "shopifycdn.com", "*.shopifycdn.com",
-            "shopifystatic.com", "cdn.shopify.com",
-            // WooCommerce
+            "shopifystatic.com",
+            // ============================================================================
+            // ADDED: Additional essential domains for e-commerce
+            // ============================================================================
             "woocommerce.com", "*.woocommerce.com",
-            "woo.com", "*.woo.com",
-            // BigCommerce
             "bigcommerce.com", "*.bigcommerce.com",
-            "mybigcommerce.com", "*.mybigcommerce.com",
-            // Magento/Adobe Commerce
             "magento.com", "*.magento.com",
-            "magento.cloud", "*.magento.cloud",
-            "adobe.com", "commerce.adobe.com",
-            // PrestaShop
-            "prestashop.com", "*.prestashop.com",
-            // OpenCart
-            "opencart.com", "*.opencart.com",
-            // Wix
-            "wix.com", "*.wix.com",
-            "wixsite.com", "*.wixsite.com",
-            "wixstatic.com", "*.wixstatic.com",
-            // Squarespace
-            "squarespace.com", "*.squarespace.com",
-            "sqsp.com", "*.sqsp.com",
-            // Weebly
-            "weebly.com", "*.weebly.com",
-            // Webflow
-            "webflow.com", "*.webflow.com",
-            // Ghost
-            "ghost.org", "*.ghost.org",
-            // WordPress.com
-            "wordpress.com", "*.wordpress.com",
-            "wp.com", "*.wp.com",
-            // Common CDNs (Essential)
-            "cdnjs.cloudflare.com", "ajax.googleapis.com",
-            "code.jquery.com", "maxcdn.bootstrapcdn.com",
-            "cdn.jsdelivr.net", "unpkg.com",
-            // Font Services
-            "fonts.googleapis.com", "fonts.gstatic.com",
-            "use.typekit.net", "kit.fontawesome.com",
-            // Maps
-            "maps.googleapis.com", "maps.gstatic.com",
-            // Payment Processors
-            "stripe.com", "*.stripe.com",
-            "paypal.com", "*.paypal.com",
-            "braintreegateway.com", "*.braintreegateway.com",
-            "authorize.net", "*.authorize.net",
-            "squareup.com", "*.squareup.com",
-            "2checkout.com", "*.2checkout.com",
-            // Security/SSL
-            "letsencrypt.org", "*.letsencrypt.org",
-            "ssl.com", "*.ssl.com",
-            // Authentication
+            "salesforce.com", "*.salesforce.com",
+            "zendesk.com", "*.zendesk.com",
+            // Authentication & Security
             "auth0.com", "*.auth0.com",
             "okta.com", "*.okta.com",
-            "onelogin.com", "*.onelogin.com",
-            // Essential APIs
-            "api.cloudflare.com", "api.fastly.com",
-            "api.akamai.com", "api.aws.amazon.com",
-            // WebSockets
-            "ws.", "wss.",
-            // Local/Development
+            "recaptcha.net", "www.recaptcha.net",
+            "hcaptcha.com", "*.hcaptcha.com",
+            // WebSockets & Real-time
+            "socket.io", "*.socket.io",
+            "pusher.com", "*.pusher.com",
+            // APIs & Backend Services
+            "graphql.org", "*.graphql.org",
+            "restful.com", "*.restful.com",
+            // Email Services
+            "mailchimp.com", "*.mailchimp.com",
+            "sendgrid.com", "*.sendgrid.com",
+            "mailgun.com", "*.mailgun.com",
+            // Form & Survey Tools
+            "typeform.com", "*.typeform.com",
+            "jotform.com", "*.jotform.com",
+            "google.com", "*.google.com",
+            // Chat & Support
+            "intercom.io", "*.intercom.io",
+            "drift.com", "*.drift.com",
+            "tawk.to", "*.tawk.to",
+            "crisp.chat", "*.crisp.chat",
+            // Local Development
             "localhost", "127.0.0.1",
-            "*.local", "*.test",
-            // Internal Networks
-            "*.intranet", "*.internal",
-            "*.localdomain"
+            "0.0.0.0", "*.local"
         ],
         cookies: [
             // Session Management
             "PHPSESSID", "JSESSIONID", "ASP.NET_SessionId",
-            "cfid", "cftoken", "CFID", "CFTOKEN",
             // WordPress
-            "wordpress_logged_in_", "wordpress_sec_",
-            "wp-settings-", "wp-settings-time-",
-            "wordpress_test_cookie", "wp_woocommerce_session_",
+            "wordpress_logged_in_", "wordpress_sec_", "wp-settings-",
+            "wp-settings-time-", "wordpress_test_cookie",
             // Consent Management
-            "cookie_consent", "__user_cookie_consent__",
-            "__user_cookie_categories__", "cookieconsent_status",
-            // E-commerce Cart
+            "cookie_consent", "__user_cookie_consent__", "__user_cookie_categories__",
+            // Shopping Cart
             "cart_token", "cart_items", "checkout_token",
             "woocommerce_cart_hash", "woocommerce_items_in_cart",
-            "woocommerce_recently_viewed",
-            // Shopify
-            "shopify_cart_token", "secure_customer_sig",
-            "_shopify_s", "_shopify_sa_p", "_shopify_sa_t",
-            "_shopify_y", "_shopify_fs", "_shopify_m",
-            "_orig_referrer", "_landing_page", "_referring_shop",
-            "cart_currency", "cart_sig",
-            // BigCommerce
-            "bigcommerce_cart", "bigcommerce_customer",
-            "bigcommerce_login_token", "SHOP_TOKEN",
-            // Magento
-            "mage-cache-storage", "mage-cache-sessid",
-            "mage-messages", "section_data_ids",
-            "persistent_shopping_cart", "private_content_version",
-            "recently_compared_product", "recently_compared_product_previous",
-            "recently_viewed_product", "recently_viewed_product_previous",
-            // Security/CSRF
+            "wc_cart_hash", "wc_fragments",
+            // Security Tokens
             "csrftoken", "XSRF-TOKEN", "_csrf",
-            "authenticity_token", "anti-forgery-token",
-            "__RequestVerificationToken", "__Host-",
-            "__Secure-",
+            "authenticity_token", "__RequestVerificationToken",
             // Authentication
             "sessionid", "session", "sid", "token",
             "access_token", "refresh_token", "id_token",
-            "remember_me", "remember_token",
+            // ============================================================================
+            // ADDED: Shopify essential cookies
+            // ============================================================================
+            "shopify_cart_token", "secure_customer_sig",
+            "_shopify_s", "_shopify_sa_p", "_shopify_sa_t",
+            "_shopify_y", "_shopify_fs", "_shopify_uniq",
+            "_orig_referrer", "_landing_page", "_referring_shop",
+            "cart", "cart_currency", "customer_auth_token",
+            // ============================================================================
+            // ADDED: Additional e-commerce cookies
+            // ============================================================================
+            "magento_cart", "bigcommerce_cart", "bc_cart_id",
+            "bc_customer_id", "salesforce_session_id",
+            // Payment Processing
+            "__stripe_mid", "__stripe_sid", "paypal-cookie",
+            "braintree_tokenization_key",
             // User Preferences
-            "language", "locale", "timezone",
-            "currency", "country", "region",
-            // Functional
-            "accept_cookies", "cookies_enabled",
-            "javascript_enabled", "screen_size",
-            // Form/Checkout
-            "checkout_session", "checkout_id",
-            "order_id", "transaction_id",
-            "payment_intent", "payment_method",
-            // Shipping
-            "shipping_method", "shipping_address",
-            "billing_address", "delivery_options",
-            // Wishlist
-            "wishlist", "wishlist_items",
-            "saved_items", "favorites",
-            // Search
-            "search_history", "recent_searches",
-            "last_search", "search_filters",
-            // Product Viewing
-            "recently_viewed", "product_history",
-            "compare_products", "viewed_products",
-            // Account
-            "user_id", "customer_id", "guest_id",
-            "account_id", "profile_id",
-            // Notifications
-            "notification_count", "unread_messages",
-            "alerts", "announcements",
-            // Performance
-            "load_balancer", "server_affinity",
-            "connection_id", "request_id",
+            "locale", "language", "currency", "timezone",
+            "theme", "dark_mode", "font_size",
+            // Form Security
+            "cf_chl_", "cf_clearance", "hcaptcha_token",
+            "recaptcha_token",
+            // Chat & Support
+            "__zlcmid", "__zlcprivacy", "intercom-id",
+            "intercom-session", "drift_aid", "drift_campaign_refresh",
+            // Email & Marketing (Essential Only)
+            "mc_subscription_status", "sg_campaign",
+            // Accessibility
+            "high_contrast", "screen_reader", "font_preference",
             // Local Storage Backups
             "local_storage_backup", "indexeddb_backup",
-            // Fallback/Backup
-            "fallback_enabled", "backup_session",
-            "recovery_token", "emergency_access"
+            // Feature Flags
+            "feature_flags", "ab_test_group",
+            // GDPR Compliance
+            "OptanonAlertBoxClosed", "OptanonConsent",
+            "CookieConsent", "cookietest",
+            "uc_user_interaction", "uc_user_interaction_ts",
+            "notice_gdpr_prefs", "notice_behavior",
+            "quantcast_choice", "quantcast2.quantcast",
+            "euconsent-v2", "eupubconsent-v2"
         ]
     };
     
@@ -1399,7 +786,7 @@ window.COOKIE_SETTINGS = {
         
         if (DEBUG) console.log("✅ document.write/document.writeln protection activated");
     }
-        
+    
     // 1. Block script loading WITH SAFE GUARD
     if (!document.__cookieCreateElementPatched) {
         document.__cookieCreateElementPatched = true;
@@ -1440,8 +827,8 @@ window.COOKIE_SETTINGS = {
         
         if (DEBUG) console.log("✅ Script loading protection activated");
     }
-        
-      // 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
+    
+    // 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
     if (window.fetch) {
         // Store original for cleanup
         window.__originalFetch = window.fetch;
@@ -1553,7 +940,7 @@ window.COOKIE_SETTINGS = {
         
         if (DEBUG) console.log(`✅ Fetch blocking activated (${AGGRESSIVE_MODE ? 'AGGRESSIVE' : 'POLITE'} mode)`);
     }
-        
+    
     // 3. Block XMLHttpRequest
     if (window.XMLHttpRequest) {
         // Store originals for cleanup
@@ -1579,8 +966,8 @@ window.COOKIE_SETTINGS = {
         
         if (DEBUG) console.log("✅ XHR blocking activated");
     }
-        
-      // 4. Block sendBeacon (with AGGRESSIVE_MODE control)
+    
+    // 4. Block sendBeacon (with AGGRESSIVE_MODE control)
     if (navigator.sendBeacon) {
         // Store original for cleanup
         navigator.__originalSendBeacon = navigator.sendBeacon;
@@ -1603,7 +990,7 @@ window.COOKIE_SETTINGS = {
         
         if (DEBUG) console.log(`✅ sendBeacon blocking activated (${AGGRESSIVE_MODE ? 'returns false' : 'returns true'})`);
     }
-        
+    
     /* ===================== IMPLEMENT BLOCKING ===================== */
 
     // 5. Block iframes
@@ -1693,7 +1080,7 @@ window.COOKIE_SETTINGS = {
         
         if (DEBUG) console.log("✅ All global event handlers cleaned up");
     }
-    
+
     // 7. Block inline tracking scripts - IMPROVED DETECTION
     function blockInlineTrackers() {
         document.querySelectorAll('script:not([src])').forEach(function (script) {
@@ -1849,7 +1236,7 @@ window.COOKIE_SETTINGS = {
 
     // Register the cleanup function globally
     window.cleanupCookieConsent = cleanup;
-        
+    
     /* ===================== BANNER HOOKS ===================== */
     
     window.enableAllTracking = function() {
@@ -1988,6 +1375,7 @@ window.COOKIE_SETTINGS = {
     }
     
 })();
+
 
 
 
