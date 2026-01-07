@@ -184,12 +184,13 @@ window.COOKIE_SETTINGS = {
         cookies: [
             // Google Analytics
             "_ga", "_gid", "_gat", "_ga_", "_gat_UA-", "_gat_gtag", "_dc_gtm_",
+            "_gac_", "_gcl_aw", "_gcl_dc", "_gcl_gb", "_gcl_au",
             // Microsoft Clarity
             "_clck", "_clsk", "_cltk", "CLID", "ANONCHK", "SM",
             // Hotjar
             "_hjid", "_hjIncludedInPageviewSample", "_hjClosedSurveyInvites",
             "_hjDonePolls", "_hjMinimizedPolls", "_hjShownFeedbackMessage",
-            "_hjSession_", "_hjAbsoluteSessionInProgress",
+            "_hjSession_", "_hjAbsoluteSessionInProgress", "_hjSessionUser_",
             // HubSpot
             "hubspotutk", "__hssc", "__hssrc", "__hstc", "hsfirstvisit",
             // Matomo
@@ -231,7 +232,7 @@ window.COOKIE_SETTINGS = {
             // Optimizely
             "optimizelyEndUserId", "optimizelySegments",
             // General Analytics
-            "_vwo_uuid", "_vwo_sn", "_vwo_ds", "_fbp", "_fbc",
+            "_vwo_uuid", "_vwo_sn", "_vwo_ds",
             // Tealium
             "utag_main", "utag_env"
         ]
@@ -320,9 +321,11 @@ window.COOKIE_SETTINGS = {
             "_gcl", "_gcl_au", "gclid", "IDE", "NID", "DSID", "FPLC",
             "1P_JAR", "CONSENT", "AEC", "__Secure-3PAPISID", "__Secure-3PSID",
             "SIDCC", "SAPISID", "SSID", "HSID", "APISID", "SID",
+            "ANID", "__Secure-3PSIDCC",
             // Facebook
             "_fbp", "_fbc", "fr", "xs", "c_user", "datr", "sb", "lu", "wd",
             "presence", "act", "m_pixel_ratio", "pl", "usida", "dbln", "locale",
+            "sb", "dpr", "oo",
             // Microsoft Ads
             "_uetvid", "_uetsid", "_uetmsclkid", "MUID", "MUIDB", "ANON",
             "_uetmsd", "_uetmsdns", "MSCC", "_EDGE_S", "_EDGE_V",
@@ -635,7 +638,6 @@ window.COOKIE_SETTINGS = {
             // ============================================================================
             // IMPROVED: Safer cookie matching logic
             // Uses startsWith() for prefix cookies and exact match for others
-            // Prevents false positives with similar cookie names
             // ============================================================================
             if (cookie.endsWith('_') || cookie.endsWith('-')) {
                 // For cookies that end with _ or - (like _ga_, wp-settings-)
@@ -646,9 +648,6 @@ window.COOKIE_SETTINGS = {
             } else if (cookieName === cookie) {
                 // Exact match for specific cookie names
                 return false;
-            } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                // Fallback for broader matches (legacy compatibility)
-                return false;
             }
         }
         
@@ -656,22 +655,24 @@ window.COOKIE_SETTINGS = {
         if (!getCategoryConsent('analytics')) {
             for (const cookie of ANALYTICS_DATA.cookies) {
                 // ============================================================================
-                // IMPROVED: Safer cookie matching for analytics
+                // FIXED: Better cookie matching for analytics
                 // ============================================================================
                 if (cookie.endsWith('_') || cookie.endsWith('-')) {
                     // Prefix cookies like _ga_, _gat_UA-
                     if (cookieName.startsWith(cookie)) {
-                        if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                        if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName} (matches prefix ${cookie})`);
                         return true;
                     }
                 } else if (cookieName === cookie) {
                     // Exact match
-                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName} (exact match)`);
                     return true;
-                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    // Fallback
-                    if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName}`);
-                    return true;
+                } else if (cookieName.includes('_ga') && cookie === '_ga') {
+                    // Special case for _ga variations (_ga_XXXXXXX)
+                    if (cookieName.startsWith('_ga')) {
+                        if (DEBUG) console.log(`🛡️ Blocked Analytics Cookie: ${cookieName} (_ga variation)`);
+                        return true;
+                    }
                 }
             }
         }
@@ -680,22 +681,24 @@ window.COOKIE_SETTINGS = {
         if (!getCategoryConsent('advertising')) {
             for (const cookie of MARKETING_DATA.cookies) {
                 // ============================================================================
-                // IMPROVED: Safer cookie matching for marketing
+                // FIXED: Better cookie matching for marketing
                 // ============================================================================
                 if (cookie.endsWith('_') || cookie.endsWith('-')) {
                     // Prefix cookies
                     if (cookieName.startsWith(cookie)) {
-                        if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                        if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName} (matches prefix ${cookie})`);
                         return true;
                     }
                 } else if (cookieName === cookie) {
                     // Exact match
-                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName} (exact match)`);
                     return true;
-                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    // Fallback
-                    if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName}`);
-                    return true;
+                } else if (cookie.includes('_gcl') && cookieName.includes('_gcl')) {
+                    // Special case for _gcl variations
+                    if (cookieName.startsWith('_gcl')) {
+                        if (DEBUG) console.log(`🛡️ Blocked Marketing Cookie: ${cookieName} (_gcl variation)`);
+                        return true;
+                    }
                 }
             }
         }
@@ -704,21 +707,17 @@ window.COOKIE_SETTINGS = {
         if (!getCategoryConsent('performance')) {
             for (const cookie of PERFORMANCE_DATA.cookies) {
                 // ============================================================================
-                // IMPROVED: Safer cookie matching for performance
+                // FIXED: Better cookie matching for performance
                 // ============================================================================
                 if (cookie.endsWith('_') || cookie.endsWith('-')) {
                     // Prefix cookies
                     if (cookieName.startsWith(cookie)) {
-                        if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                        if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName} (matches prefix ${cookie})`);
                         return true;
                     }
                 } else if (cookieName === cookie) {
                     // Exact match
-                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
-                    return true;
-                } else if (cookieName.includes(cookie) || cookie.includes(cookieName)) {
-                    // Fallback
-                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName}`);
+                    if (DEBUG) console.log(`🛡️ Blocked Performance Cookie: ${cookieName} (exact match)`);
                     return true;
                 }
             }
@@ -740,17 +739,73 @@ window.COOKIE_SETTINGS = {
         
         document.write = function(content) {
             if (content && typeof content === 'string') {
-                // Check if content contains tracking scripts
+                // Check if content contains tracking scripts - UPDATED WITH ALL PLATFORMS
                 const hasTrackingScript = 
                     content.includes('<script') && (
+                        // Analytics Platforms
                         content.includes('google-analytics.com') ||
                         content.includes('googletagmanager.com') ||
+                        content.includes('clarity.ms') ||
+                        content.includes('hotjar.com') ||
+                        content.includes('mixpanel.com') ||
+                        content.includes('segment.com') ||
+                        content.includes('fullstory.com') ||
+                        content.includes('mouseflow.com') ||
+                        content.includes('logrocket.com') ||
+                        content.includes('matomo.org') ||
+                        content.includes('piwik.pro') ||
+                        content.includes('mc.yandex.ru') ||
+                        content.includes('hm.baidu.com') ||
+                        content.includes('kissmetrics.com') ||
+                        content.includes('crazyegg.com') ||
+                        content.includes('luckyorange.com') ||
+                        content.includes('getclicky.com') ||
+                        content.includes('amplitude.com') ||
+                        content.includes('snowplowanalytics.com') ||
+                        content.includes('nr-data.net') ||
+                        content.includes('optimizely.com') ||
+                        // Marketing/Advertising Platforms
                         content.includes('facebook.com') ||
                         content.includes('connect.facebook.net') ||
                         content.includes('doubleclick.net') ||
+                        content.includes('googleadservices.com') ||
+                        content.includes('googlesyndication.com') ||
+                        content.includes('tiktok.com') ||
+                        content.includes('ads.tiktok.com') ||
+                        content.includes('linkedin.com') ||
+                        content.includes('pinterest.com') ||
+                        content.includes('twitter.com') ||
+                        content.includes('x.com') ||
+                        content.includes('snapchat.com') ||
+                        content.includes('reddit.com') ||
+                        content.includes('criteo.com') ||
+                        content.includes('taboola.com') ||
+                        content.includes('outbrain.com') ||
+                        content.includes('amazon-adsystem.com') ||
+                        content.includes('adsrvr.org') ||
+                        content.includes('mathtag.com') ||
+                        content.includes('rubiconproject.com') ||
+                        content.includes('openx.net') ||
+                        content.includes('pubmatic.com') ||
+                        content.includes('quantcast.com') ||
+                        content.includes('adroll.com') ||
+                        content.includes('liveramp.com') ||
+                        content.includes('stackadapt.com') ||
+                        content.includes('triplelift.com') ||
+                        content.includes('xandr.com') ||
+                        content.includes('bing.com') ||
+                        content.includes('bat.bing.com') ||
+                        // Common tracking patterns
                         content.includes('gtag(') ||
                         content.includes('fbq(') ||
-                        content.includes('dataLayer.push')
+                        content.includes('clarity(') ||
+                        content.includes('mixpanel.') ||
+                        content.includes('analytics.track') ||
+                        content.includes('dataLayer.push') ||
+                        content.includes('uetq.push') ||
+                        content.includes('twq(') ||
+                        content.includes('snaptr(') ||
+                        content.includes('rdt(')
                     );
                 
                 if (hasTrackingScript) {
@@ -763,17 +818,73 @@ window.COOKIE_SETTINGS = {
         
         document.writeln = function(content) {
             if (content && typeof content === 'string') {
-                // Check if content contains tracking scripts
+                // Check if content contains tracking scripts - UPDATED WITH ALL PLATFORMS
                 const hasTrackingScript = 
                     content.includes('<script') && (
+                        // Analytics Platforms
                         content.includes('google-analytics.com') ||
                         content.includes('googletagmanager.com') ||
+                        content.includes('clarity.ms') ||
+                        content.includes('hotjar.com') ||
+                        content.includes('mixpanel.com') ||
+                        content.includes('segment.com') ||
+                        content.includes('fullstory.com') ||
+                        content.includes('mouseflow.com') ||
+                        content.includes('logrocket.com') ||
+                        content.includes('matomo.org') ||
+                        content.includes('piwik.pro') ||
+                        content.includes('mc.yandex.ru') ||
+                        content.includes('hm.baidu.com') ||
+                        content.includes('kissmetrics.com') ||
+                        content.includes('crazyegg.com') ||
+                        content.includes('luckyorange.com') ||
+                        content.includes('getclicky.com') ||
+                        content.includes('amplitude.com') ||
+                        content.includes('snowplowanalytics.com') ||
+                        content.includes('nr-data.net') ||
+                        content.includes('optimizely.com') ||
+                        // Marketing/Advertising Platforms
                         content.includes('facebook.com') ||
                         content.includes('connect.facebook.net') ||
                         content.includes('doubleclick.net') ||
+                        content.includes('googleadservices.com') ||
+                        content.includes('googlesyndication.com') ||
+                        content.includes('tiktok.com') ||
+                        content.includes('ads.tiktok.com') ||
+                        content.includes('linkedin.com') ||
+                        content.includes('pinterest.com') ||
+                        content.includes('twitter.com') ||
+                        content.includes('x.com') ||
+                        content.includes('snapchat.com') ||
+                        content.includes('reddit.com') ||
+                        content.includes('criteo.com') ||
+                        content.includes('taboola.com') ||
+                        content.includes('outbrain.com') ||
+                        content.includes('amazon-adsystem.com') ||
+                        content.includes('adsrvr.org') ||
+                        content.includes('mathtag.com') ||
+                        content.includes('rubiconproject.com') ||
+                        content.includes('openx.net') ||
+                        content.includes('pubmatic.com') ||
+                        content.includes('quantcast.com') ||
+                        content.includes('adroll.com') ||
+                        content.includes('liveramp.com') ||
+                        content.includes('stackadapt.com') ||
+                        content.includes('triplelift.com') ||
+                        content.includes('xandr.com') ||
+                        content.includes('bing.com') ||
+                        content.includes('bat.bing.com') ||
+                        // Common tracking patterns
                         content.includes('gtag(') ||
                         content.includes('fbq(') ||
-                        content.includes('dataLayer.push')
+                        content.includes('clarity(') ||
+                        content.includes('mixpanel.') ||
+                        content.includes('analytics.track') ||
+                        content.includes('dataLayer.push') ||
+                        content.includes('uetq.push') ||
+                        content.includes('twq(') ||
+                        content.includes('snaptr(') ||
+                        content.includes('rdt(')
                     );
                 
                 if (hasTrackingScript) {
@@ -849,23 +960,98 @@ window.COOKIE_SETTINGS = {
                     // Returns 204 for functional APIs (prevents website crashes)
                     // ============================================================================
                     
-                    // List of KNOWN TRACKER PATTERNS (these get rejected)
+                    // List of KNOWN TRACKER PATTERNS (these get rejected) - UPDATED WITH ALL PLATFORMS
                     const isDefinitelyTracker = 
+                        // Analytics Platforms
+                        url.includes('google-analytics.com') || 
+                        url.includes('googletagmanager.com') ||
+                        url.includes('clarity.ms') ||
+                        url.includes('hotjar.com') ||
+                        url.includes('mixpanel.com') ||
+                        url.includes('segment.com') ||
+                        url.includes('fullstory.com') ||
+                        url.includes('mouseflow.com') ||
+                        url.includes('logrocket.com') ||
+                        url.includes('matomo.org') ||
+                        url.includes('piwik.pro') ||
+                        url.includes('mc.yandex.ru') ||
+                        url.includes('hm.baidu.com') ||
+                        url.includes('kissmetrics.com') ||
+                        url.includes('crazyegg.com') ||
+                        url.includes('luckyorange.com') ||
+                        url.includes('getclicky.com') ||
+                        url.includes('amplitude.com') ||
+                        url.includes('snowplowanalytics.com') ||
+                        url.includes('nr-data.net') ||
+                        url.includes('optimizely.com') ||
                         // Meta/Facebook
                         url.includes('facebook.com') || 
                         url.includes('connect.facebook.net') ||
                         url.includes('fbcdn.net') ||
-                        // Google Analytics/Ads
-                        url.includes('google-analytics.com') ||
+                        url.includes('facebook.net') ||
+                        // Google Ads
                         url.includes('doubleclick.net') ||
                         url.includes('googleadservices.com') ||
                         url.includes('googlesyndication.com') ||
+                        url.includes('googleads.g.doubleclick.net') ||
                         // TikTok
                         url.includes('tiktok.com') ||
+                        url.includes('analytics.tiktok.com') ||
+                        url.includes('ads.tiktok.com') ||
                         // Microsoft/UET
                         url.includes('bing.com') ||
+                        url.includes('bat.bing.com') ||
+                        // LinkedIn
+                        url.includes('linkedin.com') ||
+                        url.includes('snap.licdn.com') ||
                         // Pinterest
                         url.includes('pinterest.com') ||
+                        url.includes('ct.pinterest.com') ||
+                        // Twitter/X
+                        url.includes('twitter.com') ||
+                        url.includes('x.com') ||
+                        url.includes('ads.twitter.com') ||
+                        // Snapchat
+                        url.includes('snapchat.com') ||
+                        url.includes('sc-static.net') ||
+                        // Reddit
+                        url.includes('reddit.com') ||
+                        url.includes('redditstatic.com') ||
+                        // Criteo
+                        url.includes('criteo.com') ||
+                        url.includes('cas.criteo.com') ||
+                        // Taboola
+                        url.includes('taboola.com') ||
+                        url.includes('cdn.taboola.com') ||
+                        // Outbrain
+                        url.includes('outbrain.com') ||
+                        url.includes('widgets.outbrain.com') ||
+                        // Amazon Advertising
+                        url.includes('amazon-adsystem.com') ||
+                        // The Trade Desk
+                        url.includes('adsrvr.org') ||
+                        // MediaMath
+                        url.includes('mathtag.com') ||
+                        // Rubicon Project
+                        url.includes('rubiconproject.com') ||
+                        // OpenX
+                        url.includes('openx.net') ||
+                        // PubMatic
+                        url.includes('pubmatic.com') ||
+                        // Index Exchange
+                        url.includes('indexexchange.com') ||
+                        // AdForm
+                        url.includes('adform.net') ||
+                        // Quantcast
+                        url.includes('quantcast.com') ||
+                        // AdRoll
+                        url.includes('adroll.com') ||
+                        // Liveramp
+                        url.includes('liveramp.com') ||
+                        // StackAdapt
+                        url.includes('stackadapt.com') ||
+                        // Xandr
+                        url.includes('xandr.com') ||
                         // Common tracker endpoints
                         url.includes('/collect') ||
                         url.includes('/tr/') ||
@@ -876,7 +1062,18 @@ window.COOKIE_SETTINGS = {
                         url.includes('/pixel') ||
                         url.includes('/conversion') ||
                         url.includes('/ads') ||
-                        url.includes('/adserver');
+                        url.includes('/adserver') ||
+                        url.includes('/tag/') ||
+                        url.includes('/analytics/') ||
+                        url.includes('/measurement/') ||
+                        url.includes('/stats') ||
+                        url.includes('/metrics') ||
+                        url.includes('/clarity') ||
+                        url.includes('/hj') ||
+                        url.includes('/mixpanel') ||
+                        url.includes('/segment') ||
+                        url.includes('/amplitude') ||
+                        url.includes('/snowplow');
                     
                     // List of FUNCTIONAL API PATTERNS (these get 204 responses)
                     const isLikelyFunctionalAPI = 
@@ -900,7 +1097,20 @@ window.COOKIE_SETTINGS = {
                         // Payment processors
                         url.includes('/stripe') ||
                         url.includes('/paypal') ||
-                        url.includes('/braintree');
+                        url.includes('/braintree') ||
+                        // Essential services (never block)
+                        url.includes('auth0.com') ||
+                        url.includes('okta.com') ||
+                        url.includes('recaptcha.net') ||
+                        url.includes('hcaptcha.com') ||
+                        url.includes('stripe.com') ||
+                        url.includes('paypal.com') ||
+                        url.includes('socket.io') ||
+                        url.includes('pusher.com') ||
+                        url.includes('graphql.org') ||
+                        url.includes('mailchimp.com') ||
+                        url.includes('sendgrid.com') ||
+                        url.includes('typeform.com');
                     
                     // AGGRESSIVE: Reject ALL tracking requests (hides from extensions)
                     if (isDefinitelyTracker) {
@@ -1081,30 +1291,72 @@ window.COOKIE_SETTINGS = {
         if (DEBUG) console.log("✅ All global event handlers cleaned up");
     }
 
-    // 7. Block inline tracking scripts - IMPROVED DETECTION
+    // 7. Block inline tracking scripts - IMPROVED DETECTION - UPDATED WITH ALL PLATFORMS
     function blockInlineTrackers() {
         document.querySelectorAll('script:not([src])').forEach(function (script) {
             const content = script.textContent || script.innerText;
             if (content) {
                 // ============================================================================
-                // IMPROVED DETECTION: More precise targeting
-                // Avoids false positives on legitimate dataLayer usage
+                // IMPROVED DETECTION: More precise targeting with all platforms
                 // ============================================================================
                 const hasTrackingPattern = 
-                    /(gtag\s*\(|fbq\s*\(|clarity\.|hj.*\(|mixpanel\.|segment\.)/i.test(content);
+                    /(gtag\s*\(|fbq\s*\(|clarity\.|hj\.|mixpanel\.|segment\.|amplitude\.|matomo\.|piwik\.|yandex\.|baidu\.|kissmetrics\.|crazyegg\.|luckyorange\.|clicky\.|chartbeat\.|parsely\.|snowplow\.|optimizely\.|newrelic\.|adroll\.|criteo\.|taboola\.|outbrain\.|rubicon\.|pubmatic\.|quantcast\.|xandr\.|stackadapt\.|liveramp\.|mediamath\.|trade\s*desk|uetq\.|twq\(|snaptr\(|rdt\()/i.test(content);
                 
                 // Check for specific tracking function calls, not just "dataLayer"
                 const hasTrackingCode = 
+                    // Analytics platforms
                     content.includes('google-analytics') || 
                     content.includes('gtag(') || 
+                    content.includes('clarity(') ||
+                    content.includes('hotjar') ||
+                    content.includes('mixpanel.') ||
+                    content.includes('segment.') ||
+                    content.includes('fullstory') ||
+                    content.includes('mouseflow') ||
+                    content.includes('logrocket') ||
+                    content.includes('matomo') ||
+                    content.includes('piwik') ||
+                    content.includes('yandex') ||
+                    content.includes('baidu') ||
+                    content.includes('amplitude') ||
+                    content.includes('snowplow') ||
+                    // Marketing platforms
                     content.includes('fbq(') ||
-                    content.includes('clarity') ||
-                    content.includes('hotjar');
+                    content.includes('facebook') ||
+                    content.includes('doubleclick') ||
+                    content.includes('tiktok') ||
+                    content.includes('linkedin') ||
+                    content.includes('pinterest') ||
+                    content.includes('twitter') ||
+                    content.includes('snapchat') ||
+                    content.includes('reddit') ||
+                    content.includes('criteo') ||
+                    content.includes('taboola') ||
+                    content.includes('outbrain') ||
+                    content.includes('amazon-adsystem') ||
+                    content.includes('adsrvr') ||
+                    content.includes('rubiconproject') ||
+                    content.includes('openx') ||
+                    content.includes('pubmatic') ||
+                    content.includes('quantcast') ||
+                    content.includes('adroll') ||
+                    content.includes('liveramp') ||
+                    content.includes('xandr') ||
+                    content.includes('bing.com') ||
+                    // Common patterns
+                    content.includes('dataLayer.push') ||
+                    content.includes('analytics.track') ||
+                    content.includes('trackEvent') ||
+                    content.includes('trackPageView') ||
+                    content.includes('uetq.push') ||
+                    content.includes('twq(') ||
+                    content.includes('snaptr(') ||
+                    content.includes('rdt(');
                 
                 if (hasTrackingPattern || hasTrackingCode) {
                     // Check if user has consented to the relevant category
-                    const isAnalyticsCode = /(google-analytics|gtag|clarity|hotjar|mixpanel|segment)/i.test(content);
-                    const isMarketingCode = /(fbq|facebook|doubleclick|googleadservices)/i.test(content);
+                    const isAnalyticsCode = /(google-analytics|gtag|clarity|hotjar|mixpanel|segment|fullstory|mouseflow|logrocket|matomo|piwik|yandex|baidu|amplitude|snowplow|newrelic|optimizely)/i.test(content);
+                    const isMarketingCode = /(fbq|facebook|doubleclick|googleadservices|tiktok|linkedin|pinterest|twitter|snapchat|reddit|criteo|taboola|outbrain|amazon-adsystem|adsrvr|rubicon|pubmatic|quantcast|adroll|liveramp|xandr|stackadapt|mediamath|trade\s*desk|uetq|twq|snaptr|rdt|bing)/i.test(content);
                     
                     if ((isAnalyticsCode && !getCategoryConsent('analytics')) ||
                         (isMarketingCode && !getCategoryConsent('advertising'))) {
@@ -1375,6 +1627,7 @@ window.COOKIE_SETTINGS = {
     }
     
 })();
+
 
 
 
