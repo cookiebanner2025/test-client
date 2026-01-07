@@ -11,15 +11,11 @@ window.COOKIE_SETTINGS = {
 
 
 
-
 (function () {
     'use strict';
 
-
-
-
-// STEP 1: Initialize cleanup registry (ONE SINGLE PLACE)
-window.cookieBlockingCleanup = window.cookieBlockingCleanup || {};
+    // STEP 1: Initialize cleanup registry (ONE SINGLE PLACE)
+    window.cookieBlockingCleanup = window.cookieBlockingCleanup || {};
 
     /* ===================== CONFIGURATION ===================== */
     // Use global settings with safe defaults
@@ -1344,448 +1340,359 @@ window.cookieBlockingCleanup = window.cookieBlockingCleanup || {};
         return false;
     }
     
-// ============================================================================
-// CRITICAL SECURITY: Block document.write and document.writeln
-// Prevents trackers from bypassing blocking via inline script injection
-// ============================================================================
-if (!document.__cookieDocumentWritePatched) {
-    document.__cookieDocumentWritePatched = true;
-    
-    // Store originals for cleanup
-    document.__originalWrite = document.write;
-    document.__originalWriteln = document.writeln;
-    
-    document.write = function(content) {
-        if (content && typeof content === 'string') {
-            // Check if content contains tracking scripts - UPDATED WITH NEW DOMAINS
-            const hasTrackingScript = 
-                content.includes('<script') && (
-                    // Analytics Platforms
-                    content.includes('google-analytics.com') ||
-                    content.includes('googletagmanager.com') ||
-                    content.includes('clarity.ms') ||
-                    content.includes('hotjar.com') ||
-                    content.includes('amplitude.com') ||
-                    content.includes('mixpanel.com') ||
-                    content.includes('segment.com') ||
-                    content.includes('heap.io') ||
-                    content.includes('fullstory.com') ||
-                    content.includes('logrocket.com') ||
-                    content.includes('mouseflow.com') ||
-                    content.includes('smartlook.com') ||
-                    // Marketing Platforms
-                    content.includes('facebook.com') ||
-                    content.includes('connect.facebook.net') ||
-                    content.includes('doubleclick.net') ||
-                    content.includes('googleadservices.com') ||
-                    content.includes('tiktok.com') ||
-                    content.includes('bing.com') ||
-                    content.includes('linkedin.com') ||
-                    content.includes('pinterest.com') ||
-                    content.includes('twitter.com') ||
-                    content.includes('x.com') ||
-                    content.includes('snapchat.com') ||
-                    content.includes('criteo.com') ||
-                    content.includes('taboola.com') ||
-                    content.includes('outbrain.com') ||
-                    // Common tracking patterns
-                    content.includes('gtag(') ||
-                    content.includes('fbq(') ||
-                    content.includes('dataLayer.push') ||
-                    content.includes('clarity.') ||
-                    content.includes('hj.') ||
-                    content.includes('mixpanel.') ||
-                    content.includes('amplitude.') ||
-                    content.includes('segment.')
-                );
-            
-            if (hasTrackingScript) {
-                if (DEBUG) console.log('🛡️ Blocked unsafe document.write with tracking script');
-                return;
-            }
-        }
-        return document.__originalWrite.apply(document, arguments);
-    };
-    
-    document.writeln = function(content) {
-        if (content && typeof content === 'string') {
-            // Check if content contains tracking scripts - UPDATED WITH NEW DOMAINS
-            const hasTrackingScript = 
-                content.includes('<script') && (
-                    // Analytics Platforms
-                    content.includes('google-analytics.com') ||
-                    content.includes('googletagmanager.com') ||
-                    content.includes('clarity.ms') ||
-                    content.includes('hotjar.com') ||
-                    content.includes('amplitude.com') ||
-                    content.includes('mixpanel.com') ||
-                    content.includes('segment.com') ||
-                    content.includes('heap.io') ||
-                    content.includes('fullstory.com') ||
-                    content.includes('logrocket.com') ||
-                    content.includes('mouseflow.com') ||
-                    content.includes('smartlook.com') ||
-                    // Marketing Platforms
-                    content.includes('facebook.com') ||
-                    content.includes('connect.facebook.net') ||
-                    content.includes('doubleclick.net') ||
-                    content.includes('googleadservices.com') ||
-                    content.includes('tiktok.com') ||
-                    content.includes('bing.com') ||
-                    content.includes('linkedin.com') ||
-                    content.includes('pinterest.com') ||
-                    content.includes('twitter.com') ||
-                    content.includes('x.com') ||
-                    content.includes('snapchat.com') ||
-                    content.includes('criteo.com') ||
-                    content.includes('taboola.com') ||
-                    content.includes('outbrain.com') ||
-                    // Common tracking patterns
-                    content.includes('gtag(') ||
-                    content.includes('fbq(') ||
-                    content.includes('dataLayer.push') ||
-                    content.includes('clarity.') ||
-                    content.includes('hj.') ||
-                    content.includes('mixpanel.') ||
-                    content.includes('amplitude.') ||
-                    content.includes('segment.')
-                );
-            
-            if (hasTrackingScript) {
-                if (DEBUG) console.log('🛡️ Blocked unsafe document.writeln with tracking script');
-                return;
-            }
-        }
-        return document.__originalWriteln.apply(document, arguments);
-    };
-    
-    if (DEBUG) console.log("✅ document.write/document.writeln protection activated");
-}
-    
-// 1. Block script loading WITH SAFE GUARD
-if (!document.__cookieCreateElementPatched) {
-    document.__cookieCreateElementPatched = true;
-    
-    // Store original for cleanup
-    document.__originalCreateElement = document.createElement;
-    
-    document.createElement = function (tagName) {
-        const element = document.__originalCreateElement.call(document, tagName);
+    // ============================================================================
+    // CRITICAL SECURITY: Block document.write and document.writeln
+    // Prevents trackers from bypassing blocking via inline script injection
+    // ============================================================================
+    if (!document.__cookieDocumentWritePatched) {
+        document.__cookieDocumentWritePatched = true;
         
-        if (tagName.toLowerCase() === 'script') {
-            const originalSetAttribute = element.setAttribute;
-            
-            element.setAttribute = function (name, value) {
-                if (name === 'src' && shouldBlockDomain(value)) {
-                    if (DEBUG) console.log(`🛡️ Blocked script loading: ${value}`);
-                    return; // Don't set the src attribute
+        // Store originals for cleanup
+        document.__originalWrite = document.write;
+        document.__originalWriteln = document.writeln;
+        
+        document.write = function(content) {
+            if (content && typeof content === 'string') {
+                // Check if content contains tracking scripts
+                const hasTrackingScript = 
+                    content.includes('<script') && (
+                        content.includes('google-analytics.com') ||
+                        content.includes('googletagmanager.com') ||
+                        content.includes('facebook.com') ||
+                        content.includes('connect.facebook.net') ||
+                        content.includes('doubleclick.net') ||
+                        content.includes('gtag(') ||
+                        content.includes('fbq(') ||
+                        content.includes('dataLayer.push')
+                    );
+                
+                if (hasTrackingScript) {
+                    if (DEBUG) console.log('🛡️ Blocked unsafe document.write with tracking script');
+                    return;
                 }
-                return originalSetAttribute.call(this, name, value);
-            };
+            }
+            return document.__originalWrite.apply(document, arguments);
+        };
+        
+        document.writeln = function(content) {
+            if (content && typeof content === 'string') {
+                // Check if content contains tracking scripts
+                const hasTrackingScript = 
+                    content.includes('<script') && (
+                        content.includes('google-analytics.com') ||
+                        content.includes('googletagmanager.com') ||
+                        content.includes('facebook.com') ||
+                        content.includes('connect.facebook.net') ||
+                        content.includes('doubleclick.net') ||
+                        content.includes('gtag(') ||
+                        content.includes('fbq(') ||
+                        content.includes('dataLayer.push')
+                    );
+                
+                if (hasTrackingScript) {
+                    if (DEBUG) console.log('🛡️ Blocked unsafe document.writeln with tracking script');
+                    return;
+                }
+            }
+            return document.__originalWriteln.apply(document, arguments);
+        };
+        
+        if (DEBUG) console.log("✅ document.write/document.writeln protection activated");
+    }
+        
+    // 1. Block script loading WITH SAFE GUARD
+    if (!document.__cookieCreateElementPatched) {
+        document.__cookieCreateElementPatched = true;
+        
+        // Store original for cleanup
+        document.__originalCreateElement = document.createElement;
+        
+        document.createElement = function (tagName) {
+            const element = document.__originalCreateElement.call(document, tagName);
             
-            Object.defineProperty(element, 'src', {
-                set(value) {
-                    if (shouldBlockDomain(value)) {
-                        if (DEBUG) console.log(`🛡️ Blocked script src: ${value}`);
-                        return;
+            if (tagName.toLowerCase() === 'script') {
+                const originalSetAttribute = element.setAttribute;
+                
+                element.setAttribute = function (name, value) {
+                    if (name === 'src' && shouldBlockDomain(value)) {
+                        if (DEBUG) console.log(`🛡️ Blocked script loading: ${value}`);
+                        return; // Don't set the src attribute
                     }
-                    this.setAttribute('src', value);
-                },
-                get() {
-                    return this.getAttribute('src');
-                }
-            });
-        }
-        
-        return element;
-    };
-    
-    if (DEBUG) console.log("✅ Script loading protection activated");
-}
-    
-  // 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
-if (window.fetch) {
-    // Store original for cleanup
-    window.__originalFetch = window.fetch;
-    
-    window.fetch = function (resource, init) {
-        const url = typeof resource === 'string' ? resource : resource?.url;
-        
-        if (shouldBlockDomain(url)) {
-            if (DEBUG) console.log(`🛡️ Blocked fetch request: ${url}`);
+                    return originalSetAttribute.call(this, name, value);
+                };
+                
+                Object.defineProperty(element, 'src', {
+                    set(value) {
+                        if (shouldBlockDomain(value)) {
+                            if (DEBUG) console.log(`🛡️ Blocked script src: ${value}`);
+                            return;
+                        }
+                        this.setAttribute('src', value);
+                    },
+                    get() {
+                        return this.getAttribute('src');
+                    }
+                });
+            }
             
-            // ============================================================================
-            // CRITICAL FIX: AGGRESSIVE_MODE default = false (safer for websites)
-            // ============================================================================
-            if (AGGRESSIVE_MODE) {
+            return element;
+        };
+        
+        if (DEBUG) console.log("✅ Script loading protection activated");
+    }
+        
+      // 2. SMART FETCH BLOCKING - With AGGRESSIVE_MODE control
+    if (window.fetch) {
+        // Store original for cleanup
+        window.__originalFetch = window.fetch;
+        
+        window.fetch = function (resource, init) {
+            const url = typeof resource === 'string' ? resource : resource?.url;
+            
+            if (shouldBlockDomain(url)) {
+                if (DEBUG) console.log(`🛡️ Blocked fetch request: ${url}`);
+                
                 // ============================================================================
-                // AGGRESSIVE MODE: Hides from extensions
-                // Returns Promise.reject() for trackers (invisible to extensions)
-                // Returns 204 for functional APIs (prevents website crashes)
+                // CRITICAL FIX: AGGRESSIVE_MODE default = false (safer for websites)
                 // ============================================================================
-                
-                // List of KNOWN TRACKER PATTERNS (these get rejected) - UPDATED WITH NEW DOMAINS
-                const isDefinitelyTracker = 
-                    // Analytics Platforms
-                    url.includes('google-analytics.com') || 
-                    url.includes('googletagmanager.com') ||
-                    url.includes('clarity.ms') ||
-                    url.includes('hotjar.com') ||
-                    url.includes('amplitude.com') ||
-                    url.includes('mixpanel.com') ||
-                    url.includes('segment.com') ||
-                    url.includes('heap.io') ||
-                    url.includes('fullstory.com') ||
-                    url.includes('logrocket.com') ||
-                    // Marketing Platforms
-                    url.includes('facebook.com') || 
-                    url.includes('connect.facebook.net') ||
-                    url.includes('fbcdn.net') ||
-                    url.includes('doubleclick.net') ||
-                    url.includes('googleadservices.com') ||
-                    url.includes('googlesyndication.com') ||
-                    url.includes('tiktok.com') ||
-                    url.includes('bing.com') ||
-                    url.includes('linkedin.com') ||
-                    url.includes('pinterest.com') ||
-                    url.includes('twitter.com') ||
-                    url.includes('x.com') ||
-                    url.includes('snapchat.com') ||
-                    url.includes('criteo.com') ||
-                    url.includes('taboola.com') ||
-                    url.includes('outbrain.com') ||
-                    url.includes('adroll.com') ||
-                    url.includes('amazon-adsystem.com') ||
-                    // Common tracker endpoints
-                    url.includes('/collect') ||
-                    url.includes('/tr/') ||
-                    url.includes('/gtag/') ||
-                    url.includes('/beacon') ||
-                    url.includes('/event') ||
-                    url.includes('/track') ||
-                    url.includes('/pixel') ||
-                    url.includes('/conversion') ||
-                    url.includes('/ads') ||
-                    url.includes('/adserver') ||
-                    url.includes('/gtm') ||
-                    url.includes('/ga/') ||
-                    url.includes('/analytics') ||
-                    url.includes('/clarity') ||
-                    url.includes('/hotjar') ||
-                    url.includes('/amplitude') ||
-                    url.includes('/mixpanel') ||
-                    url.includes('/segment');
-                
-                // List of FUNCTIONAL API PATTERNS (these get 204 responses)
-                const isLikelyFunctionalAPI = 
-                    // Standard API patterns
-                    (url.includes('/api/') && !url.includes('/api/event')) || 
-                    url.includes('/graphql') ||
-                    url.includes('/rest/') ||
-                    url.includes('/ajax/') ||
-                    // WordPress
-                    url.includes('/wp-admin/admin-ajax.php') ||
-                    // E-commerce
-                    url.includes('/checkout') ||
-                    url.includes('/cart') ||
-                    url.includes('/add-to-cart') ||
-                    url.includes('/update-cart') ||
-                    // User actions
-                    url.includes('/login') ||
-                    url.includes('/register') ||
-                    url.includes('/contact') ||
-                    url.includes('/newsletter') ||
-                    // Payment processors
-                    url.includes('/stripe') ||
-                    url.includes('/paypal') ||
-                    url.includes('/braintree');
-                
-                // AGGRESSIVE: Reject ALL tracking requests (hides from extensions)
-                if (isDefinitelyTracker) {
-                    if (DEBUG) console.log(`🔥 AGGRESSIVE: Rejecting tracker: ${url}`);
-                    return Promise.reject(new Error(`Blocked by cookie consent`));
-                }
-                // POLITE: Return empty response for functional APIs (prevents crashes)
-                else if (isLikelyFunctionalAPI) {
-                    if (DEBUG) console.log(`🛡️  SAFE: Returning 204 for API: ${url}`);
+                if (AGGRESSIVE_MODE) {
+                    // ============================================================================
+                    // AGGRESSIVE MODE: Hides from extensions
+                    // Returns Promise.reject() for trackers (invisible to extensions)
+                    // Returns 204 for functional APIs (prevents website crashes)
+                    // ============================================================================
+                    
+                    // List of KNOWN TRACKER PATTERNS (these get rejected)
+                    const isDefinitelyTracker = 
+                        // Meta/Facebook
+                        url.includes('facebook.com') || 
+                        url.includes('connect.facebook.net') ||
+                        url.includes('fbcdn.net') ||
+                        // Google Analytics/Ads
+                        url.includes('google-analytics.com') ||
+                        url.includes('doubleclick.net') ||
+                        url.includes('googleadservices.com') ||
+                        url.includes('googlesyndication.com') ||
+                        // TikTok
+                        url.includes('tiktok.com') ||
+                        // Microsoft/UET
+                        url.includes('bing.com') ||
+                        // Pinterest
+                        url.includes('pinterest.com') ||
+                        // Common tracker endpoints
+                        url.includes('/collect') ||
+                        url.includes('/tr/') ||
+                        url.includes('/gtag/') ||
+                        url.includes('/beacon') ||
+                        url.includes('/event') ||
+                        url.includes('/track') ||
+                        url.includes('/pixel') ||
+                        url.includes('/conversion') ||
+                        url.includes('/ads') ||
+                        url.includes('/adserver');
+                    
+                    // List of FUNCTIONAL API PATTERNS (these get 204 responses)
+                    const isLikelyFunctionalAPI = 
+                        // Standard API patterns
+                        (url.includes('/api/') && !url.includes('/api/event')) || 
+                        url.includes('/graphql') ||
+                        url.includes('/rest/') ||
+                        url.includes('/ajax/') ||
+                        // WordPress
+                        url.includes('/wp-admin/admin-ajax.php') ||
+                        // E-commerce
+                        url.includes('/checkout') ||
+                        url.includes('/cart') ||
+                        url.includes('/add-to-cart') ||
+                        url.includes('/update-cart') ||
+                        // User actions
+                        url.includes('/login') ||
+                        url.includes('/register') ||
+                        url.includes('/contact') ||
+                        url.includes('/newsletter') ||
+                        // Payment processors
+                        url.includes('/stripe') ||
+                        url.includes('/paypal') ||
+                        url.includes('/braintree');
+                    
+                    // AGGRESSIVE: Reject ALL tracking requests (hides from extensions)
+                    if (isDefinitelyTracker) {
+                        if (DEBUG) console.log(`🔥 AGGRESSIVE: Rejecting tracker: ${url}`);
+                        return Promise.reject(new Error(`Blocked by cookie consent`));
+                    }
+                    // POLITE: Return empty response for functional APIs (prevents crashes)
+                    else if (isLikelyFunctionalAPI) {
+                        if (DEBUG) console.log(`🛡️  SAFE: Returning 204 for API: ${url}`);
+                        return Promise.resolve(new Response(null, { 
+                            status: 204, 
+                            statusText: 'No Content'
+                        }));
+                    }
+                    // DEFAULT: Reject (hides from extensions)
+                    else {
+                        if (DEBUG) console.log(`🛡️  DEFAULT: Rejecting unknown: ${url}`);
+                        return Promise.reject(new Error('Request blocked'));
+                    }
+                } 
+                else {
+                    // ============================================================================
+                    // POLITE MODE (DEFAULT): Safer for production
+                    // Always returns 204 (extensions can see the blocked attempt)
+                    // This is the SAFE default that won't break websites
+                    // ============================================================================
+                    if (DEBUG) console.log(`📊 POLITE: Returning 204 (safer for websites): ${url}`);
                     return Promise.resolve(new Response(null, { 
                         status: 204, 
                         statusText: 'No Content'
                     }));
                 }
-                // DEFAULT: Reject (hides from extensions)
-                else {
-                    if (DEBUG) console.log(`🛡️  DEFAULT: Rejecting unknown: ${url}`);
-                    return Promise.reject(new Error('Request blocked'));
-                }
-            } 
-            else {
-                // ============================================================================
-                // POLITE MODE (DEFAULT): Safer for production
-                // Always returns 204 (extensions can see the blocked attempt)
-                // This is the SAFE default that won't break websites
-                // ============================================================================
-                if (DEBUG) console.log(`📊 POLITE: Returning 204 (safer for websites): ${url}`);
-                return Promise.resolve(new Response(null, { 
-                    status: 204, 
-                    statusText: 'No Content'
-                }));
             }
+            
+            return window.__originalFetch.call(this, resource, init);
+        };
+        
+        if (DEBUG) console.log(`✅ Fetch blocking activated (${AGGRESSIVE_MODE ? 'AGGRESSIVE' : 'POLITE'} mode)`);
+    }
+        
+    // 3. Block XMLHttpRequest
+    if (window.XMLHttpRequest) {
+        // Store originals for cleanup
+        XMLHttpRequest.prototype.__originalOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.__originalSend = XMLHttpRequest.prototype.send;
+        
+        XMLHttpRequest.prototype.open = function (method, url) {
+            if (shouldBlockDomain(url)) {
+                if (DEBUG) console.log(`🛡️ Blocked XHR request: ${url}`);
+                this._blocked = true;
+                return;
+            }
+            return XMLHttpRequest.prototype.__originalOpen.apply(this, arguments);
+        };
+        
+        XMLHttpRequest.prototype.send = function (body) {
+            if (this._blocked) {
+                if (DEBUG) console.log(`🛡️ Blocked XHR send`);
+                return;
+            }
+            return XMLHttpRequest.prototype.__originalSend.apply(this, arguments);
+        };
+        
+        if (DEBUG) console.log("✅ XHR blocking activated");
+    }
+        
+      // 4. Block sendBeacon (with AGGRESSIVE_MODE control)
+    if (navigator.sendBeacon) {
+        // Store original for cleanup
+        navigator.__originalSendBeacon = navigator.sendBeacon;
+        
+        navigator.sendBeacon = function(url, data) {
+            if (shouldBlockDomain(url)) {
+                if (DEBUG) console.log('🛡️ Blocked beacon:', url);
+                
+                // AGGRESSIVE MODE: Return false (hides from extensions)
+                if (AGGRESSIVE_MODE) {
+                    return false;
+                }
+                // POLITE MODE (DEFAULT): Return true but don't send
+                else {
+                    return true; // Safer for websites
+                }
+            }
+            return navigator.__originalSendBeacon.call(this, url, data);
+        };
+        
+        if (DEBUG) console.log(`✅ sendBeacon blocking activated (${AGGRESSIVE_MODE ? 'returns false' : 'returns true'})`);
+    }
+        
+    /* ===================== IMPLEMENT BLOCKING ===================== */
+
+    // 5. Block iframes
+    const iframeObserver = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            mutation.addedNodes.forEach(function (node) {
+                if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
+                    if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
+                    node.remove();
+                }
+            });
+        });
+    });
+
+    iframeObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+    });
+
+    // Store in cleanup registry
+    window.cookieBlockingCleanup.iframeObserver = iframeObserver;
+
+    if (DEBUG) console.log("✅ Iframe blocking activated");
+
+    // 6. Block and delete cookies - LIMITED INTERVAL (PERFORMANCE FIX)
+    function blockAndDeleteCookies() {
+        document.cookie.split(';').forEach(function (cookie) {
+            const [name] = cookie.trim().split('=');
+            if (name && shouldBlockCookie(name)) {
+                deleteCookieEverywhere(name);
+                if (DEBUG) console.log(`🛡️ Deleted blocked cookie: ${name}`);
+            }
+        });
+    }
+
+    // ============================================================================
+    // CRITICAL FIX: LIMITED COOKIE CLEANUP INTERVAL (like Cookiebot/OneTrust)
+    // Runs 10 times then stops - saves CPU/battery
+    // ============================================================================
+    blockAndDeleteCookies();
+    let cookieCleanupRuns = 0;
+    const cookieCleanupInterval = setInterval(() => {
+        blockAndDeleteCookies();
+        cookieCleanupRuns++;
+        if (cookieCleanupRuns >= 9) { // 10 total runs (0-9)
+            clearInterval(cookieCleanupInterval);
+            if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
+        }
+    }, 1000);
+
+    // Store in cleanup registry
+    window.cookieBlockingCleanup.cookieCleanupInterval = cookieCleanupInterval;
+    window.cookieBlockingCleanup.cookieCleanupRuns = cookieCleanupRuns;
+
+    // SINGLE SOURCE OF TRUTH: Global event handler management
+    if (typeof window.cookieConsentHandlers === 'undefined') {
+        window.cookieConsentHandlers = new Map();
+    }
+
+    // Function to add managed handlers
+    function addGlobalHandler(element, event, handler) {
+        if (!element || !event || !handler) return null;
+        
+        element.addEventListener(event, handler);
+        const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        window.cookieConsentHandlers.set(key, { element, event, handler });
+        return key;
+    }
+
+    // Function to remove managed handlers
+    function removeGlobalHandler(key) {
+        if (window.cookieConsentHandlers.has(key)) {
+            const { element, event, handler } = window.cookieConsentHandlers.get(key);
+            element.removeEventListener(event, handler);
+            window.cookieConsentHandlers.delete(key);
+        }
+    }
+
+    // Consolidated cleanup function
+    function cleanupAllGlobalHandlers() {
+        if (window.cookieConsentHandlers && window.cookieConsentHandlers.size > 0) {
+            window.cookieConsentHandlers.forEach(({ element, event, handler }) => {
+                element.removeEventListener(event, handler);
+            });
+            window.cookieConsentHandlers.clear();
         }
         
-        return window.__originalFetch.call(this, resource, init);
-    };
-    
-    if (DEBUG) console.log(`✅ Fetch blocking activated (${AGGRESSIVE_MODE ? 'AGGRESSIVE' : 'POLITE'} mode)`);
-}
-    
-// 3. Block XMLHttpRequest
-if (window.XMLHttpRequest) {
-    // Store originals for cleanup
-    XMLHttpRequest.prototype.__originalOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.__originalSend = XMLHttpRequest.prototype.send;
-    
-    XMLHttpRequest.prototype.open = function (method, url) {
-        if (shouldBlockDomain(url)) {
-            if (DEBUG) console.log(`🛡️ Blocked XHR request: ${url}`);
-            this._blocked = true;
-            return;
-        }
-        return XMLHttpRequest.prototype.__originalOpen.apply(this, arguments);
-    };
-    
-    XMLHttpRequest.prototype.send = function (body) {
-        if (this._blocked) {
-            if (DEBUG) console.log(`🛡️ Blocked XHR send`);
-            return;
-        }
-        return XMLHttpRequest.prototype.__originalSend.apply(this, arguments);
-    };
-    
-    if (DEBUG) console.log("✅ XHR blocking activated");
-}
-    
-  // 4. Block sendBeacon (with AGGRESSIVE_MODE control)
-if (navigator.sendBeacon) {
-    // Store original for cleanup
-    navigator.__originalSendBeacon = navigator.sendBeacon;
-    
-    navigator.sendBeacon = function(url, data) {
-        if (shouldBlockDomain(url)) {
-            if (DEBUG) console.log('🛡️ Blocked beacon:', url);
-            
-            // AGGRESSIVE MODE: Return false (hides from extensions)
-            if (AGGRESSIVE_MODE) {
-                return false;
-            }
-            // POLITE MODE (DEFAULT): Return true but don't send
-            else {
-                return true; // Safer for websites
-            }
-        }
-        return navigator.__originalSendBeacon.call(this, url, data);
-    };
-    
-    if (DEBUG) console.log(`✅ sendBeacon blocking activated (${AGGRESSIVE_MODE ? 'returns false' : 'returns true'})`);
-}
-    
-/* ===================== IMPLEMENT BLOCKING ===================== */
-
-// 5. Block iframes
-const iframeObserver = new MutationObserver(function (mutations) {
-    mutations.forEach(function (mutation) {
-        mutation.addedNodes.forEach(function (node) {
-            if (node.nodeName === 'IFRAME' && node.src && shouldBlockDomain(node.src)) {
-                if (DEBUG) console.log(`🛡️ Blocked iframe: ${node.src}`);
-                node.remove();
-            }
-        });
-    });
-});
-
-iframeObserver.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-});
-
-// Store in cleanup registry
-window.cookieBlockingCleanup.iframeObserver = iframeObserver;
-
-if (DEBUG) console.log("✅ Iframe blocking activated");
-
-
-
-// 6. Block and delete cookies - LIMITED INTERVAL (PERFORMANCE FIX)
-function blockAndDeleteCookies() {
-    document.cookie.split(';').forEach(function (cookie) {
-        const [name] = cookie.trim().split('=');
-        if (name && shouldBlockCookie(name)) {
-            deleteCookieEverywhere(name);
-            if (DEBUG) console.log(`🛡️ Deleted blocked cookie: ${name}`);
-        }
-    });
-}
-
-// ============================================================================
-// CRITICAL FIX: LIMITED COOKIE CLEANUP INTERVAL (like Cookiebot/OneTrust)
-// Runs 10 times then stops - saves CPU/battery
-// ============================================================================
-blockAndDeleteCookies();
-let cookieCleanupRuns = 0;
-const cookieCleanupInterval = setInterval(() => {
-    blockAndDeleteCookies();
-    cookieCleanupRuns++;
-    if (cookieCleanupRuns >= 9) { // 10 total runs (0-9)
-        clearInterval(cookieCleanupInterval);
-        if (DEBUG) console.log("✅ Cookie cleanup completed (10 cycles)");
+        if (DEBUG) console.log("✅ All global event handlers cleaned up");
     }
-}, 1000);
-
-// Store in cleanup registry
-window.cookieBlockingCleanup.cookieCleanupInterval = cookieCleanupInterval;
-window.cookieBlockingCleanup.cookieCleanupRuns = cookieCleanupRuns;
-
-
-
-
-
-// SINGLE SOURCE OF TRUTH: Global event handler management
-if (typeof window.cookieConsentHandlers === 'undefined') {
-    window.cookieConsentHandlers = new Map();
-}
-
-// Function to add managed handlers
-function addGlobalHandler(element, event, handler) {
-    if (!element || !event || !handler) return null;
-    
-    element.addEventListener(event, handler);
-    const key = `${event}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    window.cookieConsentHandlers.set(key, { element, event, handler });
-    return key;
-}
-
-// Function to remove managed handlers
-function removeGlobalHandler(key) {
-    if (window.cookieConsentHandlers.has(key)) {
-        const { element, event, handler } = window.cookieConsentHandlers.get(key);
-        element.removeEventListener(event, handler);
-        window.cookieConsentHandlers.delete(key);
-    }
-}
-
-// Consolidated cleanup function
-function cleanupAllGlobalHandlers() {
-    if (window.cookieConsentHandlers && window.cookieConsentHandlers.size > 0) {
-        window.cookieConsentHandlers.forEach(({ element, event, handler }) => {
-            element.removeEventListener(event, handler);
-        });
-        window.cookieConsentHandlers.clear();
-    }
-    
-    if (DEBUG) console.log("✅ All global event handlers cleaned up");
-}
-
-
     
     // 7. Block inline tracking scripts - IMPROVED DETECTION
     function blockInlineTrackers() {
@@ -1793,11 +1700,11 @@ function cleanupAllGlobalHandlers() {
             const content = script.textContent || script.innerText;
             if (content) {
                 // ============================================================================
-                // IMPROVED DETECTION: More precise targeting - UPDATED WITH NEW PLATFORMS
+                // IMPROVED DETECTION: More precise targeting
                 // Avoids false positives on legitimate dataLayer usage
                 // ============================================================================
                 const hasTrackingPattern = 
-                    /(gtag\s*\(|fbq\s*\(|clarity\.|hj.*\(|mixpanel\.|segment\.|amplitude\.|heap\.|fullstory\.|logrocket\.|smartlook\.|mouseflow\.|crazyegg\.|yandex\.|baidu\.|adobe\.|chartbeat\.|parsely\.|kissmetrics\.|woopra\.|clicky\.|fathom\.|plausible\.|posthog\.|optimizely\.|vwo\.|abtasty\.|dynamic\.yield|monetate\.|evergage\.|walkme\.|pendo\.|intercom\.|drift\.|livechat\.|tawk\.|crisp\.|olark\.)/i.test(content);
+                    /(gtag\s*\(|fbq\s*\(|clarity\.|hj.*\(|mixpanel\.|segment\.)/i.test(content);
                 
                 // Check for specific tracking function calls, not just "dataLayer"
                 const hasTrackingCode = 
@@ -1805,29 +1712,12 @@ function cleanupAllGlobalHandlers() {
                     content.includes('gtag(') || 
                     content.includes('fbq(') ||
                     content.includes('clarity') ||
-                    content.includes('hotjar') ||
-                    content.includes('mixpanel') ||
-                    content.includes('amplitude') ||
-                    content.includes('segment') ||
-                    content.includes('heap') ||
-                    content.includes('fullstory') ||
-                    content.includes('logrocket') ||
-                    content.includes('smartlook') ||
-                    content.includes('mouseflow') ||
-                    // Marketing platforms
-                    content.includes('doubleclick') ||
-                    content.includes('googleadservices') ||
-                    content.includes('tiktok') ||
-                    content.includes('linkedin') ||
-                    content.includes('pinterest') ||
-                    content.includes('twitter') ||
-                    content.includes('snapchat') ||
-                    content.includes('criteo');
+                    content.includes('hotjar');
                 
                 if (hasTrackingPattern || hasTrackingCode) {
                     // Check if user has consented to the relevant category
-                    const isAnalyticsCode = /(google-analytics|gtag|clarity|hotjar|mixpanel|segment|amplitude|heap|fullstory|logrocket|smartlook|mouseflow|crazyegg|matomo|piwik|yandex|baidu|adobe|chartbeat|parsely|kissmetrics|woopra|clicky|fathom|plausible|posthog|optimizely|vwo|abtasty|dynamic\.yield|monetate|evergage|walkme|pendo|intercom|drift|livechat|tawk|crisp|olark)/i.test(content);
-                    const isMarketingCode = /(fbq|facebook|doubleclick|googleadservices|tiktok|linkedin|pinterest|twitter|snapchat|criteo|taboola|outbrain|adroll|amazon-adsystem|media\.net|bing|yahoo|verizon|aol|openx|pubmatic|rubicon|indexexchange|sovrn|triplelift|sharethrough|nativo|gumgum|teads|connatix|seedtag|smartadserver|adform|sizmek|conversant|thetradedesk|appnexus|xandr|mediamath|dataxu|turn|amobee|simpli\.fi|centro|basis|adelphic|stackadapt|choozle|quantcast|lotame|bluekai|oracle|neustar|acxiom|experian|transunion|epsilon|merkle|liveramp|adobe\.audience|salesforce|krux|nielsen|comscore|integralads|doubleverify|moat|pixalate|protected\.media|geoedge|confiant|grapeshot|peer39|semasio)/i.test(content);
+                    const isAnalyticsCode = /(google-analytics|gtag|clarity|hotjar|mixpanel|segment)/i.test(content);
+                    const isMarketingCode = /(fbq|facebook|doubleclick|googleadservices)/i.test(content);
                     
                     if ((isAnalyticsCode && !getCategoryConsent('analytics')) ||
                         (isMarketingCode && !getCategoryConsent('advertising'))) {
@@ -1855,113 +1745,111 @@ function cleanupAllGlobalHandlers() {
         console.log("========================================");
     }
 
+    /* ===================== CLEANUP SYSTEM ===================== */
+    // SINGLE CONSOLIDATED CLEANUP FUNCTION
+    function cleanup() {
+        if (DEBUG) console.log("🔄 Starting complete cleanup...");
+        
+        // 1. Clean up iframe observer
+        try {
+            if (window.cookieBlockingCleanup.iframeObserver) {
+                window.cookieBlockingCleanup.iframeObserver.disconnect();
+                window.cookieBlockingCleanup.iframeObserver = null;
+                if (DEBUG) console.log("✅ Iframe observer cleaned");
+            }
+        } catch (e) {
+            if (DEBUG) console.log('Iframe observer already disconnected');
+        }
+        
+        // 2. Clean up cookie cleanup interval
+        try {
+            if (window.cookieBlockingCleanup.cookieCleanupInterval) {
+                clearInterval(window.cookieBlockingCleanup.cookieCleanupInterval);
+                window.cookieBlockingCleanup.cookieCleanupInterval = null;
+                if (DEBUG) console.log("✅ Cookie cleanup interval cleaned");
+            }
+        } catch (e) {
+            if (DEBUG) console.log('Cookie cleanup interval already cleared');
+        }
+        
+        // 3. Reset counter
+        if (window.cookieBlockingCleanup) {
+            window.cookieBlockingCleanup.cookieCleanupRuns = 0;
+        }
+        
+        // 4. Clean up document.write patches
+        try {
+            if (document.__cookieDocumentWritePatched) {
+                document.write = document.__originalWrite;
+                document.writeln = document.__originalWriteln;
+                delete document.__cookieDocumentWritePatched;
+                delete document.__originalWrite;
+                delete document.__originalWriteln;
+                if (DEBUG) console.log("✅ Document write patches cleaned");
+            }
+        } catch (e) {
+            if (DEBUG) console.log('Document write patches already cleaned');
+        }
+        
+        // 5. Clean up createElement patch
+        try {
+            if (document.__cookieCreateElementPatched) {
+                document.createElement = document.__originalCreateElement;
+                delete document.__cookieCreateElementPatched;
+                delete document.__originalCreateElement;
+                if (DEBUG) console.log("✅ CreateElement patch cleaned");
+            }
+        } catch (e) {
+            if (DEBUG) console.log('CreateElement patch already cleaned');
+        }
+        
+        // 6. Clean up fetch patch
+        try {
+            if (window.__originalFetch) {
+                window.fetch = window.__originalFetch;
+                delete window.__originalFetch;
+                if (DEBUG) console.log("✅ Fetch patch cleaned");
+            }
+        } catch (e) {
+            if (DEBUG) console.log('Fetch patch already cleaned');
+        }
+        
+        // 7. Clean up XMLHttpRequest patches
+        try {
+            if (XMLHttpRequest.prototype.__originalOpen) {
+                XMLHttpRequest.prototype.open = XMLHttpRequest.prototype.__originalOpen;
+                XMLHttpRequest.prototype.send = XMLHttpRequest.prototype.__originalSend;
+                delete XMLHttpRequest.prototype.__originalOpen;
+                delete XMLHttpRequest.prototype.__originalSend;
+                if (DEBUG) console.log("✅ XMLHttpRequest patches cleaned");
+            }
+        } catch (e) {
+            if (DEBUG) console.log('XMLHttpRequest patches already cleaned');
+        }
+        
+        // 8. Clean up sendBeacon patch
+        try {
+            if (navigator.__originalSendBeacon) {
+                navigator.sendBeacon = navigator.__originalSendBeacon;
+                delete navigator.__originalSendBeacon;
+                if (DEBUG) console.log("✅ sendBeacon patch cleaned");
+            }
+        } catch (e) {
+            if (DEBUG) console.log('sendBeacon patch already cleaned');
+        }
+        
+        // 9. Clean up all global event handlers (only use this system)
+        cleanupAllGlobalHandlers();
+        
+        // 10. Clear the cleanup registry itself
+        window.cookieBlockingCleanup = {};
+        
+        if (DEBUG) console.log("✅ Complete cleanup performed");
+    }
 
-
-/* ===================== CLEANUP SYSTEM ===================== */
-// SINGLE CONSOLIDATED CLEANUP FUNCTION
-function cleanup() {
-    if (DEBUG) console.log("🔄 Starting complete cleanup...");
-    
-    // 1. Clean up iframe observer
-    try {
-        if (window.cookieBlockingCleanup.iframeObserver) {
-            window.cookieBlockingCleanup.iframeObserver.disconnect();
-            window.cookieBlockingCleanup.iframeObserver = null;
-            if (DEBUG) console.log("✅ Iframe observer cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('Iframe observer already disconnected');
-    }
-    
-    // 2. Clean up cookie cleanup interval
-    try {
-        if (window.cookieBlockingCleanup.cookieCleanupInterval) {
-            clearInterval(window.cookieBlockingCleanup.cookieCleanupInterval);
-            window.cookieBlockingCleanup.cookieCleanupInterval = null;
-            if (DEBUG) console.log("✅ Cookie cleanup interval cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('Cookie cleanup interval already cleared');
-    }
-    
-    // 3. Reset counter
-    if (window.cookieBlockingCleanup) {
-        window.cookieBlockingCleanup.cookieCleanupRuns = 0;
-    }
-    
-    // 4. Clean up document.write patches
-    try {
-        if (document.__cookieDocumentWritePatched) {
-            document.write = document.__originalWrite;
-            document.writeln = document.__originalWriteln;
-            delete document.__cookieDocumentWritePatched;
-            delete document.__originalWrite;
-            delete document.__originalWriteln;
-            if (DEBUG) console.log("✅ Document write patches cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('Document write patches already cleaned');
-    }
-    
-    // 5. Clean up createElement patch
-    try {
-        if (document.__cookieCreateElementPatched) {
-            document.createElement = document.__originalCreateElement;
-            delete document.__cookieCreateElementPatched;
-            delete document.__originalCreateElement;
-            if (DEBUG) console.log("✅ CreateElement patch cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('CreateElement patch already cleaned');
-    }
-    
-    // 6. Clean up fetch patch
-    try {
-        if (window.__originalFetch) {
-            window.fetch = window.__originalFetch;
-            delete window.__originalFetch;
-            if (DEBUG) console.log("✅ Fetch patch cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('Fetch patch already cleaned');
-    }
-    
-    // 7. Clean up XMLHttpRequest patches
-    try {
-        if (XMLHttpRequest.prototype.__originalOpen) {
-            XMLHttpRequest.prototype.open = XMLHttpRequest.prototype.__originalOpen;
-            XMLHttpRequest.prototype.send = XMLHttpRequest.prototype.__originalSend;
-            delete XMLHttpRequest.prototype.__originalOpen;
-            delete XMLHttpRequest.prototype.__originalSend;
-            if (DEBUG) console.log("✅ XMLHttpRequest patches cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('XMLHttpRequest patches already cleaned');
-    }
-    
-    // 8. Clean up sendBeacon patch
-    try {
-        if (navigator.__originalSendBeacon) {
-            navigator.sendBeacon = navigator.__originalSendBeacon;
-            delete navigator.__originalSendBeacon;
-            if (DEBUG) console.log("✅ sendBeacon patch cleaned");
-        }
-    } catch (e) {
-        if (DEBUG) console.log('sendBeacon patch already cleaned');
-    }
-    
-    // 9. Clean up all global event handlers (only use this system)
-    cleanupAllGlobalHandlers();
-    
-    // 10. Clear the cleanup registry itself
-    window.cookieBlockingCleanup = {};
-    
-    if (DEBUG) console.log("✅ Complete cleanup performed");
-}
-
-// Register the cleanup function globally
-window.cleanupCookieConsent = cleanup;
-    
+    // Register the cleanup function globally
+    window.cleanupCookieConsent = cleanup;
+        
     /* ===================== BANNER HOOKS ===================== */
     
     window.enableAllTracking = function() {
@@ -1982,51 +1870,51 @@ window.cleanupCookieConsent = cleanup;
         }
     };
     
-window.enableTrackingByCategory = function(categories) {
-    console.log("✅ Enabling tracking for categories:", categories);
+    window.enableTrackingByCategory = function(categories) {
+        console.log("✅ Enabling tracking for categories:", categories);
+        
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+        
+        const allEnabled = categories.analytics && 
+                          categories.advertising && 
+                          categories.performance;
+        
+        if (allEnabled) {
+            localStorage.setItem(CONSENT_KEY, "granted");
+        } else {
+            localStorage.setItem(CONSENT_KEY, "partial");
+        }
+        
+        // Check if we're in cross-domain mode
+        const isCrossDomain = typeof config !== 'undefined' && config.crossDomain && config.crossDomain.enabled;
+        
+        // Only reload if not in cross-domain mode or if cross-domain auto-apply is disabled
+        if (RELOAD_ENABLED && (!isCrossDomain || !config.crossDomain.autoApply)) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else if (DEBUG) {
+            console.log("🟡 Page reload disabled (cross-domain mode or RELOAD_ENABLED = false)");
+        }
+    };
     
-    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-    
-    const allEnabled = categories.analytics && 
-                      categories.advertising && 
-                      categories.performance;
-    
-    if (allEnabled) {
-        localStorage.setItem(CONSENT_KEY, "granted");
-    } else {
-        localStorage.setItem(CONSENT_KEY, "partial");
-    }
-    
-    // Check if we're in cross-domain mode
-    const isCrossDomain = typeof config !== 'undefined' && config.crossDomain && config.crossDomain.enabled;
-    
-    // Only reload if not in cross-domain mode or if cross-domain auto-apply is disabled
-    if (RELOAD_ENABLED && (!isCrossDomain || !config.crossDomain.autoApply)) {
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
-    } else if (DEBUG) {
-        console.log("🟡 Page reload disabled (cross-domain mode or RELOAD_ENABLED = false)");
-    }
-};
-    
- window.disableAllTracking = function() {
-    console.log("❌ Disabling ALL tracking");
-    localStorage.removeItem(CONSENT_KEY);
-    localStorage.removeItem(CATEGORIES_KEY);
-    
-    // Check if we're in cross-domain mode
-    const isCrossDomain = typeof config !== 'undefined' && config.crossDomain && config.crossDomain.enabled;
-    
-    // Only reload if not in cross-domain mode or if cross-domain auto-apply is disabled
-    if (RELOAD_ENABLED && (!isCrossDomain || !config.crossDomain.autoApply)) {
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
-    } else if (DEBUG) {
-        console.log("🟡 Page reload disabled (cross-domain mode or RELOAD_ENABLED = false)");
-    }
-};
+    window.disableAllTracking = function() {
+        console.log("❌ Disabling ALL tracking");
+        localStorage.removeItem(CONSENT_KEY);
+        localStorage.removeItem(CATEGORIES_KEY);
+        
+        // Check if we're in cross-domain mode
+        const isCrossDomain = typeof config !== 'undefined' && config.crossDomain && config.crossDomain.enabled;
+        
+        // Only reload if not in cross-domain mode or if cross-domain auto-apply is disabled
+        if (RELOAD_ENABLED && (!isCrossDomain || !config.crossDomain.autoApply)) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else if (DEBUG) {
+            console.log("🟡 Page reload disabled (cross-domain mode or RELOAD_ENABLED = false)");
+        }
+    };
     
     /* ===================== UTILITY FUNCTIONS ===================== */
     
