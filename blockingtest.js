@@ -1230,26 +1230,6 @@ clarityConfig: {
     loadBeforeConsent: false // NEW: Prevent loading before consent in regulated regions
 },
 
-
-
-        // NEW: GCS Configuration for Different Regions
-    gcsConfig: {
-        enabled: true,
-        // Region-specific GCS defaults
-        regionDefaults: {
-            'US': 'G111',     // USA: Granted by default
-            'CA': 'G111',     // Canada: Granted by default
-            'EU': 'G100',     // EU: Denied by default (GDPR compliant)
-            'UK': 'G100',     // UK: Denied by default
-            'CH': 'G100',     // Switzerland: Denied by default
-            'default': 'G100' // All other regions: Denied by default
-        },
-        // You can manually override the default state here
-        manualOverride: {
-            enabled: false, // Set to true to use manualDefaultState instead of region detection
-            manualDefaultState: 'G100' // 'G100' for denied, 'G111' for granted
-        }
-    },
     
   
     // Microsoft UET Configuration
@@ -1366,11 +1346,13 @@ geoConfig: {
    // UI Theme selection
 uiTheme: 'default',
 
-// NEW: USA Banner Configuration
+   // NEW: USA Banner Configuration
 usaBannerConfig: {
     enabled: true,
     regions: ['US'], // Array of country codes where USA banner should show
     showOptOutPopup: true, // When true, clicking "Do Not Sell..." opens popup
+    defaultGCS: 'G111', // Default GCS signal for USA (granted)
+    defaultState: 'granted', // Default state for USA: 'granted' or 'denied'
     popupStyle: {
         background: '#ffffff',
         width: '400px',
@@ -1388,6 +1370,68 @@ usaBannerConfig: {
         preferencesDescription: "We use third-party cookies that help us analyse how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. However, you can opt out of these cookies by checking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button. Once you opt out, you can opt in again at any time by unchecking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button."
     }
 },
+
+
+
+        // NEW: Geo-based GCS Configuration
+    geoGCSConfig: {
+        enabled: true,
+        // Region-specific GCS defaults
+        regionDefaults: {
+            'US': 'G111', // USA: granted by default
+            'EU': 'G100', // EU: denied by default
+            'CA': 'G100', // Canada: denied by default
+            'GB': 'G100', // UK: denied by default
+            'AU': 'G111'  // Australia: granted by default
+        },
+        // Country-specific overrides
+        countryDefaults: {
+            // Add specific country codes here if different from region
+        },
+        // Manual override function
+        getGCSForRegion: function(countryCode) {
+            if (!this.enabled) return 'G111'; // Default granted
+            
+            // Check country-specific override
+            if (this.countryDefaults[countryCode]) {
+                return this.countryDefaults[countryCode];
+            }
+            
+            // Check region
+            const region = this.getRegionFromCountry(countryCode);
+            if (this.regionDefaults[region]) {
+                return this.regionDefaults[region];
+            }
+            
+            // Default for unknown regions
+            return 'G111'; // Granted by default for non-specified regions
+        },
+        getRegionFromCountry: function(countryCode) {
+            // Map countries to regions
+            const regionMap = {
+                // EU countries
+                'AT': 'EU', 'BE': 'EU', 'BG': 'EU', 'HR': 'EU', 'CY': 'EU',
+                'CZ': 'EU', 'DK': 'EU', 'EE': 'EU', 'FI': 'EU', 'FR': 'EU',
+                'DE': 'EU', 'GR': 'EU', 'HU': 'EU', 'IE': 'EU', 'IT': 'EU',
+                'LV': 'EU', 'LT': 'EU', 'LU': 'EU', 'MT': 'EU', 'NL': 'EU',
+                'PL': 'EU', 'PT': 'EU', 'RO': 'EU', 'SK': 'EU', 'SI': 'EU',
+                'ES': 'EU', 'SE': 'EU', 'CH': 'EU',
+                
+                // North America
+                'US': 'US', 'CA': 'CA', 'MX': 'US',
+                
+                // UK
+                'GB': 'GB',
+                
+                // Australia/NZ
+                'AU': 'AU', 'NZ': 'AU'
+            };
+            
+            return regionMap[countryCode] || 'OTHER';
+        }
+    },
+
+
     
     // Banner styling
     bannerStyle: {
@@ -1959,79 +2003,31 @@ if (typeof window.uetq === 'undefined') {
 function gtag() { dataLayer.push(arguments); }
 
 // Set default consent (deny all except security) AND initial GCS signal
-// NEW: Function to get region-specific GCS default
-function getRegionSpecificGCS() {
-    if (!config.gcsConfig.enabled) return 'G100';
-    
-    // Check for manual override
-    if (config.gcsConfig.manualOverride && config.gcsConfig.manualOverride.enabled) {
-        return config.gcsConfig.manualOverride.manualDefaultState;
-    }
-    
-    // Get user's country from location data
-    const country = locationData?.country;
-    
-    if (!country) return config.gcsConfig.regionDefaults.default;
-    
-    // Check if it's a US region
-    if (country === 'US') {
-        return config.gcsConfig.regionDefaults.US;
-    }
-    
-    // Check if it's a Canadian region
-    if (country === 'CA') {
-        return config.gcsConfig.regionDefaults.CA;
-    }
-    
-    // Check if it's an EU country
-    if (EU_COUNTRIES.includes(country)) {
-        return config.gcsConfig.regionDefaults.EU;
-    }
-    
-    // Check specific countries
-    if (country === 'UK') return config.gcsConfig.regionDefaults.UK;
-    if (country === 'CH') return config.gcsConfig.regionDefaults.CH;
-    
-    // Default for all other regions
-    return config.gcsConfig.regionDefaults.default;
-}
-
-// Get the region-specific GCS signal
-const initialGCS = getRegionSpecificGCS();
-
-// Set default consent based on region
-const isUSRegion = locationData?.country === 'US';
-const isCARegion = locationData?.country === 'CA';
-const initialConsentState = (isUSRegion || isCARegion) ? 'granted' : 'denied';
-
 gtag('consent', 'default', {
-    'ad_storage': initialConsentState,
-    'analytics_storage': initialConsentState,
-    'ad_user_data': initialConsentState,
-    'ad_personalization': initialConsentState,
-    'personalization_storage': initialConsentState,
-    'functionality_storage': 'granted',
+    'ad_storage': 'denied',
+    'analytics_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'personalization_storage': 'denied',
+    'functionality_storage': 'denied',
     'security_storage': 'granted'
 });
 
-// Push initial GCS signal based on region
+// Push initial GCS signal (G100) immediately after default consent
 window.dataLayer.push({
     'event': 'initial_consent_state',
     'consent_mode': {
-        'ad_storage': initialConsentState,
-        'analytics_storage': initialConsentState,
-        'ad_user_data': initialConsentState,
-        'ad_personalization': initialConsentState,
-        'personalization_storage': initialConsentState,
-        'functionality_storage': 'granted',
+        'ad_storage': 'denied',
+        'analytics_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied',
+        'personalization_storage': 'denied',
+        'functionality_storage': 'denied',
         'security_storage': 'granted'
     },
-    'gcs': initialGCS, // Region-specific GCS signal
-    'region': locationData?.country || 'unknown',
+    'gcs': 'G100', // Explicit initial GCS signal
     'timestamp': new Date().toISOString()
 });
-
-console.log(`🌍 Region-specific GCS initialized: ${initialGCS} for ${locationData?.country || 'unknown'}`);
 
 // Set default UET consent
 function setDefaultUetConsent() {
@@ -3531,6 +3527,98 @@ function detectUserLanguage(geoData) {
     console.log('Using default language:', config.languageConfig.defaultLanguage);
     return config.languageConfig.defaultLanguage || 'en';
 }
+
+// Get GCS signal based on geo-location
+function getGCSForCurrentRegion() {
+    if (!config.geoGCSConfig.enabled) {
+        return config.usaBannerConfig.defaultGCS || 'G111';
+    }
+    
+    const countryCode = locationData?.country;
+    if (!countryCode) {
+        return config.usaBannerConfig.defaultGCS || 'G111';
+    }
+    
+    const gcs = config.geoGCSConfig.getGCSForRegion(countryCode);
+    console.log('Geo-based GCS for', countryCode + ':', gcs);
+    return gcs;
+}
+
+// Set default GCS based on region
+function setDefaultGCSForRegion() {
+    const countryCode = locationData?.country;
+    if (!countryCode) return;
+    
+    const defaultGCS = getGCSForCurrentRegion();
+    
+    // Update Google Consent Mode based on GCS
+    switch(defaultGCS) {
+        case 'G111': // All granted
+            gtag('consent', 'default', {
+                'ad_storage': 'granted',
+                'analytics_storage': 'granted',
+                'ad_user_data': 'granted',
+                'ad_personalization': 'granted',
+                'personalization_storage': 'granted',
+                'functionality_storage': 'granted',
+                'security_storage': 'granted'
+            });
+            break;
+        case 'G100': // All denied
+            gtag('consent', 'default', {
+                'ad_storage': 'denied',
+                'analytics_storage': 'denied',
+                'ad_user_data': 'denied',
+                'ad_personalization': 'denied',
+                'personalization_storage': 'denied',
+                'functionality_storage': 'denied',
+                'security_storage': 'granted'
+            });
+            break;
+        case 'G101': // Analytics only
+            gtag('consent', 'default', {
+                'ad_storage': 'denied',
+                'analytics_storage': 'granted',
+                'ad_user_data': 'denied',
+                'ad_personalization': 'denied',
+                'personalization_storage': 'denied',
+                'functionality_storage': 'granted',
+                'security_storage': 'granted'
+            });
+            break;
+        case 'G110': // Advertising only
+            gtag('consent', 'default', {
+                'ad_storage': 'granted',
+                'analytics_storage': 'denied',
+                'ad_user_data': 'granted',
+                'ad_personalization': 'granted',
+                'personalization_storage': 'denied',
+                'functionality_storage': 'granted',
+                'security_storage': 'granted'
+            });
+            break;
+    }
+    
+    // Push initial GCS signal
+    window.dataLayer.push({
+        'event': 'initial_geo_gcs',
+        'gcs': defaultGCS,
+        'country': countryCode,
+        'region': config.geoGCSConfig.getRegionFromCountry(countryCode),
+        'timestamp': new Date().toISOString()
+    });
+}
+
+// Get available languages for dropdown
+function getAvailableLanguages() {
+    if (config.languageConfig.availableLanguages.length > 0) {
+        return config.languageConfig.availableLanguages.filter(lang => translations[lang]);
+    }
+    return Object.keys(translations);
+}
+
+
+
 // Get available languages for dropdown
 function getAvailableLanguages() {
     if (config.languageConfig.availableLanguages.length > 0) {
@@ -3625,6 +3713,46 @@ function changeLanguage(languageCode) {
         setCookie('preferred_language', languageCode, 365);
     }
 }
+
+
+
+
+
+// Change language for USA banner
+function changeUSAButtonLanguage(languageCode) {
+    const lang = translations[languageCode] || translations.en;
+    const usaTexts = config.usaBannerConfig.usaTexts;
+    
+    // Update USA banner text
+    const usaBanner = document.getElementById('usaCookieConsentBanner');
+    if (usaBanner) {
+        usaBanner.querySelector('h2').textContent = usaTexts.title;
+        usaBanner.querySelector('p').textContent = usaTexts.description;
+        usaBanner.querySelector('#usaCancelBtnBottom').textContent = usaTexts.cancelText;
+        usaBanner.querySelector('#usaOptOutBtn').textContent = usaTexts.optOutText;
+        usaBanner.querySelector('#usaSaveBtnBottom').textContent = usaTexts.saveText;
+    }
+    
+    // Update USA modal text
+    const usaModal = document.getElementById('usaOptOutModal');
+    if (usaModal) {
+        usaModal.querySelector('h2').textContent = usaTexts.preferencesTitle;
+        usaModal.querySelector('p').textContent = usaTexts.preferencesDescription;
+        usaModal.querySelector('.usa-opt-out-label').textContent = usaTexts.optOutText;
+        usaModal.querySelector('#usaCancelBtn').textContent = usaTexts.cancelText;
+        usaModal.querySelector('#usaSaveBtn').textContent = usaTexts.saveText;
+    }
+    
+    // Store selected language in cookie
+    if (config.behavior.rememberLanguage) {
+        setCookie('preferred_language', languageCode, 365);
+    }
+}
+
+
+
+
+
 
 // Enhanced cookie scanning function with better matching
 function scanAndCategorizeCookies() {
@@ -3843,7 +3971,7 @@ function injectUSABanner(detectedCookies, language = 'en') {
     // Language selector if enabled
     const languageSelector = config.languageConfig.showLanguageSelector ? `
     <div class="language-selector">
-        <select id="cookieLanguageSelect">
+        <select id="usaCookieLanguageSelect">
             ${availableLanguages.map(code => `
                 <option value="${code}" ${code === language ? 'selected' : ''}>${translations[code].language}</option>
             `).join('')}
@@ -3859,8 +3987,10 @@ function injectUSABanner(detectedCookies, language = 'en') {
                 <h2>${usaTexts.title}</h2>
                 <p>${usaTexts.description}</p>
             </div>
-                <div class="all-cookie-consent-buttons">
-                <button id="usaOptOutBtn" class="cookie-btn usa-opt-out-button" style="cursor: pointer; background: transparent; color: #1177d0; border: 1px solid #1177d0; padding: 10px 16px;">${usaTexts.optOutText}</button>
+            <div class="all-cookie-consent-buttons">
+                <button id="usaCancelBtnBottom" class="cookie-btn usa-cancel-button-bottom">${usaTexts.cancelText}</button>
+                <button id="usaOptOutBtn" class="cookie-btn usa-opt-out-button">${usaTexts.optOutText}</button>
+                <button id="usaSaveBtnBottom" class="cookie-btn usa-save-button-bottom">${usaTexts.saveText}</button>
             </div>
         </div>
     </div>
@@ -3891,13 +4021,61 @@ function injectUSABanner(detectedCookies, language = 'en') {
         </div>
     </div>
 
-    <style>
+       <style>
     /* USA Banner Specific Styles */
     .usa-cookie-banner {
         ${config.behavior.bannerPosition === 'left' ? 'left: 20px;' : 'right: 20px;'}
         bottom: 20px;
         width: ${config.bannerStyle.width};
         background: ${config.bannerStyle.background};
+        border-radius: ${config.bannerStyle.borderRadius};
+        box-shadow: ${config.bannerStyle.boxShadow};
+        z-index: 9999;
+        padding: ${config.bannerStyle.padding};
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        display: none;
+        transform: translateY(20px);
+        opacity: 0;
+        transition: all ${config.behavior.bannerAnimation.duration}s ${config.behavior.bannerAnimation.easing};
+        ${config.bannerStyle.border.enabled ? 
+            `border: ${config.bannerStyle.border.width} ${config.bannerStyle.border.style} ${config.bannerStyle.border.color};` : 
+            'border: none;'}
+        overflow: hidden;
+    }
+
+    .usa-cookie-banner.show {
+        transform: translateY(0);
+        opacity: 1;
+        display: block;
+    }
+
+    .usa-cookie-banner .cookie-consent-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .usa-cookie-banner .main-cookie-consent-content h2 {
+        margin: 0 0 16px 0;
+        font-size: ${config.bannerStyle.title.fontSize};
+        color: ${config.bannerStyle.title.color};
+        font-weight: ${config.bannerStyle.title.fontWeight};
+        line-height: 1.4;
+        letter-spacing: -0.2px;
+    }
+
+    .usa-cookie-banner .main-cookie-consent-content p {
+        margin: 0 0 10px 0;
+        font-size: ${config.bannerStyle.description.fontSize};
+        color: ${config.bannerStyle.description.color};
+        line-height: ${config.bannerStyle.description.lineHeight};
+    }
+
+    .usa-cookie-banner .all-cookie-consent-buttons {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        margin-top: 15px;
+        width: 100%;
     }
 
     .usa-opt-out-button {
@@ -3905,16 +4083,66 @@ function injectUSABanner(detectedCookies, language = 'en') {
         color: ${config.bannerStyle.linkColor} !important;
         border: 1px solid ${config.bannerStyle.linkColor} !important;
         padding: 10px 16px !important;
+        flex: 2;
+        border-radius: ${config.buttonStyle.borderRadius} !important;
+        cursor: pointer;
+        font-weight: ${config.buttonStyle.fontWeight} !important;
+        font-size: ${config.buttonStyle.fontSize} !important;
+        transition: ${config.buttonStyle.transition} !important;
+        text-align: center;
     }
 
     .usa-opt-out-button:hover {
         background: ${config.bannerStyle.linkColor} !important;
         color: white !important;
+        transform: translateY(-1px) !important;
     }
 
+    .usa-cancel-button-bottom {
+        background: #f8f9fa !important;
+        color: #333 !important;
+        border: 1px solid #ddd !important;
+        flex: 1;
+        border-radius: ${config.buttonStyle.borderRadius} !important;
+        cursor: pointer;
+        font-weight: ${config.buttonStyle.fontWeight} !important;
+        font-size: ${config.buttonStyle.fontSize} !important;
+        transition: ${config.buttonStyle.transition} !important;
+        text-align: center;
+        padding: 10px 16px !important;
+    }
+
+    .usa-cancel-button-bottom:hover {
+        background: #e9ecef !important;
+        transform: translateY(-1px) !important;
+    }
+
+    .usa-save-button-bottom {
+        background: #1177d0 !important;
+        color: white !important;
+        border: 1px solid #1177d0 !important;
+        flex: 1;
+        border-radius: ${config.buttonStyle.borderRadius} !important;
+        cursor: pointer;
+        font-weight: ${config.buttonStyle.fontWeight} !important;
+        font-size: ${config.buttonStyle.fontSize} !important;
+        transition: ${config.buttonStyle.transition} !important;
+        text-align: center;
+        padding: 10px 16px !important;
+    }
+
+    .usa-save-button-bottom:hover {
+        background: #0d5ea6 !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* USA Opt-Out Modal Styles */
     .usa-opt-out-modal .cookie-settings-content {
         width: ${config.usaBannerConfig.popupStyle.width};
         max-height: 500px;
+        background: ${config.usaBannerConfig.popupStyle.background};
+        padding: ${config.usaBannerConfig.popupStyle.padding};
+        border-radius: ${config.usaBannerConfig.popupStyle.borderRadius};
     }
 
     .usa-opt-out-option {
@@ -3976,33 +4204,143 @@ function injectUSABanner(detectedCookies, language = 'en') {
     }
 
     .usa-cancel-button {
-        background: #f8f9fa;
-        color: #333;
-        border: 1px solid #ddd;
+        background: #f8f9fa !important;
+        color: #333 !important;
+        border: 1px solid #ddd !important;
+        border-radius: ${config.buttonStyle.borderRadius} !important;
+        cursor: pointer;
+        font-weight: ${config.buttonStyle.fontWeight} !important;
+        font-size: ${config.buttonStyle.fontSize} !important;
+        transition: ${config.buttonStyle.transition} !important;
+        text-align: center;
+        padding: 12px 20px !important;
+    }
+
+    .usa-cancel-button:hover {
+        background: #e9ecef !important;
+        transform: translateY(-1px) !important;
     }
 
     .usa-save-button {
-        background: #1177d0;
-        color: white;
-        border: 1px solid #1177d0;
+        background: #1177d0 !important;
+        color: white !important;
+        border: 1px solid #1177d0 !important;
+        border-radius: ${config.buttonStyle.borderRadius} !important;
+        cursor: pointer;
+        font-weight: ${config.buttonStyle.fontWeight} !important;
+        font-size: ${config.buttonStyle.fontSize} !important;
+        transition: ${config.buttonStyle.transition} !important;
+        text-align: center;
+        padding: 12px 20px !important;
+    }
+
+    .usa-save-button:hover {
+        background: #0d5ea6 !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* Language Selector for USA Banner */
+    .usa-cookie-banner .language-selector {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+    }
+
+    .usa-cookie-banner .language-selector select {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #e0e0e0;
+        background-color: #f8f9fa;
+        font-size: 13px;
+        color: #333;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .usa-cookie-banner .language-selector select:hover {
+        border-color: ${config.bannerStyle.linkColor};
+        background-color: #fff;
+    }
+
+    .usa-cookie-banner .language-selector select:focus {
+        outline: none;
+        border-color: ${config.bannerStyle.linkColor};
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
     }
 
     @media (max-width: 768px) {
         .usa-cookie-banner {
             width: 90%;
             ${config.behavior.bannerPosition === 'left' ? 'left: 5%;' : 'right: 5%;'}
+            bottom: 10px;
+            padding: 20px;
+        }
+        
+        .usa-cookie-banner .all-cookie-consent-buttons {
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .usa-opt-out-button,
+        .usa-cancel-button-bottom,
+        .usa-save-button-bottom {
+            width: 100%;
+            flex: none;
+            margin-bottom: 5px;
         }
         
         .usa-opt-out-modal .cookie-settings-content {
             width: 90%;
+            margin: 10px;
+        }
+        
+        .usa-cookie-banner .language-selector {
+            position: relative;
+            top: 0;
+            right: 0;
+            margin-bottom: 15px;
+        }
+        
+        .usa-cookie-banner .language-selector select {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .usa-cookie-banner {
+            padding: 15px;
+            width: calc(100% - 30px);
+            ${config.behavior.bannerPosition === 'left' ? 'left: 15px;' : 'right: 15px;'}
+        }
+        
+        .usa-cookie-banner .main-cookie-consent-content h2 {
+            font-size: 1.1rem;
+        }
+        
+        .usa-cookie-banner .main-cookie-consent-content p {
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+        
+        .usa-opt-out-button,
+        .usa-cancel-button-bottom,
+        .usa-save-button-bottom {
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+        
+        .usa-opt-out-option {
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .usa-opt-out-label {
+            font-size: 14px;
         }
     }
     </style>`;
     
     document.body.insertAdjacentHTML('beforeend', html);
-}
-
-
 
 
 
@@ -4963,6 +5301,28 @@ function initializeCookieConsent(detectedCookies, language) {
         injectConsentHTML(detectedCookies, language);
         console.log('Showing default banner for region:', locationData?.country);
     }
+
+
+
+        // Check for USA opt-out preference
+    const usaOptOutCookie = getCookie('usa_opt_out');
+    let usaOptedOut = false;
+    if (usaOptOutCookie) {
+        try {
+            const usaData = JSON.parse(usaOptOutCookie);
+            usaOptedOut = usaData.optedOut === true;
+        } catch (e) {
+            console.error('Error parsing USA opt-out cookie:', e);
+        }
+    }
+    
+    // If user already opted out in USA, don't show banner
+    if (isUSA && usaOptedOut) {
+        console.log('User already opted out in USA region - not showing banner');
+        return;
+    }
+
+
     
     // Show banner logic
     if (!consentGiven && config.behavior.autoShow && bannerShouldBeShown) {
@@ -5124,7 +5484,7 @@ function handleCookieValueToggle(e) {
 
 
 
-    // USA Banner Event Handlers
+// USA Banner Event Handlers
 function handleUSAOptOutClick() {
     console.log('USA Opt-Out clicked');
     showUSAOptOutPopup();
@@ -5132,45 +5492,108 @@ function handleUSAOptOutClick() {
 
 function handleUSASaveClick() {
     console.log('USA Save Preferences clicked');
-    const isOptedOut = document.getElementById('usaDoNotSellCheckbox').checked;
+    const isOptedOut = document.getElementById('usaDoNotSellCheckbox') ? 
+        document.getElementById('usaDoNotSellCheckbox').checked : false;
     
-    if (isOptedOut) {
-        // User opted out - treat as reject all
-        rejectAllCookies();
-        console.log('User opted out of data sale');
+    // Check if we're in the popup or main banner
+    const isInPopup = document.getElementById('usaOptOutModal').style.display !== 'none';
+    
+    if (isInPopup && isOptedOut) {
+        // User opted out from popup - treat as reject all
+        console.log('User opted out of data sale from popup');
         
-        // Store specific USA opt-out preference
         const usaOptOutData = {
             optedOut: true,
             timestamp: new Date().getTime(),
-            region: locationData?.country
+            region: locationData?.country,
+            gcs: 'G100'
         };
         setCookie('usa_opt_out', JSON.stringify(usaOptOutData), 365);
-    } else {
-        // User opted in - show regular banner for full consent
+        
+        // Set GCS to denied for USA
+        window.dataLayer.push({
+            'event': 'usa_opt_out',
+            'consent_mode': {
+                'ad_storage': 'denied',
+                'analytics_storage': 'denied',
+                'ad_user_data': 'denied',
+                'ad_personalization': 'denied',
+                'personalization_storage': 'denied',
+                'functionality_storage': 'denied',
+                'security_storage': 'granted'
+            },
+            'gcs': 'G100',
+            'opt_out': true,
+            'timestamp': new Date().toISOString(),
+            'location_data': locationData
+        });
+        
         hideUSAOptOutPopup();
-        if (!getCookie('cookie_consent')) {
-            showUSABanner();
+        hideUSABanner();
+        
+        // Call the blocking script function
+        if (typeof window.disableAllTracking === 'function') {
+            window.disableAllTracking();
+        }
+        
+    } else if (isInPopup && !isOptedOut) {
+        // User opted in from popup
+        console.log('User opted in from popup');
+        hideUSAOptOutPopup();
+        showUSABanner();
+        
+    } else {
+        // Save from main banner (default behavior)
+        console.log('Save from main banner - default behavior');
+        hideUSABanner();
+        
+        // Set GCS to granted for USA (default)
+        window.dataLayer.push({
+            'event': 'usa_consent_granted',
+            'consent_mode': {
+                'ad_storage': 'granted',
+                'analytics_storage': 'granted',
+                'ad_user_data': 'granted',
+                'ad_personalization': 'granted',
+                'personalization_storage': 'granted',
+                'functionality_storage': 'granted',
+                'security_storage': 'granted'
+            },
+            'gcs': 'G111',
+            'opt_out': false,
+            'timestamp': new Date().toISOString(),
+            'location_data': locationData
+        });
+        
+        // Call the blocking script function
+        if (typeof window.enableAllTracking === 'function') {
+            window.enableAllTracking();
         }
     }
-    
-    hideUSAOptOutPopup();
 }
 
 function handleUSACancelClick() {
     console.log('USA Cancel clicked');
-    hideUSAOptOutPopup();
-    if (!getCookie('cookie_consent')) {
+    const isInPopup = document.getElementById('usaOptOutModal').style.display !== 'none';
+    
+    if (isInPopup) {
+        hideUSAOptOutPopup();
         showUSABanner();
+    } else {
+        hideUSABanner();
+        // Set default GCS for USA region
+        window.dataLayer.push({
+            'event': 'usa_consent_default',
+            'gcs': 'G111', // Default granted for USA
+            'timestamp': new Date().toISOString()
+        });
     }
 }
 
 function handleUSACloseModalClick() {
     console.log('USA Close Modal clicked');
     hideUSAOptOutPopup();
-    if (!getCookie('cookie_consent')) {
-        showUSABanner();
-    }
+    showUSABanner();
 }
 
 
@@ -5468,44 +5891,37 @@ function setupEventListeners() {
     const usaSaveBtn = document.getElementById('usaSaveBtn');
     const usaCancelBtn = document.getElementById('usaCancelBtn');
     const closeUSAModalBtn = document.querySelector('.close-usa-modal');
-    
-    console.log('Setting up USA banner event listeners...');
-    console.log('USA Opt Out Button found:', !!usaOptOutBtn);
-    console.log('USA Save Button found:', !!usaSaveBtn);
-    console.log('USA Cancel Button found:', !!usaCancelBtn);
-    console.log('Close USA Modal Button found:', !!closeUSAModalBtn);
+    const usaSaveBtnBottom = document.getElementById('usaSaveBtnBottom');
+    const usaCancelBtnBottom = document.getElementById('usaCancelBtnBottom');
+    const usaLanguageSelect = document.getElementById('usaCookieLanguageSelect');
     
     if (usaOptOutBtn) {
-        console.log('Adding click handler to USA Opt Out button');
-        usaOptOutBtn.addEventListener('click', function(e) {
-            console.log('USA Opt Out button clicked!');
-            e.preventDefault();
-            e.stopPropagation();
-            handleUSAOptOutClick();
-        });
+        usaOptOutBtn.addEventListener('click', handleUSAOptOutClick);
     }
     
     if (usaSaveBtn) {
-        usaSaveBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            handleUSASaveClick();
-        });
+        usaSaveBtn.addEventListener('click', handleUSASaveClick);
+    }
+    
+    if (usaSaveBtnBottom) {
+        usaSaveBtnBottom.addEventListener('click', handleUSASaveClick);
     }
     
     if (usaCancelBtn) {
-        usaCancelBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            handleUSACancelClick();
-        });
+        usaCancelBtn.addEventListener('click', handleUSACancelClick);
+    }
+    
+    if (usaCancelBtnBottom) {
+        usaCancelBtnBottom.addEventListener('click', handleUSACancelClick);
     }
     
     if (closeUSAModalBtn) {
-        closeUSAModalBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            handleUSACloseModalClick();
+        closeUSAModalBtn.addEventListener('click', handleUSACloseModalClick);
+    }
+    
+    if (usaLanguageSelect) {
+        usaLanguageSelect.addEventListener('change', function() {
+            changeUSAButtonLanguage(this.value);
         });
     }
     // =================================================================
@@ -6452,6 +6868,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         setupCrossDomainLinks();
         setupConsentSync();
     }
+
+        // ====== GEO-BASED GCS INITIALIZATION ======
+    // Set default GCS based on visitor's region
+    setTimeout(() => {
+        if (locationData && locationData.country) {
+            setDefaultGCSForRegion();
+        }
+    }, 1000);
+    
+    // ====== ORIGINAL INITIALIZATION CONTINUES ======
     
     // ====== ORIGINAL INITIALIZATION CONTINUES ======
     // Ensure location data is loaded first
@@ -6746,53 +7172,4 @@ window.clearCrossDomain = function() {
     
     console.log('✅ Cross-domain consent cleared. Refresh page.');
 };
-
-
-// Global control functions for GCS configuration
-window.setGCSDefaultState = function(state, region = 'all') {
-    if (!config.gcsConfig) config.gcsConfig = {};
-    if (!config.gcsConfig.regionDefaults) config.gcsConfig.regionDefaults = {};
-    
-    if (region === 'all') {
-        // Set for all regions
-        for (const key in config.gcsConfig.regionDefaults) {
-            config.gcsConfig.regionDefaults[key] = state;
-        }
-    } else {
-        // Set for specific region
-        config.gcsConfig.regionDefaults[region] = state;
-    }
-    
-    console.log(`✅ GCS default state set to ${state} for ${region}`);
-};
-
-window.enableManualGCSOverride = function(state = 'G100') {
-    if (!config.gcsConfig) config.gcsConfig = {};
-    config.gcsConfig.manualOverride = {
-        enabled: true,
-        manualDefaultState: state
-    };
-    console.log(`✅ Manual GCS override enabled: ${state}`);
-};
-
-window.disableManualGCSOverride = function() {
-    if (!config.gcsConfig) config.gcsConfig = {};
-    config.gcsConfig.manualOverride = {
-        enabled: false,
-        manualDefaultState: 'G100'
-    };
-    console.log('✅ Manual GCS override disabled');
-};
-
-window.getCurrentGCSConfig = function() {
-    return {
-        regionDefaults: config.gcsConfig?.regionDefaults || {},
-        manualOverride: config.gcsConfig?.manualOverride || {},
-        currentRegion: locationData?.country || 'unknown',
-        currentGCS: getRegionSpecificGCS()
-    };
-};
-
-
-    
 }
