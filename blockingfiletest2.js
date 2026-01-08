@@ -5531,21 +5531,16 @@ function handleUSASaveClick() {
     
     // Disable interaction restrictions
     disableInteractionRestrictions();
-    
-    // Also hide the USA banner
-    hideUSABanner();
-    
 }
 
 function handleUSACancelClick() {
     console.log('USA Cancel clicked');
     hideUSAOptOutPopup();
-    hideUSABanner(); // Add this line to also hide the main banner
     
-    // Check if we should show USA banner again
+    // Show USA banner again if no consent given yet
     const consentCookie = getCookie('cookie_consent');
     const usaOptOutCookie = getCookie('usa_opt_out');
-    if (!consentCookie && !usaOptOutCookie && config.behavior.autoShow) {
+    if (!consentCookie && !usaOptOutCookie) {
         setTimeout(() => {
             showUSABanner();
         }, 350);
@@ -5555,12 +5550,11 @@ function handleUSACancelClick() {
 function handleUSACloseModalClick() {
     console.log('USA Close Modal clicked');
     hideUSAOptOutPopup();
-    hideUSABanner(); // Add this line to also hide the main banner
     
-    // Check if we should show USA banner again
+    // Show USA banner again if no consent given yet
     const consentCookie = getCookie('cookie_consent');
     const usaOptOutCookie = getCookie('usa_opt_out');
-    if (!consentCookie && !usaOptOutCookie && config.behavior.autoShow) {
+    if (!consentCookie && !usaOptOutCookie) {
         setTimeout(() => {
             showUSABanner();
         }, 350);
@@ -5872,7 +5866,7 @@ function setupEventListeners() {
 
 
     // =================================================================
-    // USA Banner Event Listeners - ENHANCED VERSION
+    // USA Banner Event Listeners - CORRECTED VERSION
     // =================================================================
     const usaOptOutBtn = document.getElementById('usaOptOutBtn');
     const usaSaveBtn = document.getElementById('usaSaveBtn');
@@ -5881,55 +5875,114 @@ function setupEventListeners() {
     const usaOptOutModal = document.getElementById('usaOptOutModal');
     
     console.log('Setting up USA banner event listeners...');
-    console.log('USA Opt-Out Button:', usaOptOutBtn);
-    console.log('USA Save Button:', usaSaveBtn);
-    console.log('USA Cancel Button:', usaCancelBtn);
-    console.log('USA Modal:', usaOptOutModal);
     
     // USA Banner "Do Not Sell..." Button
     if (usaOptOutBtn) {
-        console.log('Adding click handler to USA Opt-Out button');
         usaOptOutBtn.addEventListener('click', function(e) {
-            console.log('USA Opt-Out button clicked!');
             e.preventDefault();
             e.stopPropagation();
             showUSAOptOutPopup();
         });
-    } else {
-        console.warn('USA Opt-Out button not found!');
     }
     
-    // USA Modal Save Button
+    // USA Modal Save Button - SIMPLIFIED
     if (usaSaveBtn) {
-        console.log('Adding click handler to USA Save button');
         usaSaveBtn.addEventListener('click', function(e) {
-            console.log('USA Save button clicked!');
             e.preventDefault();
             e.stopPropagation();
-            handleUSASaveClick();
+            
+            // Handle the save logic
+            const usaDoNotSellCheckbox = document.getElementById('usaDoNotSellCheckbox');
+            
+            if (!usaDoNotSellCheckbox) {
+                console.error('USA Do Not Sell checkbox not found!');
+                hideUSAOptOutPopup(); // Still close the modal
+                return;
+            }
+            
+            const isOptedOut = usaDoNotSellCheckbox.checked;
+            
+            if (isOptedOut) {
+                // User opted out
+                const usaOptOutData = {
+                    optedOut: true,
+                    timestamp: new Date().getTime(),
+                    region: locationData?.country,
+                    gcs: 'G100'
+                };
+                setCookie('usa_opt_out', JSON.stringify(usaOptOutData), 365);
+                
+                const consentData = {
+                    status: 'rejected',
+                    gcs: 'G100',
+                    categories: {
+                        functional: true,
+                        analytics: false,
+                        performance: false,
+                        advertising: false,
+                        uncategorized: false
+                    },
+                    timestamp: new Date().getTime(),
+                    usaOptOut: true
+                };
+                
+                updateConsentMode(consentData);
+                setCookie('cookie_consent', JSON.stringify(consentData), 365);
+                
+                window.dataLayer.push({
+                    'event': 'usa_opt_out_selected',
+                    'opt_out_status': true,
+                    'consent_mode': {
+                        'ad_storage': 'denied',
+                        'analytics_storage': 'denied',
+                        'ad_user_data': 'denied',
+                        'ad_personalization': 'denied',
+                        'personalization_storage': 'denied',
+                        'functionality_storage': 'granted',
+                        'security_storage': 'granted'
+                    },
+                    'gcs': 'G100',
+                    'timestamp': new Date().toISOString(),
+                    'location_data': locationData
+                });
+            } else {
+                // User opted in
+                document.cookie = "usa_opt_out=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+                
+                // Don't hide the modal yet - let hideUSAOptOutPopup handle it
+                // We'll show regular banner from there
+            }
+            
+            // Hide the modal (this will also handle showing regular banner if needed)
+            hideUSAOptOutPopup();
+            
+            // Show floating button if enabled
+            if (config.behavior.showFloatingButton) {
+                setTimeout(() => {
+                    showFloatingButton();
+                }, 500);
+            }
+            
+            // Disable interaction restrictions
+            disableInteractionRestrictions();
         });
     }
     
-    // USA Modal Cancel Button
+    // USA Modal Cancel Button - SIMPLIFIED
     if (usaCancelBtn) {
-        console.log('Adding click handler to USA Cancel button');
         usaCancelBtn.addEventListener('click', function(e) {
-            console.log('USA Cancel button clicked!');
             e.preventDefault();
             e.stopPropagation();
-            handleUSACancelClick();
+            hideUSAOptOutPopup(); // This already handles showing USA banner again
         });
     }
-
     
-    // USA Modal Close Button
+    // USA Modal Close (×) Button - SIMPLIFIED
     if (closeUSAModalBtn) {
-        console.log('Adding click handler to USA Close modal button');
         closeUSAModalBtn.addEventListener('click', function(e) {
-            console.log('USA Close modal button clicked!');
             e.preventDefault();
             e.stopPropagation();
-            handleUSACloseModalClick();
+            hideUSAOptOutPopup(); // This already handles showing USA banner again
         });
     }
     
@@ -5937,8 +5990,7 @@ function setupEventListeners() {
     if (usaOptOutModal) {
         usaOptOutModal.addEventListener('click', function(e) {
             if (e.target === usaOptOutModal) {
-                console.log('Clicked outside USA modal - closing');
-                handleUSACloseModalClick();
+                hideUSAOptOutPopup(); // This already handles showing USA banner again
             }
         });
     }
@@ -5951,7 +6003,6 @@ function setupEventListeners() {
             try {
                 const usaData = JSON.parse(usaOptOutCookie);
                 usaDoNotSellCheckbox.checked = usaData.optedOut === true;
-                console.log('Loaded USA opt-out state:', usaData.optedOut);
             } catch (e) {
                 console.error('Error parsing USA opt-out cookie:', e);
             }
@@ -5960,7 +6011,6 @@ function setupEventListeners() {
     // =================================================================
     // End of USA Banner Event Listeners
     // =================================================================
-
     
 }
 
