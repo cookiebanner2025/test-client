@@ -3911,7 +3911,7 @@ function injectUSABanner(detectedCookies, language = 'en') {
         <div class="cookie-settings-content usa-opt-out-content">
             <div class="cookie-settings-header">
                 <h2>${usaTexts.preferencesTitle}</h2>
-              <span class="close-usa-modal" style="font-size: 24px; cursor: pointer; color: #7f8c8d;">&times;</span>
+                <span class="close-usa-modal">&times;</span>
             </div>
             <div class="cookie-settings-body">
                 <p>${usaTexts.preferencesDescription}</p>
@@ -3923,18 +3923,12 @@ function injectUSABanner(detectedCookies, language = 'en') {
                     </label>
                 </div>
             </div>
-           <div class="cookie-settings-footer">
-    <table class="usa-modal-buttons-table">
-        <tr>
-            <td>
-                <button id="usaCancelBtn" class="cookie-btn usa-cancel-button">${usaTexts.cancelText}</button>
-            </td>
-            <td>
-                <button id="usaSaveBtn" class="cookie-btn usa-save-button">${usaTexts.saveText}</button>
-            </td>
-        </tr>
-    </table>
-</div>
+            <div class="cookie-settings-footer">
+                <div class="modal-buttons-container">
+                    <button id="usaCancelBtn" class="cookie-btn usa-cancel-button">${usaTexts.cancelText}</button>
+                    <button id="usaSaveBtn" class="cookie-btn usa-save-button">${usaTexts.saveText}</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -4264,72 +4258,6 @@ function injectUSABanner(detectedCookies, language = 'en') {
         }
     }
     /* ================================================================= */
-
-
-
-    /* FIX: Table layout for buttons like in 2nd picture */
-.usa-modal-buttons-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-.usa-modal-buttons-table td {
-    padding: 0;
-    text-align: center;
-}
-
-.usa-modal-buttons-table td:first-child {
-    width: 50%;
-    padding-right: 10px;
-}
-
-.usa-modal-buttons-table td:last-child {
-    width: 50%;
-    padding-left: 10px;
-}
-
-.usa-cancel-button {
-    background: #f8f9fa !important;
-    color: #333333 !important;
-    border: 1px solid #e0e0e0 !important;
-    width: 100% !important;
-    padding: 12px 20px !important;
-}
-
-.usa-save-button {
-    background: #1177d0 !important;
-    color: #ffffff !important;
-    border: 1px solid #1177d0 !important;
-    width: 100% !important;
-    padding: 12px 20px !important;
-}
-
-/* Fix for mobile */
-@media (max-width: 768px) {
-    .usa-modal-buttons-table {
-        display: block;
-    }
-    
-    .usa-modal-buttons-table tr {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .usa-modal-buttons-table td {
-        width: 100% !important;
-        padding: 0 0 10px 0 !important;
-    }
-    
-    .usa-modal-buttons-table td:first-child {
-        padding-right: 0 !important;
-    }
-    
-    .usa-modal-buttons-table td:last-child {
-        padding-left: 0 !important;
-        padding-bottom: 0 !important;
-    }
-}
     </style>`;
     
     document.body.insertAdjacentHTML('beforeend', html);
@@ -5593,12 +5521,6 @@ function handleUSASaveClick() {
     
     // Hide the modal and cleanup
     hideUSAOptOutPopup();
-    // FIX: Also hide the USA banner when saving preferences
-    const usaBanner = document.getElementById('usaCookieConsentBanner');
-    if (usaBanner && usaBanner.style.display !== 'none') {
-        hideUSABanner();
-    }
-    
     
     // Show floating button if enabled
     if (config.behavior.showFloatingButton) {
@@ -5609,16 +5531,21 @@ function handleUSASaveClick() {
     
     // Disable interaction restrictions
     disableInteractionRestrictions();
+    
+    // Also hide the USA banner
+    hideUSABanner();
+    
 }
 
 function handleUSACancelClick() {
     console.log('USA Cancel clicked');
     hideUSAOptOutPopup();
+    hideUSABanner(); // Add this line to also hide the main banner
     
-    // Show USA banner again if no consent given yet
+    // Check if we should show USA banner again
     const consentCookie = getCookie('cookie_consent');
     const usaOptOutCookie = getCookie('usa_opt_out');
-    if (!consentCookie && !usaOptOutCookie) {
+    if (!consentCookie && !usaOptOutCookie && config.behavior.autoShow) {
         setTimeout(() => {
             showUSABanner();
         }, 350);
@@ -5628,11 +5555,12 @@ function handleUSACancelClick() {
 function handleUSACloseModalClick() {
     console.log('USA Close Modal clicked');
     hideUSAOptOutPopup();
+    hideUSABanner(); // Add this line to also hide the main banner
     
-    // Show USA banner again if no consent given yet
+    // Check if we should show USA banner again
     const consentCookie = getCookie('cookie_consent');
     const usaOptOutCookie = getCookie('usa_opt_out');
-    if (!consentCookie && !usaOptOutCookie) {
+    if (!consentCookie && !usaOptOutCookie && config.behavior.autoShow) {
         setTimeout(() => {
             showUSABanner();
         }, 350);
@@ -5642,18 +5570,11 @@ function handleUSACloseModalClick() {
 function handleUSACancelClick() {
     console.log('USA Cancel clicked');
     hideUSAOptOutPopup();
-    
-    // FIX: Show USA banner again only if no consent given
-    const consentCookie = getCookie('cookie_consent');
-    const usaOptOutCookie = getCookie('usa_opt_out');
-    if (!consentCookie && !usaOptOutCookie) {
-        setTimeout(() => {
-            showUSABanner();
-        }, 350);
+    if (!getCookie('cookie_consent')) {
+        showUSABanner();
     }
 }
 
-    
 function handleUSACloseModalClick() {
     console.log('USA Close Modal clicked');
     hideUSAOptOutPopup();
@@ -5999,19 +5920,18 @@ function setupEventListeners() {
             handleUSACancelClick();
         });
     }
+
     
     // USA Modal Close Button
-// USA Modal Close Button
-if (closeUSAModalBtn) {
-    console.log('Adding click handler to USA Close modal button');
-    closeUSAModalBtn.addEventListener('click', function(e) {
-        console.log('USA Close modal button clicked!');
-        e.preventDefault();
-        e.stopPropagation();
-        // FIX: Call the proper function to close the modal
-        hideUSAOptOutPopup();
-    });
-}
+    if (closeUSAModalBtn) {
+        console.log('Adding click handler to USA Close modal button');
+        closeUSAModalBtn.addEventListener('click', function(e) {
+            console.log('USA Close modal button clicked!');
+            e.preventDefault();
+            e.stopPropagation();
+            handleUSACloseModalClick();
+        });
+    }
     
     // Also close modal when clicking outside
     if (usaOptOutModal) {
