@@ -1371,7 +1371,7 @@ usaBannerConfig: {
     showOptOutPopup: true, // When true, clicking "Do Not Sell..." opens popup
     popupStyle: {
         background: '#ffffff',
-        width: '700px',
+        width: '850px',
         padding: '24px',
         borderRadius: '8px'
     },
@@ -4116,6 +4116,7 @@ function injectUSABanner(detectedCookies, language = 'en') {
         font-weight: 500;
         color: #333;
         font-size: 15px;
+        margin-top: -9px;
     }
 
     .usa-cancel-button {
