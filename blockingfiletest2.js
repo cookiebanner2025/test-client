@@ -1341,92 +1341,26 @@ geoConfig: {
     
     // NEW: Default consent states by region
     defaultConsentStates: {
-        // Example: Set default GCS signal for USA to granted
-        'US': 'granted', // Default to granted in USA
-        'GB': 'denied',  // Default to denied in UK
-        'DE': 'denied',  // Default to denied in Germany
-        'FR': 'denied',  // Default to denied in France
-        // Add more country codes as needed
-    },
+    // Default consent states by region
+    'US': 'granted', // Default to granted in USA (G111)
+    'GB': 'denied',  // Default to denied in UK (G100)
+    'DE': 'denied',  // Default to denied in Germany (G100)
+    'FR': 'denied',  // Default to denied in France (G100)
+    'EU': 'denied',  // ADD THIS: Default for all EU countries
+    // Add more country codes as needed
+},
+
     
-    // NEW: Region-specific GCS signals
-    regionGCS: {
-        'EU': 'G100', // Default GCS for EU (denied)
-        'US': 'G111', // Default GCS for USA (granted)
-        'UK': 'G100', // Default GCS for UK (denied)
-        // Add more regions as needed
-    }
+
+     regionGCS: {
+    'EU': 'G100', // Default GCS for EU (denied)
+    'US': 'G111', // Default GCS for USA (granted) - THIS IS CORRECT
+    'UK': 'G100', // Default GCS for UK (denied)
+       // Add more regions as needed    
+}
 },
    
-    // NEW: Function to apply USA default granted consent
-function applyUSADefaultConsent() {
-    if (!locationData || !locationData.country) return;
-    
-    const countryCode = locationData.country;
-    console.log('Checking USA default consent for country:', countryCode);
-    
-    // Only apply for USA
-    if (countryCode === 'US') {
-        // Check if we already have consent stored
-        const existingConsent = getCookie('cookie_consent');
-        const existingUSAConsent = getCookie('usa_opt_out');
-        
-        if (!existingConsent && !existingUSAConsent) {
-            console.log('Applying USA default granted consent');
-            
-            // Set Google Consent Mode to granted for USA
-            gtag('consent', 'default', {
-                'ad_storage': 'granted',
-                'analytics_storage': 'granted',
-                'ad_user_data': 'granted',
-                'ad_personalization': 'granted',
-                'personalization_storage': 'granted',
-                'functionality_storage': 'granted',
-                'security_storage': 'granted'
-            });
-            
-            // Push G111 signal for USA
-            window.dataLayer.push({
-                'event': 'initial_consent_state',
-                'consent_mode': {
-                    'ad_storage': 'granted',
-                    'analytics_storage': 'granted',
-                    'ad_user_data': 'granted',
-                    'ad_personalization': 'granted',
-                    'personalization_storage': 'granted',
-                    'functionality_storage': 'granted',
-                    'security_storage': 'granted'
-                },
-                'gcs': 'G111',
-                'default_region': 'US',
-                'is_default_granted': true,
-                'timestamp': new Date().toISOString()
-            });
-            
-            console.log('✅ USA default G111 signal sent');
-            
-            // Also update Microsoft UET for USA
-            if (config.uetConfig.enabled) {
-                window.uetq.push('consent', 'default', {
-                    'ad_storage': 'granted'
-                });
-                
-                window.dataLayer.push({
-                    'event': 'uet_consent_default',
-                    'uet_consent': {
-                        'ad_storage': 'granted',
-                        'status': 'default',
-                        'src': 'default',
-                        'asc': 'G',
-                        'timestamp': new Date().toISOString()
-                    },
-                    'gcs': 'G111',
-                    'location_data': locationData
-                });
-            }
-        }
-    }
-}
+   
 
    // UI Theme selection
 uiTheme: 'default',
@@ -1443,15 +1377,15 @@ usaBannerConfig: {
         borderRadius: '8px'
     },
     // Text for USA banner
-    usaTexts: {
-        title: "We value your privacy",
-        description: "This website or its third-party tools process personal data. You can opt out of the sale of your personal information by clicking on the \"Do Not Sell or Share My Personal Information\" link.",
-        optOutText: "Do Not Sell or Share My Personal Information",
-        saveText: "Save My Preferences",
-        cancelText: "Cancel",
-        preferencesTitle: "Opt-out Preferences",
-        preferencesDescription: "We use third-party cookies that help us analyse how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. However, you can opt out of these cookies by checking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button. Once you opt out, you can opt in again at any time by unchecking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button."
-    }
+  usaTexts: {
+    title: "We value your privacy",
+    description: "This website or its third-party tools process personal data. You can opt out of the sale of your personal information by clicking on the \"Do Not Sell or Share My Personal Information\" link.",
+    optOutText: "Do Not Sell or Share My Personal Information",
+    saveText: "Save My Preferences",
+    cancelText: "Cancel",
+    preferencesTitle: "Opt-out Preferences",
+    preferencesDescription: "We use third-party cookies that help us analyse how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. However, you can opt out of these cookies by checking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button. Once you opt out, you can opt in again at any time by unchecking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button."
+}
 },
     
     // Banner styling
@@ -3479,6 +3413,7 @@ function getDefaultGCSForRegion(countryCode) {
 }
 
 // NEW: Function to apply default consent based on region
+// NEW: Function to apply default consent based on region
 function applyRegionDefaultConsent() {
     if (!locationData || !locationData.country || locationData.country === 'Unknown') {
         return null;
@@ -3496,26 +3431,43 @@ function applyRegionDefaultConsent() {
     
     // Only apply if no existing consent
     const existingConsent = getCookie('cookie_consent');
-    if (!existingConsent) {
-        // Apply default GCS signal
-        if (defaultGCS === 'G111' && defaultConsent === 'granted') {
-            // Set initial GCS to granted for USA
-            window.dataLayer = window.dataLayer || [];
-            window.dataLayer.push({
-                'event': 'initial_consent_state',
-                'consent_mode': {
-                    'ad_storage': 'granted',
-                    'analytics_storage': 'granted',
-                    'ad_user_data': 'granted',
-                    'ad_personalization': 'granted',
-                    'personalization_storage': 'granted',
-                    'functionality_storage': 'granted',
-                    'security_storage': 'granted'
-                },
-                'gcs': 'G111',
-                'default_region': countryCode,
-                'timestamp': new Date().toISOString()
-            });
+    if (!existingConsent && defaultConsent === 'granted' && defaultGCS === 'G111') {
+        console.log('✅ Applying default granted consent for USA');
+        
+        // Set Google Consent Mode to granted for USA
+        gtag('consent', 'default', {
+            'ad_storage': 'granted',
+            'analytics_storage': 'granted',
+            'ad_user_data': 'granted',
+            'ad_personalization': 'granted',
+            'personalization_storage': 'granted',
+            'functionality_storage': 'granted',
+            'security_storage': 'granted'
+        });
+        
+        // Push G111 signal to dataLayer
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            'event': 'initial_consent_state',
+            'consent_mode': {
+                'ad_storage': 'granted',
+                'analytics_storage': 'granted',
+                'ad_user_data': 'granted',
+                'ad_personalization': 'granted',
+                'personalization_storage': 'granted',
+                'functionality_storage': 'granted',
+                'security_storage': 'granted'
+            },
+            'gcs': 'G111',
+            'default_region': countryCode,
+            'region_default': 'granted',
+            'timestamp': new Date().toISOString()
+        });
+        
+        // Also update the blocking script
+        if (typeof window.enableAllTracking === 'function') {
+            console.log('✅ Enabling tracking for USA default');
+            window.enableAllTracking();
         }
     }
     
@@ -3959,11 +3911,10 @@ function injectUSABanner(detectedCookies, language = 'en') {
         </select>
     </div>` : '';
     
-const html = `
+   const html = `
 <!-- USA Consent Banner -->
 <div id="usaCookieConsentBanner" class="cookie-consent-banner usa-cookie-banner">
     <div class="cookie-consent-container">
-        ${languageSelector}
         <div class="main-cookie-consent-content">
             <h2>${usaTexts.title}</h2>
             <p>${usaTexts.description}</p>
@@ -3974,410 +3925,175 @@ const html = `
     </div>
 </div>
 
-<!-- USA Opt-Out Popup Modal (2nd Picture Design) -->
+<!-- USA Opt-Out Popup Modal -->
 <div id="usaOptOutModal" class="cookie-settings-modal usa-opt-out-modal">
-    <div class="cookie-settings-content usa-opt-out-content" style="width: 400px; max-width: 95%;">
-        <div class="cookie-settings-header" style="border-bottom: none; padding-bottom: 0;">
-            <h2 style="font-size: 1.5rem; font-weight: 600; margin: 0;">${usaTexts.preferencesTitle}</h2>
-            <span class="close-usa-modal" style="font-size: 28px; cursor: pointer; color: #666;">&times;</span>
+    <div class="cookie-settings-content usa-opt-out-content">
+        <div class="cookie-settings-header">
+            <h2>${usaTexts.preferencesTitle}</h2>
+            <span class="close-usa-modal">&times;</span>
         </div>
-        <div class="cookie-settings-body" style="padding: 24px;">
-            <p style="font-size: 14px; line-height: 1.5; color: #666; margin-bottom: 24px;">${usaTexts.preferencesDescription}</p>
-            <div class="usa-opt-out-option" style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                <label class="usa-opt-out-toggle" style="display: flex; align-items: center; cursor: pointer;">
-                    <input type="checkbox" id="usaDoNotSellCheckbox" style="width: 40px; height: 20px; margin-right: 12px;">
-                    <span style="font-weight: 500; color: #333;">${usaTexts.optOutText}</span>
+        <div class="cookie-settings-body">
+            <p>${usaTexts.preferencesDescription}</p>
+            <div class="usa-opt-out-option">
+                <label class="usa-opt-out-toggle">
+                    <input type="checkbox" id="usaDoNotSellCheckbox">
+                    <span class="usa-toggle-slider"></span>
+                    <span class="usa-opt-out-label">${usaTexts.optOutText}</span>
                 </label>
             </div>
         </div>
-        <div class="cookie-settings-footer" style="padding: 0 24px 24px 24px; border-top: none; background: transparent;">
-            <div class="modal-buttons-container" style="display: flex; gap: 12px; justify-content: flex-end;">
-                <button id="usaCancelBtn" class="cookie-btn usa-cancel-button" style="padding: 10px 20px; background: #f8f9fa; color: #333; border: 1px solid #ddd; border-radius: 6px;">${usaTexts.cancelText}</button>
-                <button id="usaSaveBtn" class="cookie-btn usa-save-button" style="padding: 10px 20px; background: #1177d0; color: white; border: 1px solid #1177d0; border-radius: 6px;">${usaTexts.saveText}</button>
+        <div class="cookie-settings-footer">
+            <div class="modal-buttons-container">
+                <button id="usaCancelBtn" class="cookie-btn usa-cancel-button">${usaTexts.cancelText}</button>
+                <button id="usaSaveBtn" class="cookie-btn usa-save-button">${usaTexts.saveText}</button>
             </div>
         </div>
     </div>
 </div>
-`;
 
-    <style>
-    /* USA Banner Specific Styles */
-    .usa-cookie-banner {
-        ${config.behavior.bannerPosition === 'left' ? 'left: 20px;' : 'right: 20px;'}
-        bottom: 20px;
-        width: ${config.bannerStyle.width};
-        background: ${config.bannerStyle.background};
-    }
-/* Fix for cross icon positioning */
-.cookie-settings-header {
+<style>
+/* USA Banner Specific Styles */
+.usa-cookie-banner {
+    ${config.behavior.bannerPosition === 'left' ? 'left: 20px;' : 'right: 20px;'}
+    bottom: 20px;
+    width: ${config.bannerStyle.width};
+    background: ${config.bannerStyle.background};
+    border: 1px solid #e0e0e0;
+}
+
+.usa-opt-out-button {
+    background: transparent !important;
+    color: ${config.bannerStyle.linkColor} !important;
+    border: 1px solid ${config.bannerStyle.linkColor} !important;
+    padding: 10px 16px !important;
+    margin-top: 10px;
+}
+
+.usa-opt-out-button:hover {
+    background: ${config.bannerStyle.linkColor} !important;
+    color: white !important;
+}
+
+.usa-opt-out-modal .cookie-settings-content {
+    width: 400px;
+    max-height: 500px;
+    padding: 24px;
+}
+
+.usa-opt-out-option {
+    margin: 25px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.usa-opt-out-toggle {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    cursor: pointer;
+}
+
+.usa-opt-out-toggle input {
+    margin-right: 12px;
+    width: 50px;
+    height: 26px;
+    opacity: 0;
+    position: absolute;
+}
+
+.usa-toggle-slider {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background-color: #ccc;
+    border-radius: 34px;
+    margin-right: 15px;
+    transition: .4s;
+}
+
+.usa-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.usa-opt-out-toggle input:checked + .usa-toggle-slider {
+    background-color: #4CAF50;
+}
+
+.usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
+    transform: translateX(24px);
+}
+
+.usa-opt-out-label {
+    font-weight: 500;
+    color: #333;
+    font-size: 15px;
+}
+
+.usa-cancel-button {
+    background: #f8f9fa !important;
+    color: #333 !important;
+    border: 1px solid #ddd !important;
+    flex: 1;
+}
+
+.usa-save-button {
+    background: #1177d0 !important;
+    color: white !important;
+    border: 1px solid #1177d0 !important;
+    flex: 1;
+}
+
+.modal-buttons-container {
+    display: flex;
+    gap: 12px;
     width: 100%;
 }
 
-.close-usa-modal {
-    font-size: 28px !important;
-    font-weight: bold !important;
-    cursor: pointer !important;
-    color: #666 !important;
-    background: none !important;
-    border: none !important;
-    padding: 0 10px !important;
-    line-height: 1 !important;
-    height: 28px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transition: color 0.2s ease !important;
-}
-
-.close-usa-modal:hover {
-    color: #e74c3c !important;
-}
-
-/* Ensure modal appears correctly */
+/* Make sure USA modal is on top */
 #usaOptOutModal {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    background: rgba(0,0,0,0.7) !important;
     z-index: 10002 !important;
-    display: none !important;
-    align-items: center !important;
-    justify-content: center !important;
-    opacity: 0 !important;
-    transition: opacity 0.3s ease !important;
 }
 
-#usaOptOutModal.show {
+.usa-opt-out-modal.show {
     display: flex !important;
     opacity: 1 !important;
 }
-    .usa-opt-out-button {
-        background: transparent !important;
-        color: ${config.bannerStyle.linkColor} !important;
-        border: 1px solid ${config.bannerStyle.linkColor} !important;
-        padding: 10px 16px !important;
-    }
 
-    .usa-opt-out-button:hover {
-        background: ${config.bannerStyle.linkColor} !important;
-        color: white !important;
+@media (max-width: 768px) {
+    .usa-cookie-banner {
+        width: 90%;
+        ${config.behavior.bannerPosition === 'left' ? 'left: 5%;' : 'right: 5%;'}
     }
-
+    
     .usa-opt-out-modal .cookie-settings-content {
-        width: ${config.usaBannerConfig.popupStyle.width};
-        max-height: 500px;
-    }
-    /* Ensure USA modal appears on top */
-    #usaOptOutModal {
-        z-index: 10002 !important;
+        width: 90% !important;
+        max-width: 400px !important;
+        margin: 10px !important;
     }
     
-    .usa-opt-out-modal.show {
-        display: flex !important;
-        opacity: 1 !important;
-    }
-    
-    .usa-opt-out-content {
-        animation: modalSlideIn 0.3s ease-out;
-    }
-    
-    @keyframes modalSlideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    /* Make checkbox more visible */
-    #usaDoNotSellCheckbox {
-        width: 50px;
-        height: 26px;
-        position: relative;
-        cursor: pointer;
+    .modal-buttons-container {
+        flex-direction: column;
     }
     
     .usa-opt-out-toggle {
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-        user-select: none;
-    }
-    
-    .usa-opt-out-toggle input {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
+        flex-direction: column;
+        align-items: flex-start;
     }
     
     .usa-toggle-slider {
-        position: relative;
-        display: inline-block;
-        width: 50px;
-        height: 26px;
-        background-color: #ccc;
-        border-radius: 34px;
-        margin-right: 15px;
-        transition: .4s;
+        margin-bottom: 10px;
     }
-    
-    .usa-toggle-slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-    
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider {
-        background-color: #4CAF50;
-    }
-    
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
-        transform: translateX(24px);
-    }
-    
-    .usa-opt-out-toggle input:disabled + .usa-toggle-slider {
-        background-color: #95a5a6;
-        cursor: not-allowed;
-    }
-    
-    /* Ensure buttons are clickable */
-    #usaOptOutBtn, #usaSaveBtn, #usaCancelBtn {
-        cursor: pointer !important;
-        pointer-events: auto !important;
-    }
-    
-    /* Fix for mobile */
-    @media (max-width: 768px) {
-        .usa-opt-out-modal .cookie-settings-content {
-            width: 95% !important;
-            max-width: 400px !important;
-            margin: 10px !important;
-        }
-        
-        .usa-opt-out-option {
-            padding: 15px !important;
-        }
-    }
-    
-    .usa-opt-out-option {
-        margin: 25px 0;
-        padding: 20px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #e0e0e0;
-    }
-
-    .usa-opt-out-toggle {
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-    }
-
-    .usa-opt-out-toggle input {
-        margin-right: 12px;
-        width: 50px;
-        height: 26px;
-        opacity: 0;
-        position: absolute;
-    }
-
-    .usa-toggle-slider {
-        position: relative;
-        width: 50px;
-        height: 26px;
-        background-color: #ccc;
-        border-radius: 34px;
-        margin-right: 15px;
-        transition: .4s;
-    }
-
-    .usa-toggle-slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider {
-        background-color: ${config.toggleStyle.activeColor};
-    }
-
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
-        transform: translateX(24px);
-    }
-
-    .usa-opt-out-label {
-        font-weight: 500;
-        color: #333;
-        font-size: 15px;
-    }
-
-    .usa-cancel-button {
-        background: #f8f9fa;
-        color: #333;
-        border: 1px solid #ddd;
-    }
-
-    .usa-save-button {
-        background: #1177d0;
-        color: white;
-        border: 1px solid #1177d0;
-    }
-
-    @media (max-width: 768px) {
-        .usa-cookie-banner {
-            width: 90%;
-            ${config.behavior.bannerPosition === 'left' ? 'left: 5%;' : 'right: 5%;'}
-        }
-        
-        .usa-opt-out-modal .cookie-settings-content {
-            width: 90%;
-        }
-    }
-
-
-      /* ================================================================= */
-    /* NEW CSS FIXES FOR USA MODAL - ADDED TO PREVENT CONFLICTS */
-    /* ================================================================= */
-    /* Ensure USA modal appears on top */
-    #usaOptOutModal {
-        z-index: 10002 !important;
-    }
-    
-    .usa-opt-out-modal.show {
-        display: flex !important;
-        opacity: 1 !important;
-    }
-    
-    .usa-opt-out-content {
-        animation: usaModalSlideIn 0.3s ease-out;
-    }
-    
-    @keyframes usaModalSlideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    /* Make checkbox more visible - OVERRIDE EXISTING STYLES */
-    #usaDoNotSellCheckbox {
-        width: 50px !important;
-        height: 26px !important;
-        position: relative !important;
-        cursor: pointer !important;
-        margin-right: 12px !important;
-    }
-    
-    .usa-opt-out-toggle {
-        display: flex !important;
-        align-items: center !important;
-        cursor: pointer !important;
-        user-select: none !important;
-    }
-    
-    .usa-opt-out-toggle input {
-        position: absolute !important;
-        opacity: 0 !important;
-        width: 0 !important;
-        height: 0 !important;
-        margin: 0 !important;
-    }
-    
-    .usa-toggle-slider {
-        position: relative !important;
-        display: inline-block !important;
-        width: 50px !important;
-        height: 26px !important;
-        background-color: #ccc !important;
-        border-radius: 34px !important;
-        margin-right: 15px !important;
-        transition: .4s !important;
-    }
-    
-    .usa-toggle-slider:before {
-        position: absolute !important;
-        content: "" !important;
-        height: 18px !important;
-        width: 18px !important;
-        left: 4px !important;
-        bottom: 4px !important;
-        background-color: white !important;
-        transition: .4s !important;
-        border-radius: 50% !important;
-    }
-    
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider {
-        background-color: #4CAF50 !important;
-    }
-    
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
-        transform: translateX(24px) !important;
-    }
-    
-    .usa-opt-out-toggle input:disabled + .usa-toggle-slider {
-        background-color: #95a5a6 !important;
-        cursor: not-allowed !important;
-    }
-    
-    /* Ensure buttons are clickable */
-    #usaOptOutBtn, #usaSaveBtn, #usaCancelBtn {
-        cursor: pointer !important;
-        pointer-events: auto !important;
-    }
-    
-    /* Fix for mobile - OVERRIDE EXISTING MOBILE STYLES */
-    @media (max-width: 768px) {
-        .usa-opt-out-modal .cookie-settings-content {
-            width: 95% !important;
-            max-width: 400px !important;
-            margin: 10px !important;
-        }
-        
-        .usa-opt-out-option {
-            padding: 15px !important;
-            margin: 15px 0 !important;
-        }
-        
-        .usa-opt-out-toggle {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .usa-toggle-slider {
-            margin-bottom: 10px;
-        }
-    }
-    /* ================================================================= */
-    </style>`;
-    
-    document.body.insertAdjacentHTML('beforeend', html);
 }
-
+</style>`;
 
 
 
@@ -5610,27 +5326,14 @@ function handleUSASaveClick() {
         
         console.log('✅ User opted out - tracking cookies blocked');
         
-        // Hide the modal and cleanup (ADDED HERE - Was missing before)
-        hideUSAOptOutPopup();
-        
-        // Show floating button if enabled
-        if (config.behavior.showFloatingButton) {
-            setTimeout(() => {
-                showFloatingButton();
-            }, 500);
-        }
-        
-        // Disable interaction restrictions
-        disableInteractionRestrictions();
-        
     } else {
-        // User opted IN - show regular banner for full consent choices
-        console.log('User opted IN - showing full consent banner');
+        // User opted in - show regular banner for full consent choices
+        console.log('User opted in - showing full consent banner');
         
         // Clear any USA opt-out preference
         document.cookie = "usa_opt_out=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
         
-        // IMPORTANT: Hide the USA modal FIRST
+        // Show the default cookie banner instead
         hideUSAOptOutPopup();
         
         // Remove USA banner if it exists
@@ -5639,10 +5342,32 @@ function handleUSASaveClick() {
             usaBanner.style.display = 'none';
         }
         
-        // Show the regular cookie banner after a delay
+        // Show the regular cookie banner
         setTimeout(() => {
             showCookieBanner();
+        }, 400);
+        
+        return; // Don't hide modal yet
+    }
+    
+    // Hide the modal and cleanup
+    hideUSAOptOutPopup();
+    
+    // CRITICAL FIX: Always disable restrictions after saving
+    disableInteractionRestrictions();
+    
+    // Show floating button if enabled
+    if (config.behavior.showFloatingButton) {
+        setTimeout(() => {
+            showFloatingButton();
         }, 500);
+    }
+    
+    // Reload page to apply changes
+    if (window.COOKIE_SETTINGS && window.COOKIE_SETTINGS.RELOAD_ENABLED !== false) {
+        setTimeout(() => {
+            window.location.reload();
+        }, 800);
     }
 }
 
@@ -5657,6 +5382,9 @@ function handleUSACancelClick() {
         setTimeout(() => {
             showUSABanner();
         }, 350);
+    } else {
+        // If user has already made a choice, don't show banner again
+        disableInteractionRestrictions();
     }
 }
 
@@ -5671,6 +5399,9 @@ function handleUSACloseModalClick() {
         setTimeout(() => {
             showUSABanner();
         }, 350);
+    } else {
+        // If user has already made a choice, don't show banner again
+        disableInteractionRestrictions();
     }
 }
 
@@ -6039,22 +5770,15 @@ function setupEventListeners() {
         });
     }
     
-  // Also close modal when clicking outside - FIXED VERSION
-if (usaOptOutModal) {
-    // Remove any existing listener
-    usaOptOutModal.removeEventListener('click', handleOutsideUSAClick);
-    
-    // Add new listener
-    function handleOutsideUSAClick(e) {
-        if (e.target === usaOptOutModal) {
-            console.log('Clicked outside USA modal - closing');
-            handleUSACloseModalClick();
-        }
+    // Also close modal when clicking outside
+    if (usaOptOutModal) {
+        usaOptOutModal.addEventListener('click', function(e) {
+            if (e.target === usaOptOutModal) {
+                console.log('Clicked outside USA modal - closing');
+                handleUSACloseModalClick();
+            }
+        });
     }
-    
-    usaOptOutModal.addEventListener('click', handleOutsideUSAClick);
-    console.log('USA outside click listener added');
-}
     
     // Setup checkbox state based on existing preference
     const usaDoNotSellCheckbox = document.getElementById('usaDoNotSellCheckbox');
@@ -6209,19 +5933,20 @@ function showUSAOptOutPopup() {
         return;
     }
     
-    // FIRST hide the USA banner
-    hideUSABanner();
-    
-    // THEN show the modal
     modal.style.display = 'flex';
-    
-    // Force reflow and animation
+    // Force reflow
+    modal.offsetHeight;
     setTimeout(() => {
         modal.classList.add('show');
-        // Ensure proper z-index
-        modal.style.zIndex = '10002';
-        console.log('✅ USA Opt-Out popup shown successfully');
-    }, 50); // Small delay to ensure banner hides first
+    }, 10);
+    
+    // Hide the USA banner
+    hideUSABanner();
+    
+    // Set modal on top
+    modal.style.zIndex = '10002';
+    
+    console.log('✅ USA Opt-Out popup shown successfully');
 }
 
 function hideUSAOptOutPopup() {
@@ -6232,33 +5957,21 @@ function hideUSAOptOutPopup() {
         return;
     }
     
-    // Hide the modal with animation
     modal.classList.remove('show');
-    
     setTimeout(() => {
         modal.style.display = 'none';
-        console.log('✅ USA Opt-Out popup hidden');
-        
-        // Check if we should show USA banner again
-        const consentCookie = getCookie('cookie_consent');
-        const usaOptOutCookie = getCookie('usa_opt_out');
-        
-        // Only show banner if NO consent exists at all
-        if (!consentCookie && !usaOptOutCookie) {
-            setTimeout(() => {
-                console.log('No consent found, showing USA banner again');
-                showUSABanner();
-            }, 400);
-        } else {
-            console.log('Consent exists, not showing banner again');
-            // Show floating button if enabled
-            if (config.behavior.showFloatingButton) {
-                setTimeout(() => {
-                    showFloatingButton();
-                }, 300);
-            }
-        }
-    }, 300); // Match CSS animation duration
+    }, 300);
+    
+    console.log('✅ USA Opt-Out popup hidden');
+    
+    // Show USA banner again if no consent given yet
+    const consentCookie = getCookie('cookie_consent');
+    const usaOptOutCookie = getCookie('usa_opt_out');
+    if (!consentCookie && !usaOptOutCookie) {
+        setTimeout(() => {
+            showUSABanner();
+        }, 350);
+    }
 }
 
 function hideUSABanner() {
@@ -7070,10 +6783,6 @@ function loadPerformanceCookies() {
 
 // Main execution flow
 document.addEventListener('DOMContentLoaded', async function() {
-    
-      // ====== USA DEFAULT CONSENT ======
-    applyUSADefaultConsent(); // ADD THIS LINE
-    
     // ====== CROSS-DOMAIN INITIALIZATION ======
     if (config.crossDomain.enabled) {
         // 1. Check URL for incoming cross-domain consent
@@ -7414,5 +7123,23 @@ window.clearCrossDomain = function() {
     }
     
     console.log('✅ Cross-domain consent cleared. Refresh page.');
+};
+    window.testUSABanner = function() {
+    console.log('🧪 Testing USA Banner...');
+    
+    // Reset all cookies
+    document.cookie = "cookie_consent=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+    document.cookie = "usa_opt_out=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+    localStorage.removeItem('__user_cookie_consent__');
+    localStorage.removeItem('__user_cookie_categories__');
+    
+    // Force USA location
+    locationData = { country: 'US', country_name: 'United States' };
+    sessionStorage.setItem('locationData', JSON.stringify(locationData));
+    
+    // Refresh page
+    setTimeout(() => {
+        window.location.reload();
+    }, 500);
 };
 }
