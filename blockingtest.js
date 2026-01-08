@@ -1367,14 +1367,14 @@ uiTheme: 'default',
 usaBannerConfig: {
     enabled: true,
     regions: ['US'], // Array of country codes where USA banner should show
-    showOptOutPopup: true, // When true, clicking "Do Not Sell..." opens popup
+    showOptOutPopup: true,
     popupStyle: {
         background: '#ffffff',
-        width: '400px',
+        width: '400px', // Exact width like 2nd image
         padding: '24px',
         borderRadius: '8px'
     },
-    // Text for USA banner
+    // Text for USA banner - EXACT TEXT FROM 2nd IMAGE
     usaTexts: {
         title: "We value your privacy",
         description: "This website or its third-party tools process personal data. You can opt out of the sale of your personal information by clicking on the \"Do Not Sell or Share My Personal Information\" link.",
@@ -1382,7 +1382,7 @@ usaBannerConfig: {
         saveText: "Save My Preferences",
         cancelText: "Cancel",
         preferencesTitle: "Opt-out Preferences",
-        preferencesDescription: "We use third-party cookies that help us analyse how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. However, you can opt out of these cookies by checking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button. Once you opt out, you can opt in again at any time by unchecking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button."
+        preferencesDescription: "We use third-party cookies that help us analyze how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. However, you can opt out of these cookies by checking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button. Once you opt out, you can opt in again at any time by unchecking \"Do Not Sell or Share My Personal Information\" and clicking the \"Save My Preferences\" button."
     }
 },
     
@@ -3906,26 +3906,32 @@ function injectUSABanner(detectedCookies, language = 'en') {
         </div>
     </div>
 
-      <!-- USA Opt-Out Popup Modal -->
+    <!-- USA Opt-Out Popup Modal - EXACT 2nd IMAGE DESIGN -->
     <div id="usaOptOutModal" class="cookie-settings-modal usa-opt-out-modal">
-        <div class="cookie-settings-content usa-opt-out-content">
-            <div class="cookie-settings-header">
-                <h2>Opt-out Preferences</h2>
+      <div class="cookie-settings-content usa-opt-out-content" style="width: 650px; max-width: 95vw; max-height: 80vh;">
+            <div class="cookie-settings-header" style="background: #ffffff; border-bottom: none; padding: 24px 24px 0 24px;">
+                <h2 style="font-size: 20px; font-weight: 600; color: #333; margin: 0;">Opt-out Preferences</h2>
                 <span class="close-usa-modal">&times;</span>
             </div>
-            <div class="cookie-settings-body">
-                <p>We use third-party cookies that help us analyse how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. However, you can opt out of these cookies by checking "Do Not Sell or Share My Personal Information" and clicking the "Save My Preferences" button. Once you opt out, you can opt in again at any time by unchecking "Do Not Sell or Share My Personal Information" and clicking the "Save My Preferences" button.</p>
-                <div class="usa-opt-out-option">
-                    <label class="usa-opt-out-toggle">
-                        <input type="checkbox" id="usaDoNotSellCheckbox">
-                        <span class="usa-opt-out-label">Do Not Sell or Share My Personal Information</span>
+            <div class="cookie-settings-body" style="padding: 16px 24px 24px 24px;">
+                <p style="font-size: 14px; line-height: 1.5; color: #666; margin: 0 0 20px 0;">
+                    We use third-party cookies that help us analyse how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. However, you can opt out of these cookies by checking "Do Not Sell or Share My Personal Information" and clicking the "Save My Preferences" button. Once you opt out, you can opt in again at any time by unchecking "Do Not Sell or Share My Personal Information" and clicking the "Save My Preferences" button.
+                </p>
+                
+                    <div class="usa-opt-out-option" style="margin: 0 0 24px 0; padding: 0;">
+                           <label class="beautiful-toggle-container" style="display: flex; align-items: center; padding: 0; cursor: pointer; user-select: none; gap: 12px;">
+                          <div class="beautiful-toggle-switch">
+                            <input type="checkbox" id="usaDoNotSellCheckbox" class="toggle-checkbox">
+                            <span class="toggle-slider"></span>
+                        </div>
+                        <span class="usa-opt-out-label" style="font-size: 14px; color: #333; font-weight: 500;">Do Not Sell or Share My Personal Information</span>
                     </label>
                 </div>
             </div>
-            <div class="cookie-settings-footer">
-                <div class="modal-buttons-container" style="display: flex; justify-content: space-between; gap: 10px;">
-                    <button id="usaCancelBtn" class="cookie-btn usa-cancel-button" style="background: #f8f9fa; color: #333; border: 1px solid #e0e0e0; flex: 1;">Cancel</button>
-                    <button id="usaSaveBtn" class="cookie-btn usa-save-button" style="background: #f8f9fa; color: #333; border: 1px solid #e0e0e0; flex: 1;">Save My Preferences</button>
+            <div class="cookie-settings-footer" style="background: #ffffff; padding: 16px 24px 24px 24px; border-top: 1px solid #e0e0e0;">
+                <div class="modal-buttons-container" style="display: flex; gap: 10px;">
+                    <button id="usaCancelBtn" class="cookie-btn usa-cancel-button" style="flex: 1; background: #f8f9fa; color: #333; border: 1px solid #e0e0e0; padding: 10px 20px; border-radius: 6px; font-weight: 500; font-size: 14px;">Cancel</button>
+                    <button id="usaSaveBtn" class="cookie-btn usa-save-button" style="flex: 1; background: #f8f9fa; color: #333; border: 1px solid #e0e0e0; padding: 10px 20px; border-radius: 6px; font-weight: 500; font-size: 14px;">Save My Preferences</button>
                 </div>
             </div>
         </div>
@@ -3952,203 +3958,6 @@ function injectUSABanner(detectedCookies, language = 'en') {
         color: white !important;
     }
 
-    .usa-opt-out-modal .cookie-settings-content {
-        width: ${config.usaBannerConfig.popupStyle.width};
-        max-height: 500px;
-    }
-    /* Ensure USA modal appears on top */
-    #usaOptOutModal {
-        z-index: 10002 !important;
-    }
-    
-    .usa-opt-out-modal.show {
-        display: flex !important;
-        opacity: 1 !important;
-    }
-    
-    .usa-opt-out-content {
-        animation: modalSlideIn 0.3s ease-out;
-    }
-    
-    @keyframes modalSlideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-      /* Make checkbox look like first image - simple square checkbox */
-    #usaDoNotSellCheckbox {
-        width: 18px !important;
-        height: 18px !important;
-        margin-right: 10px !important;
-        cursor: pointer !important;
-        accent-color: #1177d0 !important;
-    }
-    
-    .usa-opt-out-toggle {
-        display: flex !important;
-        align-items: center !important;
-        cursor: pointer !important;
-        user-select: none !important;
-        padding: 15px !important;
-        background: #f8f9fa !important;
-        border-radius: 8px !important;
-        border: 1px solid #e0e0e0 !important;
-        margin: 20px 0 !important;
-    }
-    
-    .usa-opt-out-toggle input {
-        position: relative !important;
-        opacity: 1 !important;
-        width: 18px !important;
-        height: 18px !important;
-        margin-right: 12px !important;
-    }
-    
-    .usa-opt-out-label {
-        font-weight: 500 !important;
-        color: #333 !important;
-        font-size: 14px !important;
-    }
-    
-    /* Remove the toggle slider */
-    .usa-toggle-slider {
-        display: none !important;
-    }
-    .usa-toggle-slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-    
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider {
-        background-color: #4CAF50;
-    }
-    
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
-        transform: translateX(24px);
-    }
-    
-    .usa-opt-out-toggle input:disabled + .usa-toggle-slider {
-        background-color: #95a5a6;
-        cursor: not-allowed;
-    }
-    
-    /* Ensure buttons are clickable */
-    #usaOptOutBtn, #usaSaveBtn, #usaCancelBtn {
-        cursor: pointer !important;
-        pointer-events: auto !important;
-    }
-    
-    /* Fix for mobile */
-    @media (max-width: 768px) {
-        .usa-opt-out-modal .cookie-settings-content {
-            width: 95% !important;
-            max-width: 400px !important;
-            margin: 10px !important;
-        }
-        
-        .usa-opt-out-option {
-            padding: 15px !important;
-        }
-    }
-    
-    .usa-opt-out-option {
-        margin: 25px 0;
-        padding: 20px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #e0e0e0;
-    }
-
-    .usa-opt-out-toggle {
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-    }
-
-    .usa-opt-out-toggle input {
-        margin-right: 12px;
-        width: 50px;
-        height: 26px;
-        opacity: 0;
-        position: absolute;
-    }
-
-    .usa-toggle-slider {
-        position: relative;
-        width: 50px;
-        height: 26px;
-        background-color: #ccc;
-        border-radius: 34px;
-        margin-right: 15px;
-        transition: .4s;
-    }
-
-    .usa-toggle-slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider {
-        background-color: ${config.toggleStyle.activeColor};
-    }
-
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
-        transform: translateX(24px);
-    }
-
-    .usa-opt-out-label {
-        font-weight: 500;
-        color: #333;
-        font-size: 15px;
-    }
-
-    .usa-cancel-button {
-        background: #f8f9fa;
-        color: #333;
-        border: 1px solid #ddd;
-    }
-
-    .usa-save-button {
-        background: #1177d0;
-        color: white;
-        border: 1px solid #1177d0;
-    }
-
-    @media (max-width: 768px) {
-        .usa-cookie-banner {
-            width: 90%;
-            ${config.behavior.bannerPosition === 'left' ? 'left: 5%;' : 'right: 5%;'}
-        }
-        
-        .usa-opt-out-modal .cookie-settings-content {
-            width: 90%;
-        }
-    }
-
-
-      /* ================================================================= */
-    /* NEW CSS FIXES FOR USA MODAL - ADDED TO PREVENT CONFLICTS */
-    /* ================================================================= */
     /* Ensure USA modal appears on top */
     #usaOptOutModal {
         z-index: 10002 !important;
@@ -4161,6 +3970,7 @@ function injectUSABanner(detectedCookies, language = 'en') {
     
     .usa-opt-out-content {
         animation: usaModalSlideIn 0.3s ease-out;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     }
     
     @keyframes usaModalSlideIn {
@@ -4174,73 +3984,135 @@ function injectUSABanner(detectedCookies, language = 'en') {
         }
     }
     
-    /* Make checkbox more visible - OVERRIDE EXISTING STYLES */
-    #usaDoNotSellCheckbox {
-        width: 50px !important;
-        height: 26px !important;
-        position: relative !important;
-        cursor: pointer !important;
-        margin-right: 12px !important;
+
+    
+    
+    /* Fix modal header close button */
+    .usa-opt-out-modal .cookie-settings-header .close-usa-modal {
+        font-size: 24px;
+        color: #999;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
-    .usa-opt-out-toggle {
-        display: flex !important;
-        align-items: center !important;
-        cursor: pointer !important;
-        user-select: none !important;
+    .usa-opt-out-modal .cookie-settings-header .close-usa-modal:hover {
+        color: #666;
     }
     
-    .usa-opt-out-toggle input {
-        position: absolute !important;
-        opacity: 0 !important;
-        width: 0 !important;
-        height: 0 !important;
-        margin: 0 !important;
+    /* Ensure buttons match 2nd image */
+    #usaCancelBtn, #usaSaveBtn {
+        transition: all 0.2s ease;
     }
     
-    .usa-toggle-slider {
-        position: relative !important;
-        display: inline-block !important;
-        width: 50px !important;
-        height: 26px !important;
-        background-color: #ccc !important;
-        border-radius: 34px !important;
-        margin-right: 15px !important;
-        transition: .4s !important;
+    #usaCancelBtn:hover, #usaSaveBtn:hover {
+        background: #f0f0f0 !important;
+        transform: translateY(-1px);
     }
-    
-    .usa-toggle-slider:before {
-        position: absolute !important;
-        content: "" !important;
-        height: 18px !important;
-        width: 18px !important;
-        left: 4px !important;
-        bottom: 4px !important;
-        background-color: white !important;
-        transition: .4s !important;
-        border-radius: 50% !important;
-    }
-    
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider {
-        background-color: #4CAF50 !important;
-    }
-    
-    .usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
-        transform: translateX(24px) !important;
-    }
-    
-    .usa-opt-out-toggle input:disabled + .usa-toggle-slider {
-        background-color: #95a5a6 !important;
-        cursor: not-allowed !important;
-    }
-    
-    /* Ensure buttons are clickable */
-    #usaOptOutBtn, #usaSaveBtn, #usaCancelBtn {
-        cursor: pointer !important;
-        pointer-events: auto !important;
-    }
-    
-    /* Fix for mobile - OVERRIDE EXISTING MOBILE STYLES */
+    /* Beautiful Toggle Switch Styles */
+.beautiful-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.beautiful-toggle-switch .toggle-checkbox {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.beautiful-toggle-switch .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.beautiful-toggle-switch .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.beautiful-toggle-switch .toggle-checkbox:checked + .toggle-slider {
+    background: linear-gradient(135deg, #1177d0, #0d5ea3);
+}
+
+.beautiful-toggle-switch .toggle-checkbox:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+.beautiful-toggle-switch .toggle-checkbox:focus + .toggle-slider {
+    box-shadow: 0 0 0 3px rgba(17, 119, 208, 0.2);
+}
+
+/* Toggle animation */
+.beautiful-toggle-switch .toggle-slider:before {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover effect */
+.beautiful-toggle-switch:hover .toggle-slider {
+    background-color: #b0b0b0;
+}
+
+.beautiful-toggle-switch:hover .toggle-checkbox:checked + .toggle-slider {
+    background: linear-gradient(135deg, #0d5ea3, #0a4c8a);
+}
+
+/* Make sure the checkbox is accessible */
+.toggle-checkbox {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+/* Ensure proper modal width */
+.usa-opt-out-modal .cookie-settings-content {
+    width: 650px !important; /* CHANGED from 400px to 650px */
+    max-width: 95vw !important;
+    max-height: 80vh !important;
+}
+
+/* Fix modal padding for better text display */
+.usa-opt-out-modal .cookie-settings-body {
+    overflow-y: visible !important;
+    max-height: none !important;
+}
+
+/* Make sure text doesn't get cut off */
+.usa-opt-out-modal .cookie-settings-body p {
+    overflow: visible !important;
+    white-space: normal !important;
+    line-height: 1.6 !important;
+}
+    /* Fix for mobile */
     @media (max-width: 768px) {
         .usa-opt-out-modal .cookie-settings-content {
             width: 95% !important;
@@ -4249,25 +4121,20 @@ function injectUSABanner(detectedCookies, language = 'en') {
         }
         
         .usa-opt-out-option {
-            padding: 15px !important;
-            margin: 15px 0 !important;
+            padding: 0 !important;
         }
         
-        .usa-opt-out-toggle {
+        .modal-buttons-container {
             flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .usa-toggle-slider {
-            margin-bottom: 10px;
         }
     }
-    /* ================================================================= */
+    
     </style>`;
     
     document.body.insertAdjacentHTML('beforeend', html);
 }
 
+ 
 
 
 
@@ -4665,12 +4532,13 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         color: ${config.modalStyle.closeButton.hoverColor};
     }
 
-    .cookie-settings-body {
-        padding: 25px 30px;
-        background-color: ${config.modalStyle.body.background};
-        overflow-y: auto;
-        flex: 1;
-    }
+  .cookie-settings-body {
+    padding: 25px 30px;
+    background-color: ${config.modalStyle.body.background};
+    overflow-y: visible !important; /* CHANGED from auto to visible */
+    flex: 1;
+    max-height: none !important; /* ADDED to prevent text clipping */
+}
 
     .cookie-category {
         margin-bottom: 25px;
@@ -4788,13 +4656,13 @@ function injectConsentHTML(detectedCookies, language = 'en') {
         background-color: #eeeeee;
     }
 
-    .main-cookie-details-content {
-        padding: 18px;
-        background-color: #fafafa;
-        border-top: 1px solid #e0e0e0;
-        display: none;
-        animation: fadeIn 0.3s ease;
-    }
+.main-cookie-details-content {
+    padding: 18px;
+    background-color: #fafafa;
+    border-top: 1px solid #e0e0e0;
+    display: block !important; /* CHANGED from none to block */
+    animation: fadeIn 0.3s ease;
+}
 
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(-10px); }
@@ -6000,19 +5868,19 @@ function setupEventListeners() {
         });
     }
     
-    // Setup checkbox state based on existing preference
-    const usaDoNotSellCheckbox = document.getElementById('usaDoNotSellCheckbox');
-    if (usaDoNotSellCheckbox) {
-        const usaOptOutCookie = getCookie('usa_opt_out');
-        if (usaOptOutCookie) {
-            try {
-                const usaData = JSON.parse(usaOptOutCookie);
-                usaDoNotSellCheckbox.checked = usaData.optedOut === true;
-            } catch (e) {
-                console.error('Error parsing USA opt-out cookie:', e);
-            }
+  // Setup checkbox state based on existing preference
+const usaDoNotSellCheckbox = document.getElementById('usaDoNotSellCheckbox');
+if (usaDoNotSellCheckbox) {
+    const usaOptOutCookie = getCookie('usa_opt_out');
+    if (usaOptOutCookie) {
+        try {
+            const usaData = JSON.parse(usaOptOutCookie);
+            usaDoNotSellCheckbox.checked = usaData.optedOut === true;
+        } catch (e) {
+            console.error('Error parsing USA opt-out cookie:', e);
         }
     }
+}
     // =================================================================
     // End of USA Banner Event Listeners
     // =================================================================
