@@ -3906,27 +3906,26 @@ function injectUSABanner(detectedCookies, language = 'en') {
         </div>
     </div>
 
-    <!-- USA Opt-Out Popup Modal -->
+      <!-- USA Opt-Out Popup Modal -->
     <div id="usaOptOutModal" class="cookie-settings-modal usa-opt-out-modal">
         <div class="cookie-settings-content usa-opt-out-content">
             <div class="cookie-settings-header">
-                <h2>${usaTexts.preferencesTitle}</h2>
+                <h2>Opt-out Preferences</h2>
                 <span class="close-usa-modal">&times;</span>
             </div>
             <div class="cookie-settings-body">
-                <p>${usaTexts.preferencesDescription}</p>
+                <p>We use third-party cookies that help us analyse how you use this website, store your preferences, and provide the content and advertisements that are relevant to you. However, you can opt out of these cookies by checking "Do Not Sell or Share My Personal Information" and clicking the "Save My Preferences" button. Once you opt out, you can opt in again at any time by unchecking "Do Not Sell or Share My Personal Information" and clicking the "Save My Preferences" button.</p>
                 <div class="usa-opt-out-option">
                     <label class="usa-opt-out-toggle">
                         <input type="checkbox" id="usaDoNotSellCheckbox">
-                        <span class="usa-toggle-slider"></span>
-                        <span class="usa-opt-out-label">${usaTexts.optOutText}</span>
+                        <span class="usa-opt-out-label">Do Not Sell or Share My Personal Information</span>
                     </label>
                 </div>
             </div>
             <div class="cookie-settings-footer">
-                <div class="modal-buttons-container">
-                    <button id="usaCancelBtn" class="cookie-btn usa-cancel-button">${usaTexts.cancelText}</button>
-                    <button id="usaSaveBtn" class="cookie-btn usa-save-button">${usaTexts.saveText}</button>
+                <div class="modal-buttons-container" style="display: flex; justify-content: space-between; gap: 10px;">
+                    <button id="usaCancelBtn" class="cookie-btn usa-cancel-button" style="background: #f8f9fa; color: #333; border: 1px solid #e0e0e0; flex: 1;">Cancel</button>
+                    <button id="usaSaveBtn" class="cookie-btn usa-save-button" style="background: #f8f9fa; color: #333; border: 1px solid #e0e0e0; flex: 1;">Save My Preferences</button>
                 </div>
             </div>
         </div>
@@ -3982,39 +3981,45 @@ function injectUSABanner(detectedCookies, language = 'en') {
         }
     }
     
-    /* Make checkbox more visible */
+      /* Make checkbox look like first image - simple square checkbox */
     #usaDoNotSellCheckbox {
-        width: 50px;
-        height: 26px;
-        position: relative;
-        cursor: pointer;
+        width: 18px !important;
+        height: 18px !important;
+        margin-right: 10px !important;
+        cursor: pointer !important;
+        accent-color: #1177d0 !important;
     }
     
     .usa-opt-out-toggle {
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-        user-select: none;
+        display: flex !important;
+        align-items: center !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        padding: 15px !important;
+        background: #f8f9fa !important;
+        border-radius: 8px !important;
+        border: 1px solid #e0e0e0 !important;
+        margin: 20px 0 !important;
     }
     
     .usa-opt-out-toggle input {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
+        position: relative !important;
+        opacity: 1 !important;
+        width: 18px !important;
+        height: 18px !important;
+        margin-right: 12px !important;
     }
     
+    .usa-opt-out-label {
+        font-weight: 500 !important;
+        color: #333 !important;
+        font-size: 14px !important;
+    }
+    
+    /* Remove the toggle slider */
     .usa-toggle-slider {
-        position: relative;
-        display: inline-block;
-        width: 50px;
-        height: 26px;
-        background-color: #ccc;
-        border-radius: 34px;
-        margin-right: 15px;
-        transition: .4s;
+        display: none !important;
     }
-    
     .usa-toggle-slider:before {
         position: absolute;
         content: "";
@@ -5866,7 +5871,7 @@ function setupEventListeners() {
 
 
     // =================================================================
-    // USA Banner Event Listeners - ENHANCED VERSION
+    // USA Banner Event Listeners - CORRECTED VERSION
     // =================================================================
     const usaOptOutBtn = document.getElementById('usaOptOutBtn');
     const usaSaveBtn = document.getElementById('usaSaveBtn');
@@ -5875,54 +5880,114 @@ function setupEventListeners() {
     const usaOptOutModal = document.getElementById('usaOptOutModal');
     
     console.log('Setting up USA banner event listeners...');
-    console.log('USA Opt-Out Button:', usaOptOutBtn);
-    console.log('USA Save Button:', usaSaveBtn);
-    console.log('USA Cancel Button:', usaCancelBtn);
-    console.log('USA Modal:', usaOptOutModal);
     
     // USA Banner "Do Not Sell..." Button
     if (usaOptOutBtn) {
-        console.log('Adding click handler to USA Opt-Out button');
         usaOptOutBtn.addEventListener('click', function(e) {
-            console.log('USA Opt-Out button clicked!');
             e.preventDefault();
             e.stopPropagation();
             showUSAOptOutPopup();
         });
-    } else {
-        console.warn('USA Opt-Out button not found!');
     }
     
-    // USA Modal Save Button
+    // USA Modal Save Button - SIMPLIFIED
     if (usaSaveBtn) {
-        console.log('Adding click handler to USA Save button');
         usaSaveBtn.addEventListener('click', function(e) {
-            console.log('USA Save button clicked!');
             e.preventDefault();
             e.stopPropagation();
-            handleUSASaveClick();
+            
+            // Handle the save logic
+            const usaDoNotSellCheckbox = document.getElementById('usaDoNotSellCheckbox');
+            
+            if (!usaDoNotSellCheckbox) {
+                console.error('USA Do Not Sell checkbox not found!');
+                hideUSAOptOutPopup(); // Still close the modal
+                return;
+            }
+            
+            const isOptedOut = usaDoNotSellCheckbox.checked;
+            
+            if (isOptedOut) {
+                // User opted out
+                const usaOptOutData = {
+                    optedOut: true,
+                    timestamp: new Date().getTime(),
+                    region: locationData?.country,
+                    gcs: 'G100'
+                };
+                setCookie('usa_opt_out', JSON.stringify(usaOptOutData), 365);
+                
+                const consentData = {
+                    status: 'rejected',
+                    gcs: 'G100',
+                    categories: {
+                        functional: true,
+                        analytics: false,
+                        performance: false,
+                        advertising: false,
+                        uncategorized: false
+                    },
+                    timestamp: new Date().getTime(),
+                    usaOptOut: true
+                };
+                
+                updateConsentMode(consentData);
+                setCookie('cookie_consent', JSON.stringify(consentData), 365);
+                
+                window.dataLayer.push({
+                    'event': 'usa_opt_out_selected',
+                    'opt_out_status': true,
+                    'consent_mode': {
+                        'ad_storage': 'denied',
+                        'analytics_storage': 'denied',
+                        'ad_user_data': 'denied',
+                        'ad_personalization': 'denied',
+                        'personalization_storage': 'denied',
+                        'functionality_storage': 'granted',
+                        'security_storage': 'granted'
+                    },
+                    'gcs': 'G100',
+                    'timestamp': new Date().toISOString(),
+                    'location_data': locationData
+                });
+            } else {
+                // User opted in
+                document.cookie = "usa_opt_out=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+                
+                // Don't hide the modal yet - let hideUSAOptOutPopup handle it
+                // We'll show regular banner from there
+            }
+            
+            // Hide the modal (this will also handle showing regular banner if needed)
+            hideUSAOptOutPopup();
+            
+            // Show floating button if enabled
+            if (config.behavior.showFloatingButton) {
+                setTimeout(() => {
+                    showFloatingButton();
+                }, 500);
+            }
+            
+            // Disable interaction restrictions
+            disableInteractionRestrictions();
         });
     }
     
-    // USA Modal Cancel Button
+    // USA Modal Cancel Button - SIMPLIFIED
     if (usaCancelBtn) {
-        console.log('Adding click handler to USA Cancel button');
         usaCancelBtn.addEventListener('click', function(e) {
-            console.log('USA Cancel button clicked!');
             e.preventDefault();
             e.stopPropagation();
-            handleUSACancelClick();
+            hideUSAOptOutPopup(); // This already handles showing USA banner again
         });
     }
     
-    // USA Modal Close Button
+    // USA Modal Close (×) Button - SIMPLIFIED
     if (closeUSAModalBtn) {
-        console.log('Adding click handler to USA Close modal button');
         closeUSAModalBtn.addEventListener('click', function(e) {
-            console.log('USA Close modal button clicked!');
             e.preventDefault();
             e.stopPropagation();
-            handleUSACloseModalClick();
+            hideUSAOptOutPopup(); // This already handles showing USA banner again
         });
     }
     
@@ -5930,8 +5995,7 @@ function setupEventListeners() {
     if (usaOptOutModal) {
         usaOptOutModal.addEventListener('click', function(e) {
             if (e.target === usaOptOutModal) {
-                console.log('Clicked outside USA modal - closing');
-                handleUSACloseModalClick();
+                hideUSAOptOutPopup(); // This already handles showing USA banner again
             }
         });
     }
@@ -5944,7 +6008,6 @@ function setupEventListeners() {
             try {
                 const usaData = JSON.parse(usaOptOutCookie);
                 usaDoNotSellCheckbox.checked = usaData.optedOut === true;
-                console.log('Loaded USA opt-out state:', usaData.optedOut);
             } catch (e) {
                 console.error('Error parsing USA opt-out cookie:', e);
             }
@@ -5953,7 +6016,6 @@ function setupEventListeners() {
     // =================================================================
     // End of USA Banner Event Listeners
     // =================================================================
-
     
 }
 
