@@ -1,3 +1,4 @@
+
 window.COOKIE_SETTINGS = {
     BLOCKING_ENABLED: true,    // Set to false to turn OFF blocking
     RELOAD_ENABLED: true       // Set to false to turn OFF page reloads
@@ -1370,7 +1371,7 @@ usaBannerConfig: {
     showOptOutPopup: true, // When true, clicking "Do Not Sell..." opens popup
     popupStyle: {
         background: '#ffffff',
-        width: '400px',
+        width: '700px',
         padding: '24px',
         borderRadius: '8px'
     },
@@ -3913,20 +3914,16 @@ function injectUSABanner(detectedCookies, language = 'en') {
                 <h2>${usaTexts.preferencesTitle}</h2>
                 <span class="close-usa-modal">&times;</span>
             </div>
-     <div class="cookie-settings-body">
-    <div class="usa-opt-out-toggle-section" style="margin-bottom: 20px;">
-        <label class="usa-opt-out-toggle" style="display: flex; align-items: center; margin-bottom: 15px;">
-            <input type="checkbox" id="usaDoNotSellCheckbox">
-            <span class="usa-toggle-slider"></span>
-            <span class="usa-opt-out-label" style="font-size: 15px; font-weight: 500; margin-left: 10px;">
-                ${usaTexts.optOutText}
-            </span>
-        </label>
-    </div>
-    <p style="font-size: 14px; color: #666; line-height: 1.5; margin-top: 10px;">
-        ${usaTexts.preferencesDescription}
-    </p>
-</div>
+            <div class="cookie-settings-body">
+                <p>${usaTexts.preferencesDescription}</p>
+                <div class="usa-opt-out-option">
+                    <label class="usa-opt-out-toggle">
+                        <input type="checkbox" id="usaDoNotSellCheckbox">
+                        <span class="usa-toggle-slider"></span>
+                        <span class="usa-opt-out-label">${usaTexts.optOutText}</span>
+                    </label>
+                </div>
+            </div>
             <div class="cookie-settings-footer">
                 <div class="modal-buttons-container">
                     <button id="usaCancelBtn" class="cookie-btn usa-cancel-button">${usaTexts.cancelText}</button>
@@ -3957,15 +3954,10 @@ function injectUSABanner(detectedCookies, language = 'en') {
         color: white !important;
     }
 
-   .usa-opt-out-modal .cookie-settings-content {
-    width: ${config.usaBannerConfig.popupStyle.width};
-    max-height: 500px;
-    padding: 20px; /* Add padding to the modal */
-}
-
-.usa-opt-out-modal .cookie-settings-body {
-    padding: 15px 0; /* Adjust body padding */
-}
+    .usa-opt-out-modal .cookie-settings-content {
+        width: ${config.usaBannerConfig.popupStyle.width};
+        max-height: 470px;
+    }
     /* Ensure USA modal appears on top */
     #usaOptOutModal {
         z-index: 10002 !important;
@@ -4068,64 +4060,63 @@ function injectUSABanner(detectedCookies, language = 'en') {
         }
     }
     
- .usa-opt-out-toggle-section {
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-    margin-top: 5px; /* Adjusted to move it up */
-}
+    .usa-opt-out-option {
+        margin: 25px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+    }
 
-.usa-opt-out-toggle {
-    display: flex !important;
-    align-items: center !important;
-    cursor: pointer !important;
-    user-select: none !important;
-}
+    .usa-opt-out-toggle {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+    }
 
-.usa-toggle-slider {
-    position: relative !important;
-    display: inline-block !important;
-    width: 50px !important;
-    height: 26px !important;
-    background-color: #ccc !important;
-    border-radius: 34px !important;
-    margin-right: 15px !important;
-    transition: .4s !important;
-    flex-shrink: 0;
-}
+    .usa-opt-out-toggle input {
+        margin-right: 12px;
+        width: 50px;
+        height: 26px;
+        opacity: 0;
+        position: absolute;
+    }
 
-.usa-toggle-slider:before {
-    position: absolute !important;
-    content: "" !important;
-    height: 18px !important;
-    width: 18px !important;
-    left: 4px !important;
-    bottom: 4px !important;
-    background-color: white !important;
-    transition: .4s !important;
-    border-radius: 50% !important;
-}
+    .usa-toggle-slider {
+        position: relative;
+        width: 50px;
+        height: 26px;
+        background-color: #ccc;
+        border-radius: 34px;
+        margin-right: 15px;
+        transition: .4s;
+    }
 
-.usa-opt-out-toggle input:checked + .usa-toggle-slider {
-    background-color: #4CAF50 !important;
-}
+    .usa-toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
 
-.usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
-    transform: translateX(24px) !important;
-}
+    .usa-opt-out-toggle input:checked + .usa-toggle-slider {
+        background-color: ${config.toggleStyle.activeColor};
+    }
 
-.usa-opt-out-toggle input:disabled + .usa-toggle-slider {
-    background-color: #95a5a6 !important;
-    cursor: not-allowed !important;
-}
+    .usa-opt-out-toggle input:checked + .usa-toggle-slider:before {
+        transform: translateX(24px);
+    }
 
-.usa-opt-out-label {
-    font-weight: 500 !important;
-    color: #333 !important;
-    font-size: 15px !important;
-    line-height: 1.4;
-}
+    .usa-opt-out-label {
+        font-weight: 500;
+        color: #333;
+        font-size: 15px;
+    }
 
     .usa-cancel-button {
         background: #f8f9fa;
